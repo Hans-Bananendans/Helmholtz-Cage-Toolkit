@@ -1,8 +1,10 @@
 # Helmholtz-Cage-Toolkit
-Toolkit for large Helmholtz cage test setups, primarily aimed at testing spacecraft
+Toolkit for large Helmholtz cage test setups, primarily aimed at testing spacecraft.
+
 
 ## What is this?
 This repository contains a set of tools for building, validating, and operating a large Helmholtz cage test setup. It is developed as part of thesis work for a MSc in Space Engineering. 
+
 
 ## Why was this developed?
 In recent years, hundreds of nanosatellites are launched into space. CubeSats are a popular form factor for these missions, due to their versatility, low technological threshold, and developed market of commercial components. However, whilst the CubeSat standard has existed for over a decade, many CubeSat missions still experience major problems, or end in mission failure. This is particularly so for CubeSat missions by universities and hobbyists/amateurs, which have a relatively high rate of failure.
@@ -13,7 +15,10 @@ The MSc thesis work of the author therefore investigated not only how to better 
 
 In essence, this toolkit allows you to take a set of Helmholtz coil pairs, and some general hardware, and connect these together to form a test setup. The toolkit was developed with flexibility as one of its core requirements. As such, the software itself is agnostic to what operating system it is used with, so long as it can run a Python interpreter and interface with the hardware. Some additional drivers and conversion is probably needed to make it work with a particular set of hardware, but since the Helmholtz Cage Toolkit is also designed to be fairly modular, this should pose a relatively approachable challenge.
 
-This 
+
+## Messy files warning
+It bears mentioning that this repository is in a fairly disorganised state, and is being worked on full-time. If you plan on using this repository in the near future, it is recommended to wait for a few days, as the hierarchy of the code is being iterated.
+
 
 ## Usage
 This repository is best cloned into an instantiated `venv`:
@@ -37,6 +42,14 @@ This software uses the following dependencies:
  * [Numpy](https://numpy.org/)
 
 as well a number of other dependencies, all of which can be found in `requirements.txt`.
+
+## Screenshots
+
+![alt text](./main_v1/extras/screenshot_cyclics_ui.png?raw=true)
+User interface for one of the generators that can be used to generate time-dependent inputs to the Helmholtz cage setup.
+
+![alt text](./main_v1/extras/screenshot_orbital_early.png?raw=true)
+Early look at user interface of another input generators, which propagates a low Earth orbit (LEO) over time and acquires the local magnetic field data in the body frame of a simulated satellite. The local field is simulated using the IGRF.
 
 
 ## Attributions

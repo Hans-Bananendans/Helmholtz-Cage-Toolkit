@@ -1,0 +1,388 @@
+from PyQt5.QtCore import QDir, QSize, Qt
+from PyQt5.QtGui import (
+    QFont,
+    QIcon,
+    QImage,
+    QKeySequence,
+    QPixmap,
+    QPalette,
+    QColor,
+)
+from PyQt5.QtWidgets import (
+    QAction,
+    QActionGroup,
+    QGraphicsView,
+    QGroupBox,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLCDNumber,
+    QLineEdit,
+    QMainWindow,
+    QMenuBar,
+    QPushButton,
+    QSizePolicy,
+    QSpinBox,
+    QStackedWidget,
+    QStatusBar,
+    QToolBar,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+import pyqtgraph as pg
+import numpy as np
+from time import time
+
+from control_window import ControlWindow
+from orbit_design_window import OrbitDesignWindow
+from cyclics_window import CyclicsWindow
+from datapool import DataPool
+from file_handling import load_file, save_file, NewFileDialog
+#
+
+# # TODO: REMOVE
+# class Color(QWidget):
+#
+#     def __init__(self, color):
+#         super(Color, self).__init__()
+#         self.setAutoFillBackground(True)
+#
+#         palette = self.palette()
+#         palette.setColor(QPalette.Window, QColor(color))
+#         self.setPalette(palette)
+
+# class TestTab(QWidget):
+#     def __init__(self):
+#         super().__init__()
+#
+#         layout_0 = QVBoxLayout()
+#         label1 = QLabel(f"Hello, I am tab {self}")
+#         layout_0.addWidget(label1)
+#
+#         self.setLayout(layout_0)
+
+class TestTab(QWidget):
+    def __init__(self, tabname: str):
+        super().__init__()
+        layout_0 = QVBoxLayout()
+        layout_0.addWidget(QLabel(tabname))
+        layout_0.addWidget(QLabel(f"Instance: {self}"))
+        self.setLayout(layout_0)
+
+class MainWindow(QMainWindow):
+    def __init__(self, config) -> None:
+        super().__init__()
+
+        self.config = config
+
+        self.datapool = DataPool(self, config)  # Global datapool object
+
+        # config = {
+        #     "tab_dict": {
+        #         0: {
+        #             "name": "Tab 0",
+        #             "checkable": True,
+        #             "icon": ":gaussmeter"
+        #         },
+        #         1: {
+        #             "name": "Tab 1",
+        #             "checkable": True,
+        #             "icon": ":box"
+        #         },
+        #         2: {
+        #             "name": "Tab 2",
+        #             "checkable": True,
+        #             "icon": ":box"
+        #         },
+        #         3: {
+        #             "name": "Tab 3",
+        #             "checkable": True,
+        #             "icon": ":box"
+        #         },
+        #         4: {
+        #             "name": "Tab 4",
+        #             "checkable": True,
+        #             "icon": ":box"
+        #         },
+        #         5: {
+        #             "name": "Tab 5",
+        #             "checkable": True,
+        #             "icon": ":box"
+        #         },
+        #         6: {
+        #             "name": "Tab 6",
+        #             "checkable": True,
+        #             "icon": ":box"
+        #         },
+        #     },
+        #     "default_tab": 0,
+        #     "menubar": {
+        #
+        #     },
+        # }
+
+        # TODO: Move to config
+
+        self.dummy_tabdict = {
+            "tab_dict": {
+                0: {
+                    "name": "ConnectionWindow",
+                    "checkable": True,
+                    "icon": "./assets/icons/feather/link.svg"
+                },
+                1: {
+                    "name": "ControlWindow",
+                    "checkable": True,
+                    "icon": "./assets/icons/feather/sliders.svg"
+                },
+                2: {
+                    "name": "OrbitDesignWindow",
+                    "checkable": True,
+                    "icon": "./assets/icons/feather/disc.svg"
+                },
+                3: {
+                    "name": "GeneratorWindow",
+                    "checkable": True,
+                    "icon": "./assets/icons/feather/activity.svg"
+                },
+                4: {
+                    "name": "Tab 4",
+                    "checkable": True,
+                    "icon": "./assets/icons/feather/box.svg"
+                },
+                5: {
+                    "name": "Tab 5",
+                    "checkable": True,
+                    "icon": "./assets/icons/feather/box.svg"
+                },
+                6: {
+                    "name": "Tab 6",
+                    "checkable": True,
+                    "icon": "./assets/icons/feather/info.svg"
+                },
+            },
+            "default_tab": 3,
+        }
+
+        # ====
+
+        self.main_window = QMainWindow()
+
+        self.resize(config["default_windowsize"][0], 
+                    config["default_windowsize"][1])  # Default w x h dimensions
+        # self.setWindowTitle("Test window")
+
+
+        # Make a menu bar
+        menubar = self.create_menubar()
+        self.setMenuBar(menubar)
+
+        # Statusbar
+        self.setStatusBar(QStatusBar())
+
+        # CentralWidget
+        self.tabcontainer = QStackedWidget()  # Important: this must be defined before calling create_tabbar()
+        self.setCentralWidget(self.tabcontainer)
+
+        # widget = ControlWindow(config)
+        # self.setCentralWidget(widget)
+
+        # Tabbar
+        tabbar = self.create_tabbar()
+        self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, tabbar)
+
+    def load(self):
+        load_file(self.datapool)
+        self.datapool.refresh()
+
+
+    def save(self):
+        save_file(self.datapool)
+
+
+    def newfile(self):
+        out = NewFileDialog().run()
+        if out == 1:
+            print("[DEBUG] Started new file")
+            self.datapool.init_schedule()
+            self.datapool.refresh()
+            self.datapool.set_window_title()
+
+
+    def create_menubar(self):
+        # TODO: Add menus
+        # TODO: Autogenerate from config dict
+        menubar = QMenuBar()
+
+        menu_file = menubar.addMenu("&File")
+        menu_view = menubar.addMenu("&View")
+        menu_tools = menubar.addMenu("&Tools")
+        menu_help = menubar.addMenu("&Help")
+
+
+        # Menu bar - File menu
+        # TODO: Add menu items, connect actions
+        act_new = QAction(
+            QIcon("./assets/icons/feather/file.svg"),
+            "&New", self)
+        act_new.setStatusTip("Start with an empty file")
+        act_new.triggered.connect(self.newfile)
+        act_new.setCheckable(False)
+        act_new.setShortcut(QKeySequence("Ctrl+n"))
+        menu_file.addAction(act_new)
+
+        act_load = QAction(
+            QIcon("./assets/icons/feather/folder.svg"),
+            "&Load B-schedule...", self)
+        act_load.setStatusTip("Load a previously saved B-schedule file")
+        act_load.triggered.connect(self.load)
+        act_load.setCheckable(False)
+        act_load.setShortcut(QKeySequence("Ctrl+o"))
+        menu_file.addAction(act_load)
+
+        act_saveas = QAction(
+            icon=QIcon("./assets/icons/feather/save.svg"),
+            text="&Save as...", parent=self)
+        act_saveas.setStatusTip("Save a B-schedule to a .bsch file...")
+        act_saveas.triggered.connect(self.save)
+        act_saveas.setCheckable(False)
+        menu_file.addAction(act_saveas)
+
+
+        #
+        # act_save_config = QAction(
+        #     QIcon(QPixmap(":save")),
+        #     "&Save configuration", self)
+        # act_save_config.setStatusTip("Save this configuration to a file")
+        # # act_save_config.triggered.connect()
+        # act_save_config.setCheckable(False)
+        # act_save_config.setShortcut(QKeySequence("Ctrl+s"))
+        #
+        # act_settings = QAction(
+        #     QIcon(QPixmap(":settings")),
+        #     "Settings", self)
+        # act_settings.setStatusTip("View and edit program settings")
+        # # act_settings.triggered.connect()
+        # act_settings.setCheckable(False)
+        #
+        # act_quit = QAction(text="&Quit", parent=self)
+        # act_quit.setStatusTip("Save this configuration to a file")
+        # # act_quit.triggered.connect()
+        # act_quit.setCheckable(False)
+        #
+        # menu_file.addAction(act_new)
+        # menu_file.addAction(act_load)
+        # menu_file.addAction(act_saveas)
+        # menu_file.addAction(act_save_config)
+        # menu_file.addSeparator()
+        # menu_file.addAction(act_settings)
+        # menu_file.addSeparator()
+        # menu_file.addAction(act_quit)
+        #
+        # # Menu bar - View menu
+        # # TODO: Add menu items
+        #
+        # # Menu bar - Tools menu
+        # # TODO: Add menu items, connect actions
+        act_dump_datapool = QAction(
+            QIcon("./assets/icons/feather/terminal.svg"),
+            "Dump &datapool", self)
+        act_dump_datapool.setStatusTip("Dump the internal datapool to the terminal.")
+        act_dump_datapool.triggered.connect(self.datapool.dump_datapool)
+        act_dump_datapool.setCheckable(False)
+        menu_tools.addAction(act_dump_datapool)
+
+        act_dump_config = QAction(
+            QIcon("./assets/icons/feather/terminal.svg"),
+            "Dump &config", self)
+        act_dump_config.setStatusTip("Dump the loaded config file to the terminal.")
+        act_dump_config.triggered.connect(self.datapool.dump_config)
+        act_dump_config.setCheckable(False)
+        menu_tools.addAction(act_dump_config)
+
+        # act_screenshot = QAction(
+        #     QIcon(QPixmap(":camera")),
+        #     "Take a &Screenshot", self)
+        # act_screenshot.setStatusTip("Take a screenshot")
+        # # act_screenshot.triggered.connect()
+        # act_screenshot.setCheckable(False)
+        # # act_screenshot.setShortcut(QKeySequence("Ctrl+s"))
+        #
+        # menu_tools.addAction(act_screenshot)
+
+        return menubar
+
+    def create_tabbar(self):
+        """
+        Creates the tabbar, a QToolBar that allows the user to navigate
+         between the different tabs of the CentralWidget.
+
+        Returns a QToolBar object
+        """
+        tabbar = QToolBar()
+        tabbar.setMovable(False)
+        tabbar.setIconSize(QSize(36, 36))
+
+        # First create a new list:
+        self.tabactions = []
+
+        for i, attrs in self.dummy_tabdict["tab_dict"].items():
+            # Create a new action for each entry in tab_dict
+            self.tabactions.append(
+                QAction(  # noqa
+                    QIcon(QPixmap(attrs["icon"])),
+                    attrs["name"],
+                    self,
+                    checkable=attrs["checkable"]
+                )
+            )
+            # Connect each created item to the change_tab() function
+            self.tabactions[i].triggered.connect(self.change_tab)
+            # Connect the action to the tabbar, so they are visible on the UI
+            tabbar.addAction(self.tabactions[i])
+
+            # Artificially create a TestTab for each entry and add to the
+            #  QStackedWidget object. # TODO: Replace with more useful generation
+            if i == 1:
+                self.tabcontainer.addWidget(ControlWindow(self.config, self.datapool))
+            elif i == 2:
+                self.tabcontainer.addWidget(OrbitDesignWindow(self.config, self.datapool))
+            elif i == 3:
+                self.tabcontainer.addWidget(CyclicsWindow(self.config, self.datapool))
+            else:
+                self.tabcontainer.addWidget(TestTab(attrs["name"]))
+
+        # Cement the indexing by casting list into tuple
+        self.tabactions = tuple(self.tabactions)
+
+        # Set the default tab checked and visible upon startup
+        self.tabactions[self.dummy_tabdict["default_tab"]].setChecked(True)
+        self.tabcontainer.setCurrentIndex(self.dummy_tabdict["default_tab"])
+
+        return tabbar
+
+    def change_tab(self) -> None:
+        """
+        Allows navigation of the various "tabs" of the CentralWidget, which
+        are really just layered widgets in a QStackedWidget. Whenever a signal
+        calls this function, change_tab() figures which tab action the signal
+        originated from, set that tab action checked in the tabbar, set all
+        others unchecked, and swap to the corresponding tab in the central
+        widget.
+        """
+        # TODO: Currently the checked tabbar item can be clicked again, and be
+        # TODO:  de-checked in this way. Fix it so that checked tabbar items
+        # TODO:  cannot be unchecked manually.
+        # Find the index of the tab action that sent the signal. This index
+        # is identical to the index of the desired tab in the QStackedWidget.
+        tab_index = self.tabactions.index(self.sender())
+
+        # Set all tab actions unchecked, except for the one just clicked
+        for action in self.tabactions:
+            if action != self.tabactions[tab_index]:
+                action.setChecked(False)
+
+        # Tell the StackedWidget to display the tab with the desired index
+        self.tabcontainer.setCurrentIndex(tab_index)
