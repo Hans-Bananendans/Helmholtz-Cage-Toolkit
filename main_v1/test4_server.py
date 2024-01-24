@@ -462,8 +462,9 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 packet_out = SCC.encode_epacket(SCC.decode_epacket(packet_in))
 
             elif type_id == "b":
-                # print("[DEBUG] Detected b-package")
+                print("[DEBUG] Detected b-package")
                 packet_out = SCC.encode_bpacket(self.server.datapool.read_Bm())
+                print(packet_out)
 
             elif type_id == "c":
                 # print("[DEBUG] Detected c-package")

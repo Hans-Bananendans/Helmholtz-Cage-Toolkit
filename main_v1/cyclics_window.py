@@ -352,7 +352,8 @@ class CyclicsInput(QGroupBox):
                     val.setPlaceholderText(str(contents[key]))
                     val.setAlignment(Qt.AlignCenter)
                 elif type(val) == QComboBox:
-                    val.addItems(elements["cb_items"])
+                    if val.count() == 0:
+                        val.addItems(elements["cb_items"])
                     val.setCurrentIndex(elements["cb_items"].index(contents[key]))
                 elif type(val) == QLabel:
                     if "alignment" in elements:
@@ -448,14 +449,14 @@ class VisualizerCyclics(QGroupBox):
             item.clear()
 
         # Refresh envelope plot
-        self.cyclics_visualizer.widget_cyclicsplot.generate_envelope_plot()
+        self.widget_cyclicsplot.generate_envelope_plot()
 
         # Refresh ghosts on HHC plots
-        self.cyclics_visualizer.plot_ghosts()
+        self.plot_ghosts()
 
         # Refresh play controls
-        self.cyclics_visualizer.scheduleplayer.init_values()
-        self.cyclics_visualizer.group_playcontrols.refresh()
+        self.scheduleplayer.init_values()
+        self.group_playcontrols.refresh()
 
     def plot_ghosts(self):
         ghost_pen = pg.mkPen((0, 255, 255, 64), width=1, style=Qt.DotLine)
