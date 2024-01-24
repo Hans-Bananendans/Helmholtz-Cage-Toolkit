@@ -9,10 +9,17 @@ class DataPool:
         self.config = config
 
 
-        # Handles for specific widgets
+        # Handles for specific UI elements
+        self.main_window = None
+        self.menu_bar = None
+        self.status_bar = None
+        self.tab_bar = None
+        self.tabcontainer = None
+
         self.bscale = self.config["plotwindow_bscale"]
         self.cyclics_visualizer = None
         self.cyclics_input = None
+
         # self.cyclics_plot = None
         # self.cyclics_scheduleplayer = None
 
@@ -69,22 +76,25 @@ class DataPool:
         print("[DEBUG] refresh()")
         # self.set_window_title()  # Reset window title to clear any old filenames
 
-        # First clear data previously plotted:
-        # XYZ lines in envelope plot
-        for item in self.cyclics_visualizer.widget_cyclicsplot.plot_obj.dataItems:
-            item.clear()
-        # Ghosts in HHC plots:
-        for item in [self.cyclics_visualizer.hhcplot_yz.plot_obj.dataItems[-1],
-                     self.cyclics_visualizer.hhcplot_mxy.plot_obj.dataItems[-1]]:
-            item.clear()
-
         # Populate cyclics_input with whatever genparams in datapool:
         self.cyclics_input.populate(self.generation_parameters_cyclics)
 
-        self.cyclics_visualizer.widget_cyclicsplot.generate_envelope_plot()
-        self.cyclics_visualizer.plot_ghosts()
-        self.cyclics_visualizer.scheduleplayer.init_values()
-        self.cyclics_visualizer.group_playcontrols.refresh()
+        # Refresh the plots and play controls in the Cyclics Visualizer:
+        self.cyclics_visualizer.refresh()
+
+        # First clear data previously plotted:
+        # XYZ lines in envelope plot
+        # for item in self.cyclics_visualizer.widget_cyclicsplot.plot_obj.dataItems:
+        #     item.clear()
+        # Ghosts in HHC plots:
+        # for item in [self.cyclics_visualizer.hhcplot_yz.plot_obj.dataItems[-1],
+        #              self.cyclics_visualizer.hhcplot_mxy.plot_obj.dataItems[-1]]:
+        #     item.clear()
+        #
+        # self.cyclics_visualizer.widget_cyclicsplot.generate_envelope_plot()
+        # self.cyclics_visualizer.plot_ghosts()
+        # self.cyclics_visualizer.scheduleplayer.init_values()
+        # self.cyclics_visualizer.group_playcontrols.refresh()
 
         # TODO: Add UI elements from Orbital Generator
 

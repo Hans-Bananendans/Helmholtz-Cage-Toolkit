@@ -1,3 +1,5 @@
+# Todo: Improve importing
+
 from PyQt5.QtCore import QDir, QSize, Qt
 from PyQt5.QtGui import (
     QFont,
@@ -38,32 +40,13 @@ from time import time
 from control_window import ControlWindow
 from orbit_design_window import OrbitDesignWindow
 from cyclics_window import CyclicsWindow
+from connection_window import ConnectionWindow
 from datapool import DataPool
 from file_handling import load_file, save_file, NewFileDialog
-#
 
-# # TODO: REMOVE
-# class Color(QWidget):
-#
-#     def __init__(self, color):
-#         super(Color, self).__init__()
-#         self.setAutoFillBackground(True)
-#
-#         palette = self.palette()
-#         palette.setColor(QPalette.Window, QColor(color))
-#         self.setPalette(palette)
-
-# class TestTab(QWidget):
-#     def __init__(self):
-#         super().__init__()
-#
-#         layout_0 = QVBoxLayout()
-#         label1 = QLabel(f"Hello, I am tab {self}")
-#         layout_0.addWidget(label1)
-#
-#         self.setLayout(layout_0)
 
 class TestTab(QWidget):
+    # Todo: Eventually remove
     def __init__(self, tabname: str):
         super().__init__()
         layout_0 = QVBoxLayout()
@@ -75,132 +58,45 @@ class MainWindow(QMainWindow):
     def __init__(self, config) -> None:
         super().__init__()
 
+        # Load config
         self.config = config
 
-        self.datapool = DataPool(self, config)  # Global datapool object
+        # Create the global instance of DataPool
+        self.datapool = DataPool(self, config)
 
-        # config = {
-        #     "tab_dict": {
-        #         0: {
-        #             "name": "Tab 0",
-        #             "checkable": True,
-        #             "icon": ":gaussmeter"
-        #         },
-        #         1: {
-        #             "name": "Tab 1",
-        #             "checkable": True,
-        #             "icon": ":box"
-        #         },
-        #         2: {
-        #             "name": "Tab 2",
-        #             "checkable": True,
-        #             "icon": ":box"
-        #         },
-        #         3: {
-        #             "name": "Tab 3",
-        #             "checkable": True,
-        #             "icon": ":box"
-        #         },
-        #         4: {
-        #             "name": "Tab 4",
-        #             "checkable": True,
-        #             "icon": ":box"
-        #         },
-        #         5: {
-        #             "name": "Tab 5",
-        #             "checkable": True,
-        #             "icon": ":box"
-        #         },
-        #         6: {
-        #             "name": "Tab 6",
-        #             "checkable": True,
-        #             "icon": ":box"
-        #         },
-        #     },
-        #     "default_tab": 0,
-        #     "menubar": {
-        #
-        #     },
-        # }
-
-        # TODO: Move to config
-
-        self.dummy_tabdict = {
-            "tab_dict": {
-                0: {
-                    "name": "ConnectionWindow",
-                    "checkable": True,
-                    "icon": "./assets/icons/feather/link.svg"
-                },
-                1: {
-                    "name": "ControlWindow",
-                    "checkable": True,
-                    "icon": "./assets/icons/feather/sliders.svg"
-                },
-                2: {
-                    "name": "OrbitDesignWindow",
-                    "checkable": True,
-                    "icon": "./assets/icons/feather/disc.svg"
-                },
-                3: {
-                    "name": "GeneratorWindow",
-                    "checkable": True,
-                    "icon": "./assets/icons/feather/activity.svg"
-                },
-                4: {
-                    "name": "Tab 4",
-                    "checkable": True,
-                    "icon": "./assets/icons/feather/box.svg"
-                },
-                5: {
-                    "name": "Tab 5",
-                    "checkable": True,
-                    "icon": "./assets/icons/feather/box.svg"
-                },
-                6: {
-                    "name": "Tab 6",
-                    "checkable": True,
-                    "icon": "./assets/icons/feather/info.svg"
-                },
-            },
-            "default_tab": 3,
-        }
-
-        # ====
-
-        self.main_window = QMainWindow()
-
-        self.resize(config["default_windowsize"][0], 
+        # Main window options
+        self.resize(config["default_windowsize"][0],
                     config["default_windowsize"][1])  # Default w x h dimensions
-        # self.setWindowTitle("Test window")
+
+        self.datapool.main_window = self                # Reference to datapool
 
 
         # Make a menu bar
         menubar = self.create_menubar()
         self.setMenuBar(menubar)
+        self.datapool.menu_bar = menubar                # Reference to datapool
 
         # Statusbar
-        self.setStatusBar(QStatusBar())
+        status_bar = QStatusBar()
+        self.setStatusBar(status_bar)
+        self.datapool.status_bar = status_bar           # Reference to datapool
 
         # CentralWidget
         self.tabcontainer = QStackedWidget()  # Important: this must be defined before calling create_tabbar()
         self.setCentralWidget(self.tabcontainer)
-
-        # widget = ControlWindow(config)
-        # self.setCentralWidget(widget)
+        self.datapool.tabcontainer = self.tabcontainer  # Reference to datapool
 
         # Tabbar
         tabbar = self.create_tabbar()
         self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, tabbar)
+        self.datapool.tab_bar = tabbar                  # Reference to datapool
 
     def load(self):
         load_file(self.datapool)
         self.datapool.refresh()
 
-
     def save(self):
         save_file(self.datapool)
-
 
     def newfile(self):
         out = NewFileDialog().run()
@@ -328,8 +224,8 @@ class MainWindow(QMainWindow):
         # First create a new list:
         self.tabactions = []
 
-        for i, attrs in self.dummy_tabdict["tab_dict"].items():
-            # Create a new action for each entry in tab_dict
+        for i, attrs in self.config["tab_dict"].items():
+            # Create a new action for each entry in tab dict
             self.tabactions.append(
                 QAction(  # noqa
                     QIcon(QPixmap(attrs["icon"])),
@@ -345,7 +241,9 @@ class MainWindow(QMainWindow):
 
             # Artificially create a TestTab for each entry and add to the
             #  QStackedWidget object. # TODO: Replace with more useful generation
-            if i == 1:
+            if i == 0:
+                self.tabcontainer.addWidget(ConnectionWindow(self.config, self.datapool))
+            elif i == 1:
                 self.tabcontainer.addWidget(ControlWindow(self.config, self.datapool))
             elif i == 2:
                 self.tabcontainer.addWidget(OrbitDesignWindow(self.config, self.datapool))
@@ -358,8 +256,8 @@ class MainWindow(QMainWindow):
         self.tabactions = tuple(self.tabactions)
 
         # Set the default tab checked and visible upon startup
-        self.tabactions[self.dummy_tabdict["default_tab"]].setChecked(True)
-        self.tabcontainer.setCurrentIndex(self.dummy_tabdict["default_tab"])
+        self.tabactions[self.config["default_tab"]].setChecked(True)
+        self.tabcontainer.setCurrentIndex(self.config["default_tab"])
 
         return tabbar
 
@@ -375,6 +273,7 @@ class MainWindow(QMainWindow):
         # TODO: Currently the checked tabbar item can be clicked again, and be
         # TODO:  de-checked in this way. Fix it so that checked tabbar items
         # TODO:  cannot be unchecked manually.
+
         # Find the index of the tab action that sent the signal. This index
         # is identical to the index of the desired tab in the QStackedWidget.
         tab_index = self.tabactions.index(self.sender())

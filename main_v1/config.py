@@ -9,6 +9,13 @@ config = {
     "enable_skin": True,
 
 
+    # ==== TCP connection settings ====
+    "server_address": "127.0.0.1",
+    "server_port": 7777,
+    "buffer_size": 1024,
+    "connect_on_startup": False,
+
+
     # ==== ADC settings ====
     "adc_pollrate": 30,
 
@@ -173,5 +180,47 @@ config = {
         "noise_factorX": 0.0,
         "noise_factorY": 0.0,
         "noise_factorZ": 0.0,
-    }
-    }
+    },
+
+    # Lookup table for tab bar construction
+    "tab_dict": {
+        0: {
+            "name": "ConnectionWindow",
+            "checkable": True,
+            "icon": "./assets/icons/link.svg"
+        },
+        1: {
+            "name": "ControlWindow",
+            "checkable": True,
+            "icon": "./assets/icons/feather/sliders.svg"
+        },
+        2: {
+            "name": "OrbitDesignWindow",
+            "checkable": True,
+            "icon": "./assets/icons/feather/disc.svg"
+        },
+        3: {
+            "name": "GeneratorWindow",
+            "checkable": True,
+            "icon": "./assets/icons/feather/activity.svg"
+        },
+        4: {
+            "name": "Tab 4",
+            "checkable": True,
+            "icon": "./assets/icons/feather/box.svg"
+        },
+        5: {
+            "name": "Tab 5",
+            "checkable": True,
+            "icon": "./assets/icons/feather/box.svg"
+        },
+        6: {
+            "name": "Tab 6",
+            "checkable": True,
+            "icon": "./assets/icons/feather/info.svg"
+        },
+    },
+
+    "default_tab": 0,
+
+}
