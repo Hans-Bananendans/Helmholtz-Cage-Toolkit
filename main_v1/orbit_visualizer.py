@@ -507,7 +507,7 @@ class OrbitVisualizer(GLViewWidget):
         # Timer
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.satellite_update)
-        self.timer.start(50)
+        # self.timer.start(50)  # TODO
 
 
     def generate_points(self):

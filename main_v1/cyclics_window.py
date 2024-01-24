@@ -394,9 +394,7 @@ class VisualizerCyclics(QGroupBox):
         self.setMinimumSize(QSize(windowsize[0], windowsize[1]))
         self.setMaximumSize(QSize(windowsize[0], windowsize[1]))
 
-
         layout0 = QVBoxLayout()
-
 
         self.widget_cyclicsplot = CyclicsPlot(self.datapool)
 

@@ -1,51 +1,189 @@
 
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton,
-                             QSizePolicy, QLabel, QFontDialog, QApplication)
+# from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton,
+#                              QSizePolicy, QLabel, QFontDialog, QApplication)
+# import sys
+
 import sys
 
+from PyQt5.QtNetwork import (
+    QTcpServer,
+    QTcpSocket,
+    QHostAddress,
+    QAbstractSocket,
+)
 
-class Example(QWidget):
+from PyQt5.QtCore import (
+    QDir,
+    QObject,
+    QSize,
+    Qt,
+    QRunnable,
+    QThreadPool,
+    QTimer,
+    QRectF,
+    QLineF,
+)
+from PyQt5.QtGui import (
+    # QAction,
+    # QActionGroup,
+    QFont,
+    QIcon,
+    QImage,
+    QKeySequence,
+    QPixmap,
+    QPalette,
+    QColor,
+)
+from PyQt5.QtWidgets import (
+    QApplication,
+    QAction,
+    QActionGroup,
+    QFileDialog,
+    QGraphicsView,
+    QGraphicsLineItem,
+    QGraphicsRectItem,
+    QGroupBox,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLCDNumber,
+    QLineEdit,
+    QMainWindow,
+    QMenuBar,
+    QPushButton,
+    QSizePolicy,
+    QSpinBox,
+    QSplitter,
+    QStackedWidget,
+    QStatusBar,
+    QTextEdit,
+    QToolBar,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
 
+class Messenger(object):
     def __init__(self):
-        super().__init__()
+        super(Messenger, self).__init__()
+        self.TCP_HOST = "127.0.0.1"  # QtNetwork.QHostAddress.LocalHost
+        self.TCP_SEND_TO_PORT = 7011
+        self.pSocket = None
+        self.listenServer = None
+        self.pSocket = QTcpSocket()
+        self.pSocket.readyRead.connect(self.slotReadData)
+        self.pSocket.connected.connect(self.on_connected)
+        self.pSocket.error.connect(self.on_error)
 
-        self.initUI()
+    def slotSendMessage(self):
+        self.pSocket.connectToHost(self.TCP_HOST, self.TCP_SEND_TO_PORT)
 
-    def initUI(self):
-        vbox = QVBoxLayout()
+    def on_error(self, error):
+        if error == QAbstractSocket.ConnectionRefusedError:
+            print(
+                'Unable to send data to port: "{}"'.format(
+                    self.TCP_SEND_TO_PORT
+                )
+            )
+            print("trying to reconnect")
+            QtCore.QTimer.singleShot(1000, self.slotSendMessage)
 
-        btn = QPushButton('Dialog', self)
-        btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        btn.move(20, 20)
+    def on_connected(self):
+        cmd = "Hi there!"
+        print("Command Sent:", cmd)
+        ucmd = cmd.encode("utf-8")
+        self.pSocket.write(ucmd)
+        self.pSocket.flush()
+        self.pSocket.disconnectFromHost()
 
-        vbox.addWidget(btn)
+    def slotReadData(self):
+        print("Reading data:", self.pSocket.readAll())
+        # QByteArray data = pSocket->readAll();
 
-        btn.clicked.connect(self.showDialog)
 
-        self.lbl = QLabel('Knowledge only matters', self)
-        self.lbl.move(130, 20)
+class Client(QObject):
+    def SetSocket(self, socket):
+        self.socket = socket
+        self.socket.connected.connect(self.on_connected)
+        self.socket.disconnected.connect(self.on_connected)
+        self.socket.readyRead.connect(self.on_readyRead)
+        print(
+            "Client Connected from IP %s" % self.socket.peerAddress().toString()
+        )
 
-        vbox.addWidget(self.lbl)
-        self.setLayout(vbox)
+    def on_connected(self):
+        print("Client Connected Event")
 
-        self.setGeometry(300, 300, 450, 350)
-        self.setWindowTitle('Font dialog')
-        self.show()
+    def on_disconnected(self):
+        print("Client Disconnected")
 
-    def showDialog(self):
+    def on_readyRead(self):
+        msg = self.socket.readAll()
+        print(type(msg), msg.count())
+        print("Client Message:", msg)
 
-        font, ok = QFontDialog.getFont()
-        if ok:
-            self.lbl.setFont(font)
+
+class Server(QObject):
+    def __init__(self, parent=None):
+        QObject.__init__(self)
+        self.TCP_LISTEN_TO_PORT = 7011
+        self.server = QTcpServer()
+        self.server.newConnection.connect(self.on_newConnection)
+
+    def on_newConnection(self):
+        while self.server.hasPendingConnections():
+            print("Incoming Connection...")
+            self.client = Client(self)
+            self.client.SetSocket(self.server.nextPendingConnection())
+
+    def StartServer(self):
+        if self.server.listen(
+            QHostAddress.Any, self.TCP_LISTEN_TO_PORT
+        ):
+            print(
+                "Server is listening on port: {}".format(
+                    self.TCP_LISTEN_TO_PORT
+                )
+            )
+        else:
+            print("Server couldn't wake up")
+
+
+class Example(QMainWindow):
+    def __init__(self):
+        super(Example, self).__init__()
+        self.setWindowTitle("TCP/Server")
+        self.resize(300, 300)
+
+        self.uiConnect = QPushButton("Connect")
+
+        # layout
+        self.layout = QVBoxLayout()
+        self.layout.addWidget(self.uiConnect)
+        self.widget = QWidget()
+        self.widget.setLayout(self.layout)
+        self.setCentralWidget(self.widget)
+
+        # Connections
+        self.uiConnect.clicked.connect(self.setup)
+
+    def setup(self):
+        self.server = Server()
+        self.server.StartServer()
+
+        self.tcp = Messenger()
+        self.tcp.slotSendMessage()
 
 
 def main():
+
     app = QApplication(sys.argv)
     ex = Example()
+    ex.show()
     sys.exit(app.exec_())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
 
 

@@ -159,7 +159,7 @@ config = {
         "resolution": 10,
         "predelay": 0.0,
         "postdelay": 0.0,
-        "fbaseX": "sine",
+        "fbaseX": "constant",
         "fbaseY": "constant",
         "fbaseZ": "constant",
         "amplitudeX": 1.0,
@@ -180,6 +180,11 @@ config = {
         "noise_factorX": 0.0,
         "noise_factorY": 0.0,
         "noise_factorZ": 0.0,
+    },
+
+    # Lookup table for tab bar construction
+    # TODO -> Requires use of exec() for .addAction() and .triggered.connect()
+    "menu_dict": {
     },
 
     # Lookup table for tab bar construction

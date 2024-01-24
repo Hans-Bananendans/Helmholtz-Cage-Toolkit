@@ -70,7 +70,6 @@ class MainWindow(QMainWindow):
 
         self.datapool.main_window = self                # Reference to datapool
 
-
         # Make a menu bar
         menubar = self.create_menubar()
         self.setMenuBar(menubar)
