@@ -3,7 +3,7 @@ from threading import Thread, Lock, main_thread, active_count
 
 from numpy.random import random
 from time import time, sleep
-from codec.scc2q import SCC
+import codec.scc2q as scc
 
 
 # Dummy functions
@@ -450,52 +450,52 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             packet_in = self.request.recv(256)
             if packet_in == b"":
                 break
-            type_id = SCC.packet_type(packet_in)
+            type_id = scc.packet_type(packet_in)
 
-            print("[DEBUG] packet_in:", packet_in)
+            # print("[DEBUG] packet_in:", packet_in)
 
             if type_id == "m":
                 # print("[DEBUG] Detected m-package")
-                msg = SCC.decode_mpacket(packet_in)
+                msg = scc.decode_mpacket(packet_in)
                 print(f"[{self.client_address[0]}:{self.client_address[1]}]", msg)
 
             elif type_id == "e":
                 # print("[DEBUG] Detected e-package")
-                packet_out = SCC.encode_epacket(SCC.decode_epacket(packet_in))
+                packet_out = scc.encode_epacket(scc.decode_epacket(packet_in))
 
             elif type_id == "b":
                 # print("[DEBUG] Detected b-package")
-                packet_out = SCC.encode_bpacket(self.server.datapool.read_Bm())
+                packet_out = scc.encode_bpacket(self.server.datapool.read_Bm())
                 # print(packet_out)
 
             elif type_id == "c":
                 # print("[DEBUG] Detected c-package")
-                Bc = SCC.decode_cpacket(packet_in)
+                Bc = scc.decode_cpacket(packet_in)
                 try:
                     self.server.datapool.write_Bc(Bc)
                     # print("[DEBUG] Bc written to datapool:", Bc, type(Bc))
-                    packet_out = SCC.encode_mpacket("1")
+                    packet_out = scc.encode_mpacket("1")
                 except:  # noqa
-                    packet_out = SCC.encode_mpacket("-1")
+                    packet_out = scc.encode_mpacket("-1")
 
             elif type_id == "s":
                 # print("[DEBUG] Detected b-package")
 
-                segment = SCC.decode_spacket_tovals(packet_in)
+                segment = scc.decode_spacket_tovals(packet_in)
                 self.server.datapool.set_schedule_segment(segment)
                 # Send segment number back as a verification
-                packet_out = SCC.encode_mpacket(str(segment[0]))
+                packet_out = scc.encode_mpacket(str(segment[0]))
 
             elif type_id == "x":
                 # print("[DEBUG] Detected x-package")
-                fname, args = SCC.decode_xpacket(packet_in)
+                fname, args = scc.decode_xpacket(packet_in)
                 # print(f"[DEBUG] {fname}({args})")
                 packet_out = self.command_handle(fname, args)
 
             else:
                 raise ValueError(f"Encountered uninterpretable type_id '{type_id}' in received packet.")
 
-            print("[DEBUG] packet_out:", packet_out)
+            # print("[DEBUG] packet_out:", packet_out)
 
             # If a response was warranted, send it:
             if packet_out is not None:
@@ -507,84 +507,84 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
 
         # Requests the server uptime:
         if fname == "server_uptime":
-            packet_out = SCC.encode_mpacket(str(self.server.uptime()))
+            packet_out = scc.encode_mpacket(str(self.server.uptime()))
 
         # Requests the uptime of the communication socket, from the perspective
         # of the server
         elif fname == "socket_uptime":
-            packet_out = SCC.encode_mpacket(str(time()-self.socket_tstart))
+            packet_out = scc.encode_mpacket(str(time()-self.socket_tstart))
 
         # Alternative echo, mainly for testing purposes. Echoes the first
         # argument given to it, or an empty string if no arguments were given.
         elif fname == "echo":
             if len(args) == 0:
-                packet_out = SCC.encode_epacket("")
+                packet_out = scc.encode_epacket("")
             else:
-                packet_out = SCC.encode_epacket(str(args[0]))
+                packet_out = scc.encode_epacket(str(args[0]))
 
         # Requests the value of datapool.control_vals and sends them as a
         # csv string
         elif fname == "get_control_vals":
             control_vals = self.server.datapool.read_control_vals()
             msg = ",".join([str(item) for row in control_vals for item in row])
-            packet_out = SCC.encode_mpacket(msg)
+            packet_out = scc.encode_mpacket(msg)
 
         # Prints info about the schedule into the terminal
         elif fname == "print_schedule_info":
             confirm = self.server.datapool.print_schedule_info()
-            packet_out = SCC.encode_mpacket(str(confirm))
+            packet_out = scc.encode_mpacket(str(confirm))
 
         elif fname == "print_schedule":
             confirm = self.server.datapool.print_schedule(max_entries=args[0])
-            packet_out = SCC.encode_mpacket(str(confirm))
+            packet_out = scc.encode_mpacket(str(confirm))
 
         # Initialize the schedule (reset)
         elif fname == "initialize_schedule":
             confirm = self.server.datapool.initialize_schedule()
-            packet_out = SCC.encode_mpacket(str(confirm))
+            packet_out = scc.encode_mpacket(str(confirm))
 
         # Allocate an empty schedule (args: name: str, n_seg: int, duration: float)
         elif fname == "allocate_schedule":
             confirm = self.server.datapool.allocate_schedule(args[0], args[1], args[2])
-            packet_out = SCC.encode_mpacket(str(confirm))
+            packet_out = scc.encode_mpacket(str(confirm))
 
         elif fname == "activate_play_mode":
             confirm = self.server.datapool.activate_play_mode()
-            packet_out = SCC.encode_mpacket(str(confirm))
+            packet_out = scc.encode_mpacket(str(confirm))
 
         elif fname == "deactivate_play_mode":
             confirm = self.server.datapool.deactivate_play_mode()
-            packet_out = SCC.encode_mpacket(str(confirm))
+            packet_out = scc.encode_mpacket(str(confirm))
 
         elif fname == "play_start":
             confirm = self.server.datapool.play_start()
-            packet_out = SCC.encode_mpacket(str(confirm))
+            packet_out = scc.encode_mpacket(str(confirm))
 
         elif fname == "play_stop":
             confirm = self.server.datapool.play_stop()
-            packet_out = SCC.encode_mpacket(str(confirm))
+            packet_out = scc.encode_mpacket(str(confirm))
 
 
         elif fname == "get_current_step_time":
             # Returns current value of schedule step and time as csv string
             step, steps, time = self.server.datapool.get_current_step_time()
-            packet_out = SCC.encode_mpacket(f"{step},{steps},{time}")
+            packet_out = scc.encode_mpacket(f"{step},{steps},{time}")
 
         elif fname == "get_apply_Bc_period":
             period = self.server.datapool.get_apply_Bc_period()
-            packet_out = SCC.encode_mpacket(str(period))
+            packet_out = scc.encode_mpacket(str(period))
 
         elif fname == "get_write_Bm_period":
             period = self.server.datapool.get_write_Bm_period()
-            packet_out = SCC.encode_mpacket(str(period))
+            packet_out = scc.encode_mpacket(str(period))
 
         elif fname == "set_apply_Bc_period":
             confirm = self.server.datapool.set_apply_Bc_period(args[0])
-            packet_out = SCC.encode_mpacket(str(confirm))
+            packet_out = scc.encode_mpacket(str(confirm))
 
         elif fname == "set_write_Bm_period":
             confirm = self.server.datapool.set_write_Bm_period(args[0])
-            packet_out = SCC.encode_mpacket(str(confirm))
+            packet_out = scc.encode_mpacket(str(confirm))
 
 
         else:

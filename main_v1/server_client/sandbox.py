@@ -8,7 +8,7 @@ from threading import Thread
 
 from scc2 import SCC
 
-msg1 = "A"*2048
+msg1 = ("eTest!"+"a"*150+"@"*100).encode()
 
 
 
@@ -26,23 +26,29 @@ msg1 = "A"*2048
 # print(test(control_vals))
 # print(test2(control_vals2))
 
+msg1_dec = msg1.decode()
 
+print(msg1.decode()[1:].rstrip("@"))
+
+print(msg1.decode()[1:msg1.decode().find("@")])
+
+print(msg1_dec[1:msg1_dec.find("@")])
 
 setup = """
 t = time()
 """
 
 v1 = """
-tr = str(round(t, 3))
+msg1.decode().rstrip("@")
 """
 
 v2 = """
-tr = str(int(t))
+msg1.decode()[1:msg1.decode().find("@")]
 """
 
 v3 = """
-p = 10**3
-tr = str((t * p * 2 + 1) // 2 / p)
+msg1_dec = msg1.decode()
+msg1_dec[1:msg1_dec.find("@")]
 """
 
 # def my_round(number, ndigits=0):
@@ -61,7 +67,7 @@ print("t_avg:", round(timeit(stmt=v1, setup=setup,
 print("t_avg:", round(timeit(stmt=v2, setup=setup,
                              globals=globals(), number=n)
                       * tmult / n, 3), "us")
-
+#
 print("t_avg:", round(timeit(stmt=v3, setup=setup,
                              globals=globals(), number=n)
                       * tmult / n, 3), "us")

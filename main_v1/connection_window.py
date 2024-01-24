@@ -58,7 +58,7 @@ import sys
 from time import sleep, time
 from threading import Thread
 
-from codec.scc2q import SCC
+import codec.scc2q as scc
 from client_functions import *
 from config import config
 
@@ -72,7 +72,10 @@ class ConnectionWindow(QWidget):
         # Load relevant parameters from config file
         self.server_address = config["server_address"]
         self.server_port = config["server_port"]
-        self.buffer_size = config["buffer_size"]
+        # self.codec = SCC()
+        # print(self.codec)
+        # self.buffer_size = self.codec.packet_size()
+        # print(f"CONFIGURED BUFFER: {self.buffer_size}")
         self.connect_on_startup = config["connect_on_startup"]
 
         self.socket = QTcpSocket(self)
@@ -121,8 +124,13 @@ class ConnectionWindow(QWidget):
 
         self.setLayout(layout0)
 
+        self.timer_get_bm = QTimer()
+        self.timer_get_bm.timeout.connect(self.do_get_Bm)
+        self.timer_get_bm_ms = 50
 
-
+        self.timer_ping = QTimer()
+        self.timer_ping.timeout.connect(self.do_ping)
+        self.timer_ping_ms = 1000
 
     def connect_socket(self):
         self.socket.connectToHost(self.server_address, self.server_port)
@@ -158,53 +166,92 @@ class ConnectionWindow(QWidget):
             self.datapool.status_bar.showMessage("Disconnected")
 
     def read_socket(self):
-        print("Signal: read_socket()")
+        # print("Signal: read_socket()")
+        pass
 
     def on_connected(self):
         print("Signal: connected()")
         for widget in self.widgets_to_enable:
             widget.setEnabled(True)
+        self.timer_get_bm.start(self.timer_get_bm_ms)
+        self.timer_ping.start(self.timer_ping_ms)
+
 
     def on_disconnected(self):
         print("Signal: disconnected()")
+        self.timer_get_bm.stop()
+        self.timer_ping.stop()
+
         for widget in self.widgets_to_enable:
             widget.setEnabled(False)
+
+    # @staticmethod
+    # def decode_epacket(e_packet):  # Q Compatible
+    #     """ Encodes an e_packet, which has the following anatomy:
+    #     e (1 B)    msg (n B)
+    #     """
+    #     # return e_packet.decode()[1:].rstrip(SCC.padding)
+    #     print(f"[DEBUG] decode_epacket({e_packet})")
+    #     e_packet_decoded = e_packet.decode()
+    #     print(f"[DEBUG] decode_epacket(): e_packet_decoded {e_packet_decoded}")
+    #     print(f"[DEBUG] decode_epacket(): e_packet.decode() {e_packet.decode()}")
+    #     e_packet_parsed = e_packet_decoded[1:e_packet_decoded.find('#')]
+    #     print(f"[DEBUG] decode_epacket(): e_packet_parsed {e_packet_parsed}")
+    #     print(f"[DEBUG] decode_epacket(): i_find: {e_packet_decoded.find('#')}")
+    #     print(f"[DEBUG] decode_epacket(): e_packet.parsed {e_packet_decoded[1:e_packet_decoded.find('#')]}")
+    #     # return e_packet_decoded[1:e_packet_decoded.find('#')]
+    #     return e_packet_parsed
 
 
     def do_ping(self):  # TODO ECHO
         t0 = time()
         socket_stream = QDataStream(self.socket)
-        packet_out = SCC.encode_epacket("")
+        packet_out = scc.encode_epacket("")
 
         socket_stream.writeRawData(packet_out)
 
         if self.socket.waitForReadyRead(100):
-            inc = socket_stream.readRawData(SCC.buffer_size)
-            print(inc)
-            print(f"decode: `{SCC.decode_epacket(inc)}`")
-            if SCC.decode_epacket(inc) != "whatever":
+            if scc.decode_epacket(socket_stream.readRawData(scc.packet_size)) == "":
                 t = time()-t0
                 self.label_ping.setText(f"ping(): {int(t * 1E6)} \u03bcs")
             else:
                 print("ping() failed (-1)!")
                 self.label_ping.setText("ping(): -1")
 
+    # def do_ping(self):  # TODO ECHO
+    #     t0 = time()
+    #     socket_stream = QDataStream(self.socket)
+    #     packet_out = scc.encode_epacket("")
+    #
+    #     socket_stream.writeRawData(packet_out)
+    #
+    #     if self.socket.waitForReadyRead(100):
+    #         inc = socket_stream.readRawData(scc.packet_size)
+    #         print(inc)
+    #         e_packet_decoded = scc.decode_epacket(inc)
+    #         print(f"decode: `{e_packet_decoded}`")
+    #         if e_packet_decoded == "":
+    #             t = time()-t0
+    #             self.label_ping.setText(f"ping(): {int(t * 1E6)} \u03bcs")
+    #         else:
+    #             print("ping() failed (-1)!")
+    #             self.label_ping.setText("ping(): -1")
+
 
     def do_get_Bm(self):
         t0 = time()
         socket_stream = QDataStream(self.socket)
-        packet_out = SCC.encode_bpacket([0.] * 4)
-        print(packet_out)
+        packet_out = scc.encode_bpacket([0.] * 4)
+        # print(packet_out)
         socket_stream.writeRawData(packet_out)
 
         if self.socket.waitForReadyRead(100):
-            inc = socket_stream.readRawData(SCC.buffer_size)
-            print(inc)
-            r = SCC.decode_bpacket(inc)
-            print(f"Time: {time()-t0}")
-            print(r)
+            inc = socket_stream.readRawData(scc.packet_size)
+            r = scc.decode_bpacket(inc)
+
             bx, by, bz = round(r[1]*1E-3, 3), round(r[2]*1E-3, 3), round(r[3]*1E-3, 3)
-            self.label_get_bm.setText(f"Bm = [{bx}, {by}, {bz}] \u03bcT")
+            tt = time()-t0
+            self.label_get_bm.setText(f"Bm = [{bx}, {by}, {bz}] \u03bcT  ({int(tt*1E6)} \u03bcs)")
 
         # r = get_Bm(self.socket) # Returns B_m
         # bx, by, bz = round(r[1]*1E3, 3), round(r[2]*1E3, 3), round(r[3]*1E3, 3)
