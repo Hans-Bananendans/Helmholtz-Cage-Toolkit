@@ -3,7 +3,7 @@ from threading import Thread, Lock, main_thread, active_count
 
 from numpy.random import random
 from time import time, sleep
-from scc2 import SCC
+from codec.scc2q import SCC
 
 
 # Dummy functions
@@ -452,6 +452,8 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 break
             type_id = SCC.packet_type(packet_in)
 
+            print("[DEBUG] packet_in:", packet_in)
+
             if type_id == "m":
                 # print("[DEBUG] Detected m-package")
                 msg = SCC.decode_mpacket(packet_in)
@@ -462,9 +464,9 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 packet_out = SCC.encode_epacket(SCC.decode_epacket(packet_in))
 
             elif type_id == "b":
-                print("[DEBUG] Detected b-package")
+                # print("[DEBUG] Detected b-package")
                 packet_out = SCC.encode_bpacket(self.server.datapool.read_Bm())
-                print(packet_out)
+                # print(packet_out)
 
             elif type_id == "c":
                 # print("[DEBUG] Detected c-package")
@@ -492,6 +494,8 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
 
             else:
                 raise ValueError(f"Encountered uninterpretable type_id '{type_id}' in received packet.")
+
+            print("[DEBUG] packet_out:", packet_out)
 
             # If a response was warranted, send it:
             if packet_out is not None:

@@ -1,4 +1,14 @@
-from PyQt5.QtCore import QDir, QSize, Qt, QRunnable, QThreadPool, QTimer, QRectF, QLineF
+from PyQt5.QtCore import (
+    QDataStream,
+    QDir,
+    QLineF,
+    QRectF,
+    QRunnable,
+    QSize,
+    Qt,
+    QThreadPool,
+    QTimer,
+)
 from PyQt5.QtGui import (
     # QAction,
     # QActionGroup,
@@ -48,7 +58,7 @@ import sys
 from time import sleep, time
 from threading import Thread
 
-from codec.scc2 import SCC
+from codec.scc2q import SCC
 from client_functions import *
 from config import config
 
@@ -66,33 +76,53 @@ class ConnectionWindow(QWidget):
         self.connect_on_startup = config["connect_on_startup"]
 
         self.socket = QTcpSocket(self)
-        # self.socket.readyRead.connect(self.read_socket)
-        self.socket.disconnected.connect(self.print_disconnected)
+        self.socket.connected.connect(self.on_connected)
+        self.socket.disconnected.connect(self.on_disconnected)
+        self.socket.readyRead.connect(self.read_socket)
         # self.socket.errorOccurred.connect(self.display_error)
 
         layout0 = QGridLayout()
 
         self.datapool.status_bar.showMessage("Disconnected")
 
-        # label_connection = QLabel("Connection status:")
-        # self.label_connection_status = QLabel("DISCONNECTED")
 
-        # self.packet_counter = 0
+        button_connect = QPushButton("CONNECT")
+        button_connect.clicked.connect(self.connect_socket)
 
-        # layout0.addWidget(label_connection, 1, 1)
-        # layout0.addWidget(self.label_connection_status, 1, 2)
+        button_disconnect = QPushButton("DISCONNECT")
+        button_disconnect.clicked.connect(self.disconnect_socket)
 
 
-        connect_button = QPushButton("CONNECT")
-        connect_button.clicked.connect(self.connect_socket)
 
-        disconnect_button = QPushButton("DISCONNECT")
-        disconnect_button.clicked.connect(self.disconnect_socket)
+        button_ping = QPushButton("PING")
+        button_ping.clicked.connect(self.do_ping)
+        self.label_ping = QLabel()
 
-        layout0.addWidget(connect_button, 1, 1)
-        layout0.addWidget(disconnect_button, 2, 1)
+        button_get_bm = QPushButton("Get Bm")
+        button_get_bm.clicked.connect(self.do_get_Bm)
+        self.label_get_bm = QLabel()
+
+
+        # Disable widgets in widgets_to_enable group until connection is made
+        self.widgets_to_enable = (
+            button_ping,
+            button_get_bm,
+        )
+        for widget in self.widgets_to_enable:
+            widget.setEnabled(False)
+
+
+        layout0.addWidget(button_connect, 1, 1)
+        layout0.addWidget(button_disconnect, 2, 1)
+        layout0.addWidget(button_ping, 3, 1)
+        layout0.addWidget(self.label_ping, 3, 2)
+        layout0.addWidget(button_get_bm, 4, 1)
+        layout0.addWidget(self.label_get_bm, 4, 2)
 
         self.setLayout(layout0)
+
+
+
 
     def connect_socket(self):
         self.socket.connectToHost(self.server_address, self.server_port)
@@ -103,8 +133,13 @@ class ConnectionWindow(QWidget):
                 f"Connected to server at {self.server_address}:{self.server_port}"
             )
         else:
+            self.datapool.status_bar.showMessage(
+                f"Connection error: {self.socket.errorString()}"
+            )
+
             print(f"Error in connect_socket(): {self.socket.errorString()}")
             if self.socket.isOpen():
+                print("connect_socket(): socket closed manually")
                 self.socket.close()
 
     def disconnect_socket(self):
@@ -117,10 +152,88 @@ class ConnectionWindow(QWidget):
         else:
             print(f"Error in disconnect_socket(): {self.socket.errorString()}")
             if self.socket.isOpen():
+                print("disconnect_socket(): socket closed manually")
                 self.socket.close()
 
-    def print_disconnected(self):
+            self.datapool.status_bar.showMessage("Disconnected")
+
+    def read_socket(self):
+        print("Signal: read_socket()")
+
+    def on_connected(self):
+        print("Signal: connected()")
+        for widget in self.widgets_to_enable:
+            widget.setEnabled(True)
+
+    def on_disconnected(self):
         print("Signal: disconnected()")
+        for widget in self.widgets_to_enable:
+            widget.setEnabled(False)
+
+
+    def do_ping(self):  # TODO ECHO
+        t0 = time()
+        socket_stream = QDataStream(self.socket)
+        packet_out = SCC.encode_epacket("")
+
+        socket_stream.writeRawData(packet_out)
+
+        if self.socket.waitForReadyRead(100):
+            inc = socket_stream.readRawData(SCC.buffer_size)
+            print(inc)
+            print(f"decode: `{SCC.decode_epacket(inc)}`")
+            if SCC.decode_epacket(inc) != "whatever":
+                t = time()-t0
+                self.label_ping.setText(f"ping(): {int(t * 1E6)} \u03bcs")
+            else:
+                print("ping() failed (-1)!")
+                self.label_ping.setText("ping(): -1")
+
+
+    def do_get_Bm(self):
+        t0 = time()
+        socket_stream = QDataStream(self.socket)
+        packet_out = SCC.encode_bpacket([0.] * 4)
+        print(packet_out)
+        socket_stream.writeRawData(packet_out)
+
+        if self.socket.waitForReadyRead(100):
+            inc = socket_stream.readRawData(SCC.buffer_size)
+            print(inc)
+            r = SCC.decode_bpacket(inc)
+            print(f"Time: {time()-t0}")
+            print(r)
+            bx, by, bz = round(r[1]*1E-3, 3), round(r[2]*1E-3, 3), round(r[3]*1E-3, 3)
+            self.label_get_bm.setText(f"Bm = [{bx}, {by}, {bz}] \u03bcT")
+
+        # r = get_Bm(self.socket) # Returns B_m
+        # bx, by, bz = round(r[1]*1E3, 3), round(r[2]*1E3, 3), round(r[3]*1E3, 3)
+        # self.label_get_bm.setText(f"Bm = [{bx}, {by}, {bz}] \u03bcT")
+
+    # def do_ping(self):  # TODO ECHO
+    #
+    #     socket_stream = QDataStream(self.socket)
+    #     packet_out = SCC.encode_epacket(str("Echo!"))
+    #
+    #     socket_stream.writeRawData(packet_out)
+    #
+    #     if self.socket.waitForReadyRead(100):
+    #         r = socket_stream.readRawData(SCC.buffer_size)
+    #         print(r)
+    #         print(SCC.decode_epacket(r))
+
+
+    # def do_ping(self):
+    #     r = ping(self.socket)  # Returns ping response time in [s], or -1 if failure
+    #     if r == -1:
+    #         print("ping() failed (-1)!")
+    #     else:
+    #         self.label_ping.setText(f"ping(): {int(r*1E6)} \u03bcs")
+
+    # def do_get_Bm(self):
+    #     r = get_Bm(self.socket) # Returns B_m
+    #     bx, by, bz = round(r[1]*1E3, 3), round(r[2]*1E3, 3), round(r[3]*1E3, 3)
+    #     self.label_get_bm.setText(f"Bm = [{bx}, {by}, {bz}] \u03bcT")
 
     # def status_show(self, message: str):
     #     self.datapool.status_bar.showMessage(message)

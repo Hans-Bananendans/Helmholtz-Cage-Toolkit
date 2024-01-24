@@ -188,6 +188,7 @@ class SCC:
         """
         return e_packet.decode()[1:]
 
+
     @staticmethod
     def encode_xpacket(cmd: str, *args):
         """ Encodes an x_packet, which has the following anatomy:

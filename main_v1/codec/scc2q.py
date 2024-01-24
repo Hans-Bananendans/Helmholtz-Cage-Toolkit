@@ -51,10 +51,12 @@ Users desiring additional functionality are advised to subclass SCC instead.
 """
 
 class SCC:
-    buffer_size = 256
+    buffer_size = 256   # Referable packet length for buffer size configuration
+    xps = "%"           # x-packet field separator
+    padding = "#"       # Symbol used for padding non-full packages
 
     @staticmethod
-    def packet_type(packet):
+    def packet_type(packet):  # Q Compatible (no change)
         """ Returns the first character of the packet, which is the type
         identifier.
 
@@ -74,64 +76,24 @@ class SCC:
         """
         return packet[0:1].decode()
 
-    # @staticmethod
-    # def encode_bpacket(Bm):
-    #     """ Encodes a b_packet, which has the following anatomy:
-    #     b (1 B)    UNIX_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
-    #
-    #     Efficiency by virtue of the KISS principle: ~6850 ns/encode (FX-8350)
-    #     """
-    #     return "b{:0<20}{:0<16}{:0<16}{:0<16}".format(
-    #         round(float(Bm[0]), 8),
-    #         round(float(Bm[1]), 8),
-    #         round(float(Bm[2]), 8),
-    #         round(float(Bm[3]), 8)).encode()
-
-    # @staticmethod
-    # def encode_bpacket(Bm):  # ORIGINAL
-    #     """ Encodes a b_packet, which has the following anatomy:
-    #     b (1 B)    UNIX_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
-    #
-    #     Efficiency by virtue of the KISS principle: ~3700 ns/encode (FX-8350)
-    #     """
-    #     return "b{:0<20}{:0<16}{:0<16}{:0<16}".format(
-    #         str(Bm[0])[:20],
-    #         str(Bm[1])[:20],
-    #         str(Bm[2])[:20],
-    #         str(Bm[3])[:20]).encode()
-    #
-    # @staticmethod
-    # def decode_bpacket(b_packet):  # ORIGINAL
-    #     """ Decodes a b_packet, which has the following anatomy:
-    #     b (1 B)    UNIX_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
-    #
-    #     Efficiency by virtue of the KISS principle: ~1750 ns/decode (FX-8350)
-    #     """
-    #     b_decoded = b_packet.decode()
-    #     return [
-    #         float(b_decoded[1:21]),
-    #         float(b_decoded[21:37]),
-    #         float(b_decoded[37:53]),
-    #         float(b_decoded[53:69])]
-
 
     @staticmethod
     def encode_bpacket(Bm):  # Q Compatible
         """ Encodes a b_packet, which has the following anatomy:
         b (1 B)    UNIX_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
 
-        Efficiency by virtue of the KISS principle: ~3700 ns/encode (FX-8350)
+
         """
         return "b{:0<20}{:0<16}{:0<16}{:0<16}{}".format(
             str(Bm[0])[:20],
             str(Bm[1])[:20],
             str(Bm[2])[:20],
             str(Bm[3])[:20],
-            "#"*187).encode()
+            SCC.padding*187).encode()
 
 
     @staticmethod
-    def decode_bpacket(b_packet):  # Q Compatible
+    def decode_bpacket(b_packet):  # Q Compatible (no change)
         """ Decodes a b_packet, which has the following anatomy:
         b (1 B)    UNIX_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
 
@@ -145,33 +107,22 @@ class SCC:
             float(b_decoded[53:69])]
 
 
-    # @staticmethod
-    # def encode_cpacket(Bc):
-    #     """ Encodes a c_packet, which has the following anatomy:
-    #     c (1 B)    Bc_X (16 B)    Bc_Y (16 B)    Bc_Z (16 B)
-    #
-    #     Efficiency by virtue of the KISS principle: ~4600 ns/encode (FX-8350)
-    #     """
-    #     return "c{:0<16}{:0<16}{:0<16}".format(
-    #         round(float(Bc[0]), 8),
-    #         round(float(Bc[1]), 8),
-    #         round(float(Bc[2]), 8)).encode()
-
     @staticmethod
-    def encode_cpacket(Bc):
+    def encode_cpacket(Bc):  # Q Compatible
         """ Encodes a c_packet, which has the following anatomy:
         c (1 B)    Bc_X (16 B)    Bc_Y (16 B)    Bc_Z (16 B)
 
         Efficiency by virtue of the KISS principle: ~2700 ns/encode (FX-8350)
         """
-        return "c{:0<16}{:0<16}{:0<16}".format(
+        return "c{:0<16}{:0<16}{:0<16}{}".format(
             str(Bc[0])[:16],
             str(Bc[1])[:16],
-            str(Bc[2])[:16]).encode()
+            str(Bc[2])[:16],
+            SCC.padding*207).encode()
 
 
     @staticmethod
-    def decode_cpacket(c_packet):
+    def decode_cpacket(c_packet):  # Q Compatible (no change)
         """ Decodes a c_packet, which has the following anatomy:
         c (1 B)    Bc_X (16 B)    Bc_Y (16 B)    Bc_Z (16 B)
 
@@ -184,7 +135,7 @@ class SCC:
             float(c_decoded[33:49])]
 
     @staticmethod
-    def encode_mpacket(msg: str):
+    def encode_mpacket(msg: str):  # Q Compatible
         """ Encodes an m_packet, which has the following anatomy:
         m (1 B)    msg (n B)
 
@@ -192,10 +143,10 @@ class SCC:
 
         Efficiency by virtue of the KISS principle: ~290 ns/encode (FX-8350)
         """
-        return ("m"+msg).encode()
+        return ("m"+msg+SCC.padding*(SCC.buffer_size-len(msg)-1)).encode()
 
     @staticmethod
-    def decode_mpacket(m_packet):
+    def decode_mpacket(m_packet):  # Q Compatible
         """ Encodes an m_packet, which has the following anatomy:
         m (1 B)    msg (n B)
 
@@ -203,38 +154,25 @@ class SCC:
 
         Efficiency by virtue of the KISS principle: ~320 ns/decode (FX-8350)
         """
-        return m_packet.decode()[1:]
+        return m_packet.decode()[1:].rstrip(SCC.padding)
 
-    # @staticmethod
-    # def encode_epacket(msg: str):  # ORIGINAL
-    #     """ Encodes an e_packet, which has the following anatomy:
-    #     e (1 B)    msg (n B)
-    #     """
-    #     return ("e"+str(msg)).encode()
-    #
-    # @staticmethod
-    # def decode_epacket(e_packet):  # ORIGINAL
-    #     """ Encodes an e_packet, which has the following anatomy:
-    #     e (1 B)    msg (n B)
-    #     """
-    #     return e_packet.decode()[1:]
 
     @staticmethod
     def encode_epacket(msg: str):  # Q Compatible
         """ Encodes an e_packet, which has the following anatomy:
         e (1 B)    msg (n B)
         """
-        return ("e"+str(msg)+"#"*(SCC.buffer_size-len(msg)-1)).encode()
+        return ("e"+str(msg)+SCC.padding*(SCC.buffer_size-len(msg)-1)).encode()
 
     @staticmethod
     def decode_epacket(e_packet):  # Q Compatible
         """ Encodes an e_packet, which has the following anatomy:
         e (1 B)    msg (n B)
         """
-        return e_packet.decode()[1:].rstrip("#")
+        return e_packet.decode()[1:].rstrip(SCC.padding)
 
     @staticmethod
-    def encode_xpacket(cmd: str, *args):
+    def encode_xpacket(cmd: str, *args):  # Q Compatible
         """ Encodes an x_packet, which has the following anatomy:
         x (1 B)    cmd (24 B)    n_args(8 B)    type_id , arg (1+23 B each)
 
@@ -271,21 +209,22 @@ class SCC:
         if len(xpacket_unencoded) > 256:    # TODO: Currently hardcoded, should be referenced from a config
             raise AssertionError(f"Total packet length exceeds 256 B ({len(xpacket_unencoded)} B)!")
         else:
+            xpacket_unencoded += "{}".format(SCC.padding*(SCC.buffer_size-len(xpacket_unencoded)))
             return xpacket_unencoded.encode()
 
     @staticmethod
-    def decode_xpacket(x_packet):
+    def decode_xpacket(x_packet):  # Q Compatible
         """ Decodes a c_packet, which has the following anatomy:
         x (1 B)    cmd (24 B)    args (24 B each)
 
         Unoptimized as of 15-01-2024. ~5000-10000 ns/decode (FX-8350)
         """
 
-        xpacket_decoded = x_packet.decode()
+        xpacket_decoded = x_packet.decode().rstrip(SCC.padding)
 
         # print(xpacket_decoded[1:24])  # TODO: Remove debug comments once done testing
         # print(xpacket_decoded[24:32])
-        cmd_name = xpacket_decoded[1:24].strip("#")
+        cmd_name = xpacket_decoded[1:24].strip(SCC.xps)
         n_args = int(xpacket_decoded[24:32])
 
         # print("cmd_name:", cmd_name, "n_args:", n_args)
@@ -298,11 +237,11 @@ class SCC:
             if seg[0] == "f":
                 args.append(float(seg[1:]))
             elif seg[0] == "i":
-                args.append(int(seg[1:].strip("#")))
+                args.append(int(seg[1:].strip(SCC.xps)))
             elif seg[0] == "b":
                 args.append(bool(int(seg[1])))
             elif seg[0] == "s":
-                args.append(seg[1:].strip("#"))
+                args.append(seg[1:].strip(SCC.xps))
             else:
                 raise ValueError(
                     f"decode_xpacket(): Encountered uninterpretable type_id '{seg[0]}' in segment {i_seg}: {seg}")
@@ -324,53 +263,26 @@ class SCC:
         return int(i_seg), int(n_seg), float(t_seg), [float(BcX), float(BcY), float(BcZ)]
 
     @staticmethod
-    def encode_spacket_fromvals(i_seg: int, n_seg: int, t_seg: float, Bc_seg: [float]):
+    def encode_spacket_fromvals(i_seg: int, n_seg: int, t_seg: float, Bc_seg: [float]):  # Q Compatible
         """ Encodes an s_packet, which has the following anatomy:
         s (1 B)    segment number (32 B)    number of segments (32 B)
             segment_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
 
         Optimization: 2500 ns/encode (FX-8350)
         """
-        return "s{:0>32}{:0>32}{:0<20}{:0<16}{:0<16}{:0<16}".format(
+        return "s{:0>32}{:0>32}{:0<20}{:0<16}{:0<16}{:0<16}{}".format(
             str(i_seg)[:16],
             str(n_seg)[:16],
             str(t_seg)[:16],
             str(Bc_seg[0])[:16],
             str(Bc_seg[1])[:16],
-            str(Bc_seg[2])[:16]).encode()
+            str(Bc_seg[2])[:16],
+            SCC.padding*123).encode()
 
-    # @staticmethod
-    # def encode_spacket_fromsegment(segment):
-    #     """ Encodes an s_packet, which has the following anatomy:
-    #     s (1 B)    segment number (32 B)    number of segments (32 B)
-    #         segment_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
-    #
-    #     from a B-schedule segment
-    #
-    #     Important note: This function is optimized for B-schedule generators that
-    #     already perform proper rounding on floats, ensuring that they do not
-    #     exceed 16 characters when converted to a string. It throws away as many
-    #     characters from the right as it needs to fit within 16 bytes. This means
-    #     that for very large numbers, you may lose some precision at the bottom end.
-    #
-    #     Example: -1234567890.1234567890 (22 B) -> -1234567890.1234 (16 B)
-    #
-    #     This is deemed acceptable for the application for which it is intended, but
-    #     users aiming to use this codec for other applications should take note.
-    #
-    #     Optimization: 1440 ns/encode (FX-8350)
-    #     """
-    #     split = segment.split(" ")
-    #     return "s{:0>32}{:0>32}{:0<20}{:0<16}{:0<16}{:0<16}".format(
-    #         split[0][:16],
-    #         split[1][:16],
-    #         split[2][:16],
-    #         split[3][:16],
-    #         split[4][:16],
-    #         split[5][:16]).encode()
+
 
     @staticmethod
-    def decode_spacket_tovals(s_packet):
+    def decode_spacket_tovals(s_packet):  # Q Compatible (no changes)
         """ Decodes an s_packet, which has the following anatomy:
         s (1 B)    segment number (32 B)    number of segments (32 B)
             segment_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
@@ -390,20 +302,3 @@ class SCC:
                 float(s_decoded[117:133])
             ]
         ]
-
-    # @staticmethod
-    # def decode_spacket_tosegment(s_packet):
-    #     """ Decodes an s_packet, which has the following anatomy:
-    #     s (1 B)    segment number (32 B)    number of segments (32 B)
-    #         segment_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
-    #
-    #     to a segment line.
-    #     Optimization: 3400 ns/decode (FX-8350)
-    #     """
-    #     s_decoded = s_packet.decode()
-    #     return f"{int(s_decoded[1:33])} " \
-    #            f"{int(s_decoded[33:65])} " \
-    #            f"{float(s_decoded[65:85])} " \
-    #            f"{float(s_decoded[85:101])} " \
-    #            f"{float(s_decoded[101:117])} " \
-    #            f"{float(s_decoded[117:133])}"

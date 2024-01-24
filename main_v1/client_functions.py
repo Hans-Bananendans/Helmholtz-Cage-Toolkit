@@ -1,8 +1,5 @@
 from codec.scc2 import SCC
-
-# class ClientCaller:
-#     def __init__(self, datapool):
-#         self.buffer_size = self.datapool.config["B
+from time import time
 
 def get_Bm(socket, timing=False):
     if timing:
