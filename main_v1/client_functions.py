@@ -4,13 +4,13 @@ from codec.scc2 import SCC
 #     def __init__(self, datapool):
 #         self.buffer_size = self.datapool.config["B
 
-def get_Bm(socket, BUFFER_SIZE=256, timing=False):
+def get_Bm(socket, timing=False):
     if timing:
         tstart = time()
 
     socket.sendall(SCC.encode_bpacket([0.] * 4))
 
-    Bm = SCC.decode_bpacket(socket.recv(BUFFER_SIZE))
+    Bm = SCC.decode_bpacket(socket.recv(SSC.buffer_size))
 
     if timing:
         tend = time()
@@ -18,7 +18,7 @@ def get_Bm(socket, BUFFER_SIZE=256, timing=False):
 
     return Bm
 
-def get_control_vals(socket, BUFFER_SIZE=256, timing=False):
+def get_control_vals(socket, timing=False):
     """Fetches control_vals from the server, which is a list of the Bc, Ic and
     Vc that was applied to the power supplies most recently.
     """
@@ -27,7 +27,7 @@ def get_control_vals(socket, BUFFER_SIZE=256, timing=False):
 
     socket.sendall(SCC.encode_xpacket("get_control_vals"))
 
-    control_vals_string = SCC.decode_mpacket(socket.recv(BUFFER_SIZE)).split(",")
+    control_vals_string = SCC.decode_mpacket(socket.recv(SSC.buffer_size)).split(",")
     control_vals = [
         [float(B) for B in control_vals_string[0:3]],
         [float(I) for I in control_vals_string[3:6]],
@@ -40,12 +40,12 @@ def get_control_vals(socket, BUFFER_SIZE=256, timing=False):
     return control_vals
 
 
-def get_server_uptime(socket, BUFFER_SIZE=256, timing=False):
+def get_server_uptime(socket, timing=False):
     if timing:
         tstart = time()
 
     socket.sendall(SCC.encode_xpacket("server_uptime"))
-    server_uptime = SCC.decode_mpacket(socket.recv(BUFFER_SIZE))
+    server_uptime = SCC.decode_mpacket(socket.recv(SSC.buffer_size))
 
     if timing:
         tend = time()
@@ -53,12 +53,12 @@ def get_server_uptime(socket, BUFFER_SIZE=256, timing=False):
 
     return float(server_uptime)
 
-def get_socket_uptime(socket, BUFFER_SIZE=256, timing=False):
+def get_socket_uptime(socket, timing=False):
     if timing:
         tstart = time()
 
     socket.sendall(SCC.encode_xpacket("socket_uptime"))
-    socket_uptime = SCC.decode_mpacket(socket.recv(BUFFER_SIZE))
+    socket_uptime = SCC.decode_mpacket(socket.recv(SSC.buffer_size))
 
     if timing:
         tend = time()
@@ -66,12 +66,12 @@ def get_socket_uptime(socket, BUFFER_SIZE=256, timing=False):
 
     return float(socket_uptime)
 
-def echo(socket, msg, BUFFER_SIZE=256, timing=False):
+def echo(socket, msg, timing=False):
     if timing:
         tstart = time()
 
     socket.sendall(SCC.encode_epacket(str(msg)))
-    response = SCC.decode_epacket(socket.recv(BUFFER_SIZE))
+    response = SCC.decode_epacket(socket.recv(SSC.buffer_size))
 
     if timing:
         tend = time()
@@ -84,7 +84,7 @@ def echo_alt(socket, msg, timing=False):
         tstart = time()
 
     socket.sendall(SCC.encode_xpacket("echo", msg))
-    response = SCC.decode_epacket(socket.recv(BUFFER_SIZE))
+    response = SCC.decode_epacket(socket.recv(SSC.buffer_size))
 
     if timing:
         tend = time()
@@ -99,7 +99,7 @@ def ping(socket):
 
     tstart = time()
     socket.sendall(packet_out)              # Send 1 byte message: '0x65'
-    packet_in = socket.recv(BUFFER_SIZE)    # Receive response
+    packet_in = socket.recv(SSC.buffer_size)    # Receive response
     tend = time()
 
     response = SCC.decode_epacket(packet_in)
@@ -117,7 +117,7 @@ def set_Bc(socket, Bc, timing=False):
         tstart = time()
 
     socket.sendall(SCC.encode_cpacket(Bc))
-    confirm = SCC.decode_mpacket(socket.recv(BUFFER_SIZE))
+    confirm = SCC.decode_mpacket(socket.recv(SSC.buffer_size))
 
     if timing:
         tend = time()
@@ -130,7 +130,7 @@ def reset_Bc(socket, timing=False):
         tstart = time()
 
     socket.sendall(SCC.encode_cpacket([0., 0., 0.]))
-    confirm = SCC.decode_mpacket(socket.recv(BUFFER_SIZE))
+    confirm = SCC.decode_mpacket(socket.recv(SSC.buffer_size))
 
     if timing:
         tend = time()
@@ -143,26 +143,26 @@ def message(socket, msg):
 
 def print_schedule_info(socket):
     socket.sendall(SCC.encode_xpacket("print_schedule_info"))
-    return int(SCC.decode_mpacket(socket.recv(BUFFER_SIZE)))
+    return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
 
 def print_schedule(socket, max_entries: int = 32):
     socket.sendall(SCC.encode_xpacket("print_schedule", max_entries))
-    return int(SCC.decode_mpacket(socket.recv(BUFFER_SIZE)))
+    return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
 
 def initialize_schedule(socket):
     socket.sendall(SCC.encode_xpacket("initialize_schedule"))
-    return int(SCC.decode_mpacket(socket.recv(BUFFER_SIZE)))
+    return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
 
 def allocate_schedule(socket, name: str, n_seg: int, duration: float):
     socket.sendall(SCC.encode_xpacket(
         "allocate_schedule", name, n_seg, duration)
     )
-    return int(SCC.decode_mpacket(socket.recv(BUFFER_SIZE)))
+    return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
 
 def transfer_segment(socket, vals):
     socket.sendall(SCC.encode_spacket_fromvals(*vals))
     # Return value is the segment number, as verification.
-    return int(SCC.decode_mpacket(socket.recv(BUFFER_SIZE)))
+    return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
 
 def transfer_schedule(socket, schedule: list, name="schedule1", timing=False):
     # TODO: Schedule integrity and validity should probably be checked once, and probably not here
@@ -182,7 +182,7 @@ def transfer_schedule(socket, schedule: list, name="schedule1", timing=False):
 
     for i, seg in enumerate(schedule):
         socket.sendall(SCC.encode_spacket_fromvals(*(schedule[i])))
-        confirm = int(SCC.decode_mpacket(socket.recv(BUFFER_SIZE)))
+        confirm = int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
         if confirm != i:
             raise AssertionError(f"Something went wrong transferring schedule '{name}'!")
         # print("[DEBUG] Check:", i, confirm)
@@ -197,37 +197,37 @@ def transfer_schedule(socket, schedule: list, name="schedule1", timing=False):
 # Play controls
 def activate_play_mode(socket):
     socket.sendall(SCC.encode_xpacket("activate_play_mode"))
-    return int(SCC.decode_mpacket(socket.recv(BUFFER_SIZE)))  # Return 1
+    return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))  # Return 1
 
 def deactivate_play_mode(socket):
     socket.sendall(SCC.encode_xpacket("deactivate_play_mode"))
-    return int(SCC.decode_mpacket(socket.recv(BUFFER_SIZE)))  # Return 1
+    return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))  # Return 1
 
 def play_start(socket):
     socket.sendall(SCC.encode_xpacket("play_start"))
-    return int(SCC.decode_mpacket(socket.recv(BUFFER_SIZE)))  # Return 1
+    return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))  # Return 1
 
 def play_stop(socket):
     socket.sendall(SCC.encode_xpacket("play_stop"))
-    return int(SCC.decode_mpacket(socket.recv(BUFFER_SIZE)))  # Return 1
+    return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))  # Return 1
 
 def get_current_step_time(socket):
     socket.sendall(SCC.encode_xpacket("get_current_step_time"))
-    step_time_string = SCC.decode_mpacket(socket.recv(BUFFER_SIZE)).split(",")
+    step_time_string = SCC.decode_mpacket(socket.recv(SSC.buffer_size)).split(",")
     return int(step_time_string[0]), int(step_time_string[1]), float(step_time_string[2])
 
 def get_apply_Bc_period(socket):
     socket.sendall(SCC.encode_xpacket("get_apply_Bc_period"))
-    return float(SCC.decode_mpacket(socket.recv(BUFFER_SIZE)))
+    return float(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
 
 def get_write_Bm_period(socket):
     socket.sendall(SCC.encode_xpacket("get_write_Bm_period"))
-    return float(SCC.decode_mpacket(socket.recv(BUFFER_SIZE)))
+    return float(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
 
 def set_apply_Bc_period(socket, period: float):
     socket.sendall(SCC.encode_xpacket("set_apply_Bc_period", period))
-    return int(SCC.decode_mpacket(socket.recv(BUFFER_SIZE)))  # Return 1
+    return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))  # Return 1
 
 def set_write_Bm_period(socket, period: float):
     socket.sendall(SCC.encode_xpacket("set_write_Bm_period", period))
-    return int(SCC.decode_mpacket(socket.recv(BUFFER_SIZE)))  # Return 1
+    return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))  # Return 1

@@ -51,6 +51,7 @@ Users desiring additional functionality are advised to subclass SCC instead.
 """
 
 class SCC:
+    buffer_size = 256
 
     @staticmethod
     def packet_type(packet):
