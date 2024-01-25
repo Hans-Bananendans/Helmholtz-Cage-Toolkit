@@ -448,10 +448,11 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
         while True:
             packet_out = None
             packet_in = self.request.recv(256)
+            # t0 = time()  # [TIMING]
             if packet_in == b"":
                 break
             type_id = scc.packet_type(packet_in)
-
+            # t1 = time()  # [TIMING]
             # print("[DEBUG] packet_in:", packet_in)
 
             if type_id == "m":
@@ -497,9 +498,13 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
 
             # print("[DEBUG] packet_out:", packet_out)
 
+            # t2 = time()  # [TIMING]
+
             # If a response was warranted, send it:
             if packet_out is not None:
                 self.request.sendall(packet_out)
+            # t3 = time()  # [TIMING]
+            # print(f"Sent {scc.packet_type(packet_out)}-packet. Time: {int((t1-t0)*1E6)}, {int((t2-t1)*1E6)}, {int((t3-t2)*1E6)} \u03bcs")  # [TIMING]
 
 
     def command_handle(self, fname, args):

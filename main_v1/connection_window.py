@@ -59,7 +59,7 @@ from time import sleep, time
 from threading import Thread
 
 import codec.scc2q as scc
-from client_functions import *
+import client_functions
 from config import config
 
 
@@ -105,11 +105,11 @@ class ConnectionWindow(QWidget):
         button_get_bm.clicked.connect(self.do_get_Bm)
         self.label_get_bm = QLabel()
 
-
         # Disable widgets in widgets_to_enable group until connection is made
         self.widgets_to_enable = (
             button_ping,
             button_get_bm,
+
         )
         for widget in self.widgets_to_enable:
             widget.setEnabled(False)
@@ -122,15 +122,22 @@ class ConnectionWindow(QWidget):
         layout0.addWidget(button_get_bm, 4, 1)
         layout0.addWidget(self.label_get_bm, 4, 2)
 
+
         self.setLayout(layout0)
 
         self.timer_get_bm = QTimer()
         self.timer_get_bm.timeout.connect(self.do_get_Bm)
-        self.timer_get_bm_ms = 50
+        self.timer_get_bm_ms = 500
 
         self.timer_ping = QTimer()
         self.timer_ping.timeout.connect(self.do_ping)
-        self.timer_ping_ms = 1000
+        self.timer_ping_ms = 100000
+
+
+        # Since all TCP communication is implemented using blocking, only
+        # one request should ever be active at a time. As a result, a single
+        # QDataStream instance should suffice.
+        self.datastream = QDataStream(self.socket)
 
     def connect_socket(self):
         self.socket.connectToHost(self.server_address, self.server_port)
@@ -238,20 +245,44 @@ class ConnectionWindow(QWidget):
     #             self.label_ping.setText("ping(): -1")
 
 
+    # def do_get_Bm(self):
+    #     t0 = time()
+    #     socket_stream = QDataStream(self.socket)
+    #     packet_out = scc.encode_bpacket([0.] * 4)
+    #     # print(packet_out)
+    #     socket_stream.writeRawData(packet_out)
+    #
+    #     if self.socket.waitForReadyRead(100):
+    #         inc = socket_stream.readRawData(scc.packet_size)
+    #         r = scc.decode_bpacket(inc)
+    #
+    #         bx, by, bz = round(r[1]*1E-3, 3), round(r[2]*1E-3, 3), round(r[3]*1E-3, 3)
+    #         tt = time()-t0
+    #         self.label_get_bm.setText(f"Bm = [{bx}, {by}, {bz}] \u03bcT  ({int(tt*1E6)} \u03bcs)")
+    #
+    #
+    # def do_get_Bm2(self):
+    #     t0 = time()
+    #
+    #     r = get_Bm(self.socket)
+    #     # r = scc.decode_bpacket(send_and_receive(scc.encode_bpacket([0.] * 4), self.socket))
+    #
+    #     bx, by, bz = round(r[1]*1E-3, 3), round(r[2]*1E-3, 3), round(r[3]*1E-3, 3)
+    #     tt = time()-t0
+    #     print(f"r_time: {bx}, {by}, {bz}] \u03bcT")
+    #
+    #     self.label_get_bm.setText(f"Bm2 = [{bx}, {by}, {bz}] \u03bcT  ({int(tt*1E6)} \u03bcs)")
+
     def do_get_Bm(self):
         t0 = time()
-        socket_stream = QDataStream(self.socket)
-        packet_out = scc.encode_bpacket([0.] * 4)
-        # print(packet_out)
-        socket_stream.writeRawData(packet_out)
 
-        if self.socket.waitForReadyRead(100):
-            inc = socket_stream.readRawData(scc.packet_size)
-            r = scc.decode_bpacket(inc)
+        r = client_functions.get_Bm(self.socket, datastream=self.datastream)
 
-            bx, by, bz = round(r[1]*1E-3, 3), round(r[2]*1E-3, 3), round(r[3]*1E-3, 3)
-            tt = time()-t0
-            self.label_get_bm.setText(f"Bm = [{bx}, {by}, {bz}] \u03bcT  ({int(tt*1E6)} \u03bcs)")
+        bx, by, bz = round(r[1] * 1E-3, 3), round(r[2] * 1E-3, 3), round(r[3] * 1E-3, 3)
+        tt = time() - t0
+        print(f"r_time: {bx}, {by}, {bz}] \u03bcT")
+
+        self.label_get_bm.setText(f"Bm = [{bx}, {by}, {bz}] \u03bcT  ({int(tt * 1E6)} \u03bcs)")
 
         # r = get_Bm(self.socket) # Returns B_m
         # bx, by, bz = round(r[1]*1E3, 3), round(r[2]*1E3, 3), round(r[3]*1E3, 3)
