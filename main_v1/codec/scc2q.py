@@ -48,17 +48,13 @@ type.
 None of the implemented functions allow you to manually set the type_id of the
 packet, and this is to force a degree of consistency across implementations.
 Users desiring additional functionality are advised to subclass SCC instead.
-
-On the topic of forced consistency, the code below uses hardcoded values for
-the following:
- - package length: 256
- - x-packet field separator: '%'
- - packet padding: '@'
 """
 
 
 
-packet_size = 256  # Referable packet length for buffer size configuration
+packet_size = 256   # Referable packet length for buffer size configuration
+_pad = "#"          # Character used for padding non-full packets
+_xps = "@"          # Internal separator used for x-packets
 
 
 def packet_type(packet):  # Q Compatible (no change)
@@ -82,7 +78,6 @@ def packet_type(packet):  # Q Compatible (no change)
     return packet[0:1].decode()
 
 
-
 def encode_bpacket(Bm):  # Q Compatible
     """ Encodes a b_packet, which has the following anatomy:
     b (1 B)    UNIX_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
@@ -94,7 +89,7 @@ def encode_bpacket(Bm):  # Q Compatible
         str(Bm[1])[:20],
         str(Bm[2])[:20],
         str(Bm[3])[:20],
-        "#"*187).encode()
+        _pad*187).encode()
 
 
 
@@ -123,7 +118,7 @@ def encode_cpacket(Bc):  # Q Compatible
         str(Bc[0])[:16],
         str(Bc[1])[:16],
         str(Bc[2])[:16],
-        "#"*207).encode()
+        _pad*207).encode()
 
 
 
@@ -148,7 +143,7 @@ def encode_mpacket(msg: str):  # Q Compatible
 
     Efficiency by virtue of the KISS principle: ~290 ns/encode (FX-8350)
     """
-    return ("m"+msg+"#"*(256-len(msg)-1)).encode()
+    return ("m"+msg+_pad*(packet_size-len(msg)-1)).encode()
 
 
 def decode_mpacket(m_packet):  # Q Compatible
@@ -159,7 +154,7 @@ def decode_mpacket(m_packet):  # Q Compatible
 
     Efficiency by virtue of the KISS principle: ~320 ns/decode (FX-8350)
     """
-    return m_packet.decode()[1:].rstrip("#")
+    return m_packet.decode()[1:].rstrip(_pad)
 
 
 
@@ -167,7 +162,7 @@ def encode_epacket(msg: str):  # Q Compatible
     """ Encodes an e_packet, which has the following anatomy:
     e (1 B)    msg (n B)
     """
-    return ("e"+str(msg)+"#"*(256-len(msg)-1)).encode()
+    return ("e"+str(msg)+_pad*(packet_size-len(msg)-1)).encode()
 
 
 
@@ -175,9 +170,9 @@ def decode_epacket(e_packet):  # Q Compatible
     """ Encodes an e_packet, which has the following anatomy:
     e (1 B)    msg (n B)
     """
-    # return e_packet.decode()[1:].rstrip("#")
+    # return e_packet.decode()[1:].rstrip(_pad)
     e_packet_decoded = e_packet.decode()
-    return e_packet_decoded[1:e_packet_decoded.find("#")]
+    return e_packet_decoded[1:e_packet_decoded.find(_pad)]
 
 
 
@@ -215,10 +210,10 @@ def encode_xpacket(cmd: str, *args):  # Q Compatible
         elif type(arg) == str:
             xpacket_unencoded += "s{:#>23}".format(arg[:23])
 
-    if len(xpacket_unencoded) > 256:    # TODO: Currently hardcoded, should be referenced from a config
+    if len(xpacket_unencoded) > packet_size:    # TODO: Currently hardcoded, should be referenced from a config
         raise AssertionError(f"Total packet length exceeds 256 B ({len(xpacket_unencoded)} B)!")
     else:
-        xpacket_unencoded += "{}".format("#"*(256-len(xpacket_unencoded)))
+        xpacket_unencoded += "{}".format(_pad*(packet_size-len(xpacket_unencoded)))
         return xpacket_unencoded.encode()
 
 
@@ -230,11 +225,11 @@ def decode_xpacket(x_packet):  # Q Compatible
     Unoptimized as of 15-01-2024. ~5000-10000 ns/decode (FX-8350)
     """
 
-    xpacket_decoded = x_packet.decode().rstrip("#")
+    xpacket_decoded = x_packet.decode().rstrip(_pad)
 
     # print(xpacket_decoded[1:24])  # TODO: Remove debug comments once done testing
     # print(xpacket_decoded[24:32])
-    cmd_name = xpacket_decoded[1:24].strip("@")
+    cmd_name = xpacket_decoded[1:24].strip(_xps)
     n_args = int(xpacket_decoded[24:32])
 
     # print("cmd_name:", cmd_name, "n_args:", n_args)
@@ -247,11 +242,11 @@ def decode_xpacket(x_packet):  # Q Compatible
         if seg[0] == "f":
             args.append(float(seg[1:]))
         elif seg[0] == "i":
-            args.append(int(seg[1:].strip("@")))
+            args.append(int(seg[1:].strip(_xps)))
         elif seg[0] == "b":
             args.append(bool(int(seg[1])))
         elif seg[0] == "s":
-            args.append(seg[1:].strip("@"))
+            args.append(seg[1:].strip(_xps))
         else:
             raise ValueError(
                 f"decode_xpacket(): Encountered uninterpretable type_id '{seg[0]}' in segment {i_seg}: {seg}")
@@ -287,7 +282,7 @@ def encode_spacket_fromvals(i_seg: int, n_seg: int, t_seg: float, Bc_seg: [float
         str(Bc_seg[0])[:16],
         str(Bc_seg[1])[:16],
         str(Bc_seg[2])[:16],
-        "#"*123).encode()
+        _pad*123).encode()
 
 
 
