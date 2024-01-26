@@ -453,7 +453,7 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 break
             type_id = scc.packet_type(packet_in)
             # t1 = time()  # [TIMING]
-            # print("[DEBUG] packet_in:", packet_in)
+            print("[DEBUG] packet_in:", packet_in)
 
             if type_id == "m":
                 # print("[DEBUG] Detected m-package")
@@ -497,7 +497,7 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             else:
                 raise ValueError(f"Encountered uninterpretable type_id '{type_id}' in received packet.")
 
-            # print("[DEBUG] packet_out:", packet_out)
+            print("[DEBUG] packet_out:", packet_out)
 
             # t2 = time()  # [TIMING]
 
@@ -572,8 +572,8 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
 
         elif fname == "get_current_time_step":
             # Returns current value of schedule step and time as csv string
-            step, steps, time = self.server.datapool.get_current_time_step()
-            packet_out = scc.encode_mpacket(f"{step},{steps},{time}")
+            step, steps, ctime = self.server.datapool.get_current_time_step()
+            packet_out = scc.encode_mpacket(f"{step},{steps},{ctime}")
 
         elif fname == "get_apply_Bc_period":
             period = self.server.datapool.get_apply_Bc_period()

@@ -195,20 +195,20 @@ def encode_xpacket(cmd: str, *args):  # Q Compatible
         raise TypeError(
             f"encode_xpacket() received {n_args - n_correct_type} argument(s) of incorrect type! (must be str, int, float, or bool)")
 
-    xpacket_unencoded = "x{:#>23}{:0>8}".format(cmd, n_args)
+    xpacket_unencoded = "x{:@>23}{:0>8}".format(cmd, n_args)
 
     for arg in args:
         if type(arg) == float:
             xpacket_unencoded += "f{:0<23}".format(round(arg, 8))
         elif type(arg) == int:
-            xpacket_unencoded += "i" + ("{:#>23}".format(arg))[:23]
+            xpacket_unencoded += "i" + ("{:@>23}".format(arg))[:23]
         elif type(arg) == bool:
             if arg is True:
                 xpacket_unencoded += "b" + "{:1>23}".format(1)
             else:
                 xpacket_unencoded += "b" + "{:0>23}".format(0)
         elif type(arg) == str:
-            xpacket_unencoded += "s{:#>23}".format(arg[:23])
+            xpacket_unencoded += "s{:@>23}".format(arg[:23])
 
     if len(xpacket_unencoded) > packet_size:    # TODO: Currently hardcoded, should be referenced from a config
         raise AssertionError(f"Total packet length exceeds 256 B ({len(xpacket_unencoded)} B)!")

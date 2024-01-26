@@ -79,7 +79,7 @@ def ping(socket, datastream: QDataStream = None):
     tend = time()
 
     # Verification
-    response = ssc.decode_epacket(packet_in)
+    response = scc.decode_epacket(packet_in)
     if response == "":
         return tend - tstart
     else:
@@ -198,6 +198,33 @@ def get_server_uptime(socket,
 
     return float(server_uptime)
 
+
+def get_socket_uptime(socket,
+                      datastream: QDataStream = None,
+                      timing=False):
+    """Requests the uptime of the socket connection from the perspective of
+    the server.
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+    if timing:
+        tstart = time()
+
+    socket_uptime = scc.decode_mpacket(
+        send_and_receive(
+            scc.encode_xpacket("socket_uptime"),
+            socket,
+            datastream=datastream
+        )
+    )
+
+    if timing:
+        tend = time()
+        print(f"Called get_socket_uptime(). Executed in {round((tend - tstart) * 1E6, 3)} us")
+
+    return float(socket_uptime)
+
 # def get_socket_uptime(socket, timing=False):
 #     if timing:
 #         tstart = time()
@@ -212,7 +239,9 @@ def get_server_uptime(socket,
 #     return float(socket_uptime)
 
 
-def message(socket, msg):
+def message(socket,
+            msg,
+            datastream: QDataStream = None):
     """Requests and returns the server uptime.
 
     If implementing this function with QTcpSocket, you can specify a re-usable
@@ -554,12 +583,12 @@ def transfer_schedule(
     # uninterrupted access to the TCP connection. If using a QTcpSocket and
     # no datastream is pre-specified, `transfer_schedule()` will now make one
     # once, to speed up transfer.
-    elif type(socket_obj) == QTcpSocket and not datastream:
+    elif type(socket) == QTcpSocket and not datastream:
         datastream = QDataStream(socket_obj)
 
     # First allocate schedule
     confirm = allocate_schedule(
-        s, name, len(schedule), schedule[-1][2], datastream=datastream
+        socket, name, len(schedule), schedule[-1][2], datastream=datastream
     )
     if int(confirm) != 1:
         raise AssertionError(f"Failed to allocate schedule '{name}'!")
@@ -734,7 +763,7 @@ def get_current_time_step(
             socket,
             datastream=datastream
         )
-    )
+    ).split(",")
     #      Current segment    n segments         Instantaneous playback time
     return int(ts_string[0]), int(ts_string[1]), float(ts_string[2])
 
