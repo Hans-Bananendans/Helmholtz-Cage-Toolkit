@@ -82,14 +82,14 @@ def encode_bpacket(Bm):  # Q Compatible
     """ Encodes a b_packet, which has the following anatomy:
     b (1 B)    UNIX_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
 
-
+    Optimization: ~3800 ns/encode
     """
     return "b{:0<20}{:0<16}{:0<16}{:0<16}{}".format(
         str(Bm[0])[:20],
         str(Bm[1])[:20],
         str(Bm[2])[:20],
         str(Bm[3])[:20],
-        _pad*187).encode()
+        _pad*186).encode()
 
 
 
@@ -112,7 +112,7 @@ def encode_cpacket(Bc):  # Q Compatible
     """ Encodes a c_packet, which has the following anatomy:
     c (1 B)    Bc_X (16 B)    Bc_Y (16 B)    Bc_Z (16 B)
 
-    Efficiency by virtue of the KISS principle: ~2700 ns/encode (FX-8350)
+    Optimization: ~3000 ns/encode
     """
     return "c{:0<16}{:0<16}{:0<16}{}".format(
         str(Bc[0])[:16],
@@ -139,9 +139,9 @@ def encode_mpacket(msg: str):  # Q Compatible
     """ Encodes an m_packet, which has the following anatomy:
     m (1 B)    msg (n B)
 
-    The allowed length of msg is equal to BUFFER_SIZE-1
+    The allowed length of msg is equal to packet_size-1
 
-    Efficiency by virtue of the KISS principle: ~290 ns/encode (FX-8350)
+    Optimization: ~390 ns/encode
     """
     return ("m"+msg+_pad*(packet_size-len(msg)-1)).encode()
 
@@ -150,9 +150,9 @@ def decode_mpacket(m_packet):  # Q Compatible
     """ Encodes an m_packet, which has the following anatomy:
     m (1 B)    msg (n B)
 
-    The allowed length of msg is equal to BUFFER_SIZE-1
+    The allowed length of msg is equal to packet_size-1
 
-    Efficiency by virtue of the KISS principle: ~320 ns/decode (FX-8350)
+    Optimization: ~360 ns/encode
     """
     return m_packet.decode()[1:].rstrip(_pad)
 
@@ -184,7 +184,7 @@ def encode_xpacket(cmd: str, *args):  # Q Compatible
     an arg_type_id ('s', 'i', 'f', 'b' for string, integer, float, and
     boolean respectively), followed by 23 bytes of encoded value.
 
-    Unoptimized as of 15-01-2024. ~10000-20000 ns/encode (FX-8350)
+    Unoptimized as of 25-01-2024. ~10000-20000 ns/encode (FX-8350)
     """
     recognized_types = (int, float, str, bool)
 
@@ -268,7 +268,7 @@ def decode_xpacket(x_packet):  # Q Compatible
 #     return int(i_seg), int(n_seg), float(t_seg), [float(BcX), float(BcY), float(BcZ)]
 
 
-def encode_spacket_fromvals(
+def encode_spacket(
     i_seg: int,
     n_seg: int,
     t_seg: float,
@@ -279,7 +279,7 @@ def encode_spacket_fromvals(
     s (1 B)    segment number (32 B)    number of segments (32 B)
         segment_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
 
-    Optimization: 2500 ns/encode (FX-8350)
+    Optimization: ~4400 ns/encode
     """
     return "s{:0>32}{:0>32}{:0<20}{:0<16}{:0<16}{:0<16}{}".format(
         str(i_seg)[:16],
@@ -291,14 +291,14 @@ def encode_spacket_fromvals(
         _pad*123).encode()
 
 
-def decode_spacket_tovals(s_packet):  # Q Compatible (no changes)
+def decode_spacket(s_packet):  # Q Compatible (no changes)
     """ Decodes an s_packet, which has the following anatomy:
     s (1 B)    segment number (32 B)    number of segments (32 B)
         segment_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
 
-    to engineering values.
+    to segment values.
 
-    Optimization: 1900 ns/decode (FX-8350)
+    Optimization: 2150 ns/decode (FX-8350)
     """
     s_decoded = s_packet.decode()
     return [
