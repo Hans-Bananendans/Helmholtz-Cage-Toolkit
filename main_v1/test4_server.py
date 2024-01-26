@@ -458,11 +458,13 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             if type_id == "m":
                 # print("[DEBUG] Detected m-package")
                 msg = scc.decode_mpacket(packet_in)
-                print(f"[{self.client_address[0]}:{self.client_address[1]}]", msg)
+                print(f"[{self.client_address[0]}:{self.client_address[1]}] {msg}")
+                packet_out = scc.encode_mpacket("1")  # Send 1 as confirmation
 
             elif type_id == "e":
                 # print("[DEBUG] Detected e-package")
                 packet_out = scc.encode_epacket(scc.decode_epacket(packet_in))
+
 
             elif type_id == "b":
                 # print("[DEBUG] Detected b-package")
@@ -570,7 +572,7 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             packet_out = scc.encode_mpacket(str(confirm))
 
 
-        elif fname == "get_current_step_time":
+        elif fname == "get_current_time_step":
             # Returns current value of schedule step and time as csv string
             step, steps, time = self.server.datapool.get_current_step_time()
             packet_out = scc.encode_mpacket(f"{step},{steps},{time}")
