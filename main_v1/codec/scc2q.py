@@ -53,8 +53,8 @@ Users desiring additional functionality are advised to subclass SCC instead.
 
 
 packet_size = 256   # Referable packet length for buffer size configuration
-_pad = "#"          # Character used for padding non-full packets
-_xps = "@"          # Internal separator used for x-packets
+_pad = "#"          # Packet padding character (cannot be @)
+# _xps = "@"          # (now hardcoded!) Internal separator used for x-packets
 
 
 def packet_type(packet):  # Q Compatible (no change)
@@ -210,7 +210,7 @@ def encode_xpacket(cmd: str, *args):  # Q Compatible
         elif type(arg) == str:
             xpacket_unencoded += "s{:@>23}".format(arg[:23])
 
-    if len(xpacket_unencoded) > packet_size:    # TODO: Currently hardcoded, should be referenced from a config
+    if len(xpacket_unencoded) > packet_size:
         raise AssertionError(f"Total packet length exceeds 256 B ({len(xpacket_unencoded)} B)!")
     else:
         xpacket_unencoded += "{}".format(_pad*(packet_size-len(xpacket_unencoded)))
@@ -229,7 +229,7 @@ def decode_xpacket(x_packet):  # Q Compatible
 
     # print(xpacket_decoded[1:24])  # TODO: Remove debug comments once done testing
     # print(xpacket_decoded[24:32])
-    cmd_name = xpacket_decoded[1:24].strip(_xps)
+    cmd_name = xpacket_decoded[1:24].strip("@")
     n_args = int(xpacket_decoded[24:32])
 
     # print("cmd_name:", cmd_name, "n_args:", n_args)
@@ -242,11 +242,11 @@ def decode_xpacket(x_packet):  # Q Compatible
         if seg[0] == "f":
             args.append(float(seg[1:]))
         elif seg[0] == "i":
-            args.append(int(seg[1:].strip(_xps)))
+            args.append(int(seg[1:].strip("@")))
         elif seg[0] == "b":
             args.append(bool(int(seg[1])))
         elif seg[0] == "s":
-            args.append(seg[1:].strip(_xps))
+            args.append(seg[1:].strip("@"))
         else:
             raise ValueError(
                 f"decode_xpacket(): Encountered uninterpretable type_id '{seg[0]}' in segment {i_seg}: {seg}")
@@ -256,7 +256,7 @@ def decode_xpacket(x_packet):  # Q Compatible
     return cmd_name, args
 
 
-
+# Obsolete
 # def vals_to_segment(i_seg: int, n_seg: int, t_seg: float, Bc_seg: [float]):
 #     """Encodes engineering values to a segment string. ~1250 ns/encode"""
 #     return f"{i_seg} {n_seg} {t_seg} {Bc_seg[0]} {Bc_seg[1]} {Bc_seg[2]}"
