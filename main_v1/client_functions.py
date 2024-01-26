@@ -538,7 +538,7 @@ def transfer_segment(
     """
     confirm = scc.decode_mpacket(
         send_and_receive(
-            scc.encode_spacket_fromvals(*segment),
+            scc.encode_spacket(*segment),
             socket,
             datastream=datastream
         )
@@ -597,7 +597,7 @@ def transfer_schedule(
     for i, seg in enumerate(schedule):
         confirm = scc.decode_mpacket(
             send_and_receive(
-                scc.encode_spacket_fromvals(*(schedule[i])),
+                scc.encode_spacket(*(schedule[i])),
                 socket,
                 datastream=datastream
             )
@@ -631,7 +631,7 @@ def transfer_schedule(
 #     return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
 #
 # def transfer_segment(socket, vals):
-#     socket.sendall(SCC.encode_spacket_fromvals(*vals))
+#     socket.sendall(SCC.encode_spacket(*vals))
 #     # Return value is the segment number, as verification.
 #     return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
 #
@@ -651,7 +651,7 @@ def transfer_schedule(
 #         raise AssertionError(f"Something went wrong transferring schedule '{name}'!")
 #
 #     for i, seg in enumerate(schedule):
-#         socket.sendall(SCC.encode_spacket_fromvals(*(schedule[i])))
+#         socket.sendall(SCC.encode_spacket(*(schedule[i])))
 #         confirm = int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
 #         if confirm != i:
 #             raise AssertionError(f"Something went wrong transferring schedule '{name}'!")
