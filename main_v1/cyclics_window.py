@@ -21,6 +21,7 @@ from PyQt5.QtGui import (
     QPalette,
     QColor,
     QPainter,
+    QTextFormat,
 )
 from PyQt5.QtWidgets import (
     QAction,
@@ -84,9 +85,9 @@ class CyclicsWindow(QWidget):
 
 
         group_cyclics_input = CyclicsInput(self.datapool)
-
-
         group_cyclics_visualizer = VisualizerCyclics(self.datapool)
+        group_cyclics_input.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        group_cyclics_visualizer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
 
         layout0.addWidget(group_cyclics_input, 0, 0)
         layout0.addWidget(group_cyclics_visualizer, 0, 1)
@@ -101,7 +102,7 @@ class CyclicsInput(QGroupBox):
 
         self.datapool.cyclics_input = self
 
-        self.setMinimumWidth(480)
+        self.setMinimumWidth(560)
 
         # Todo: implement "autoslurping" of input field data based on single
         #  dict with routing information.
@@ -391,9 +392,9 @@ class VisualizerCyclics(QGroupBox):
         #               self.data.config["plotwindow_windowsize"][1])
         # self.setMinimumSize(QSize(windowsize[0], windowsize[1]))
         # self.setMaximumSize(QSize(windowsize[0], windowsize[1]))
-        windowsize = (640, 820)
+        windowsize = (560, 820)
         self.setMinimumSize(QSize(windowsize[0], windowsize[1]))
-        self.setMaximumSize(QSize(windowsize[0], windowsize[1]))
+        # self.setMaximumSize(QSize(windowsize[0], windowsize[1]))
 
         layout0 = QVBoxLayout()
 
@@ -818,6 +819,7 @@ class SchedulePlayerCyclics(SchedulePlayer):
         # print(f"{round((t6-t5)*1E6)} us", end=" ")
         # print(f"T: {round((t6-t0)*1E6)} us")
 
+
 class PlayerControls(QGroupBox):
     def __init__(self, datapool, scheduleplayer, label_update_interval=25) -> None:
         super().__init__()
@@ -830,8 +832,20 @@ class PlayerControls(QGroupBox):
         self.label_update_timer.timeout.connect(self.update_labels)
 
         self.str_step_prev = 0
-        self.str_duration = "/"+str(round(self.datapool.get_schedule_duration(), 3))
-        self.str_steps = "/"+str(self.datapool.get_schedule_steps())
+        self.str_duration = "/{:.3f}".format(round(self.datapool.get_schedule_duration(), 3))
+        self.str_steps = "/{}".format(self.datapool.get_schedule_steps())
+
+        stylesheet_groupbox_smallmargins = """  
+        QGroupBox {
+            padding: 0px;
+            padding-top: 0px;
+        }
+        QGroupBox::title {
+            padding: 0px;
+            height: 0px;
+        }
+        """
+        self.setStyleSheet(stylesheet_groupbox_smallmargins)
 
         layout0 = QHBoxLayout()
 
@@ -869,27 +883,46 @@ class PlayerControls(QGroupBox):
             self.button_mult1000,
         )
 
+        button_size = QSize(32, 32)
+        button_size_icon = QSize(24, 24)
+
         for button in self.buttons_playback+self.buttons_mult:
+            button.setFixedSize(button_size)
+            button.setIconSize(button_size_icon)
             layout0.addWidget(button)
 
-        # Labels
-        self.label_t_text = QLabel("Time: ")
-        self.label_t = QLabel(str(0.0))
-        self.label_t_unit = QLabel("s")
+        # self.setAutoFillBackground()
+        # self.setContentsMargins(0, 0, 0, 0)
 
-        self.label_step_text = QLabel("Step: ")
-        self.label_step = QLabel(str("0/0"))
+
+
+        stylesheet_time_step_label = """
+            QLabel {
+                background-color: #0a0a0a;
+                font-family: mono;
+                font-size: 20px;
+            }
+        """
+
+        # Labels
+        self.label_t = QLabel("0.000/0.000")
+        self.label_t.setMinimumWidth(256)
+        self.label_step = QLabel("0/0")
 
         self.update_labels()
 
-        layout_labels = QGridLayout()
-        for i, l in enumerate((self.label_t_text, self.label_t, self.label_t_unit)):
-            layout_labels.addWidget(l, 0, i)
-        for i, l in enumerate((self.label_step_text, self.label_step,)):
-            layout_labels.addWidget(l, 1, i)
-        layout0.addLayout(layout_labels)
+        for label in (self.label_t, self.label_step):
+            label.setStyleSheet(stylesheet_time_step_label)
+            label.setAlignment(Qt.AlignRight)
+            layout0.addWidget(label)
+
+        # layout_labels = QGridLayout()
+        # layout_labels.addWidget(self.label_t, 1, 1)
+        # layout_labels.addWidget(self.label_step, 1, 2)
+        # layout0.addLayout(layout_labels)
 
         self.setLayout(layout0)
+
 
     def refresh(self):
         # Stops playback when called
@@ -897,8 +930,8 @@ class PlayerControls(QGroupBox):
         self.button_play.setChecked(False)
 
         self.str_step_prev = 0
-        self.str_duration = "/"+str(round(self.datapool.get_schedule_duration(), 3))
-        self.str_steps = "/"+str(self.datapool.get_schedule_steps())
+        self.str_duration = "/{:.3f}".format(round(self.datapool.get_schedule_duration(), 3))
+        self.str_steps = "/{}".format(self.datapool.get_schedule_steps())
         self.update_labels(force_refresh=True)
 
     def uncheck_buttons(self, buttons_group):
@@ -972,34 +1005,63 @@ class PlayerControls(QGroupBox):
         Total improvement from ~150 us to ~50 us
         """
         # t0 = time()  # [TIMING]
-        label_t_str = str((self.scheduleplayer.t * 2001) // 2 / 1000) + self.str_duration
+        # label_t_str = str((self.scheduleplayer.t * 2001) // 2 / 1000) + self.str_duration
+        # label_t_str = str((self.scheduleplayer.t * 2001) // 2 / 1000)
+        label_t_str = "{:.3f}{}".format((self.scheduleplayer.t * 2001) // 2 / 1000, self.str_duration)
         # t1 = time())  # [TIMING]
         self.label_t.setText(label_t_str)
 
-        # self.label_t.setText(
-        #     str(round(self.scheduleplayer.t, 3))
-        #     + "/"
-        #     + str(round(self.datapool.get_schedule_duration(), 3))
-        # )
-
-        # t2 = time())  # [TIMING]
-
-        # if force_refresh:
-        #     self.label_step.setText(
-        #         str(self.scheduleplayer.step) + self.str_steps
-        #     )
-        #     self.str_step_prev = self.scheduleplayer.step
 
         if self.scheduleplayer.step != self.str_step_prev or force_refresh:
             self.label_step.setText(
-                str(self.scheduleplayer.step) + self.str_steps
+                # str(self.scheduleplayer.step) + self.str_steps
+                "{:}{}".format(self.scheduleplayer.step, self.str_steps)
             )
             self.str_step_prev = self.scheduleplayer.step
 
-        # self.label_step.setText(
-        #     str(self.scheduleplayer.step)
-        #     + "/"
-        #     + str(self.datapool.get_schedule_steps())
-        # )
 
-        # print(f"[TIMING] update_labels(): {round((t1-t0)*1E6)} us  {round((t2-t1)*1E6)} us  {round((time()-t2)*1E6)} us")  # [TIMING]
+
+    # def update_labels(self, force_refresh=False):
+    #     """ Updates the time and step label.
+    #
+    #     Optimizations:
+    #      - Pre-generate the string with total steps and duration, so they do
+    #         not have to be calculated in the loop.
+    #      - Replace the only instance of round with a custom 3-digit round that
+    #         has ~30 us less overhead.
+    #      - Save ~10 us of overhead per cycle by not updating steps label when
+    #         step was not updated internally.
+    #     Total improvement from ~150 us to ~50 us
+    #     """
+    #     # t0 = time()  # [TIMING]
+    #     label_t_str = str((self.scheduleplayer.t * 2001) // 2 / 1000) + self.str_duration
+    #     # t1 = time())  # [TIMING]
+    #     self.label_t.setText(label_t_str)
+    #
+    #     # self.label_t.setText(
+    #     #     str(round(self.scheduleplayer.t, 3))
+    #     #     + "/"
+    #     #     + str(round(self.datapool.get_schedule_duration(), 3))
+    #     # )
+    #
+    #     # t2 = time())  # [TIMING]
+    #
+    #     # if force_refresh:
+    #     #     self.label_step.setText(
+    #     #         str(self.scheduleplayer.step) + self.str_steps
+    #     #     )
+    #     #     self.str_step_prev = self.scheduleplayer.step
+    #
+    #     if self.scheduleplayer.step != self.str_step_prev or force_refresh:
+    #         self.label_step.setText(
+    #             str(self.scheduleplayer.step) + self.str_steps
+    #         )
+    #         self.str_step_prev = self.scheduleplayer.step
+    #
+    #     # self.label_step.setText(
+    #     #     str(self.scheduleplayer.step)
+    #     #     + "/"
+    #     #     + str(self.datapool.get_schedule_steps())
+    #     # )
+    #
+    #     # print(f"[TIMING] update_labels(): {round((t1-t0)*1E6)} us  {round((t2-t1)*1E6)} us  {round((time()-t2)*1E6)} us")  # [TIMING]
