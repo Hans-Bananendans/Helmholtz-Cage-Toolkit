@@ -139,11 +139,11 @@ class ConnectionWindow(QWidget):
         # QDataStream instance should suffice.
         self.datastream = QDataStream(self.socket)
 
-    def connect_socket(self):
+    def connect_socket(self, timeout=3000):
         self.socket.connectToHost(self.server_address, self.server_port)
 
-        # Try to connect for 3 s before giving up
-        if self.socket.waitForConnected(3000):
+        # Try to connect for `timeout` ms before giving up
+        if self.socket.waitForConnected(timeout):
             self.datapool.status_bar.showMessage(
                 f"Connected to server at {self.server_address}:{self.server_port}"
             )
@@ -157,12 +157,12 @@ class ConnectionWindow(QWidget):
                 print("connect_socket(): socket closed manually")
                 self.socket.close()
 
-    def disconnect_socket(self):
+    def disconnect_socket(self, timeout=3000):
         self.socket.disconnectFromHost()
 
-        # Try to connect for 3 s before giving up
+        # Try to connect for `timeout` ms before giving up
         if self.socket.state() == QAbstractSocket.UnconnectedState or \
-                socket.waitForDisconnected(3000):
+                socket.waitForDisconnected(timeout):
             self.datapool.status_bar.showMessage("Disconnected")
         else:
             print(f"Error in disconnect_socket(): {self.socket.errorString()}")
@@ -172,9 +172,9 @@ class ConnectionWindow(QWidget):
 
             self.datapool.status_bar.showMessage("Disconnected")
 
-    def read_socket(self):
-        # print("Signal: read_socket()")
-        pass
+    # def read_socket(self):
+    #     print("Signal: read_socket()")
+    #     pass
 
     def on_connected(self):
         print("Signal: connected()")
