@@ -236,7 +236,7 @@ class DataPool:
         return 1
 
 
-    def get_current_step_time(self):
+    def get_current_time_step(self):
         return self.step_current, self.steps, self.t_current
 
     def get_apply_Bc_period(self):
@@ -465,7 +465,6 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 # print("[DEBUG] Detected e-package")
                 packet_out = scc.encode_epacket(scc.decode_epacket(packet_in))
 
-
             elif type_id == "b":
                 # print("[DEBUG] Detected b-package")
                 packet_out = scc.encode_bpacket(self.server.datapool.read_Bm())
@@ -571,10 +570,9 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             confirm = self.server.datapool.play_stop()
             packet_out = scc.encode_mpacket(str(confirm))
 
-
         elif fname == "get_current_time_step":
             # Returns current value of schedule step and time as csv string
-            step, steps, time = self.server.datapool.get_current_step_time()
+            step, steps, time = self.server.datapool.get_current_time_step()
             packet_out = scc.encode_mpacket(f"{step},{steps},{time}")
 
         elif fname == "get_apply_Bc_period":
