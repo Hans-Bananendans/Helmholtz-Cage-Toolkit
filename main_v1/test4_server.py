@@ -119,13 +119,13 @@ def threaded_apply_Bc(datapool):
                 if datapool.t_current >= datapool.t_next:
                     if datapool.step_current == datapool.steps - 2:
                         datapool.step_current += 1
-                        instruct_DACs(datapool.schedule[datapool.step_current][3])
+                        instruct_DACs(datapool.schedule[datapool.step_current][3:6])
                         print(f"[DEBUG] Current step: {datapool.step_current}/{datapool.steps} (+{round(datapool.t_current, 3)} s)")
                         print(f"[DEBUG] Reached end of schedule -> STOPPING")
                         confirm = datapool.play_stop()
                     else:
                         datapool.step_current += 1
-                        instruct_DACs(datapool.schedule[datapool.step_current][3])
+                        instruct_DACs(datapool.schedule[datapool.step_current][3:6])
                         datapool.t_next = datapool.schedule[datapool.step_current+1][2]
                         print(f"[DEBUG] Current step: {datapool.step_current}/{datapool.steps} (+{round(datapool.t_current, 3)} s)")
 
@@ -268,7 +268,7 @@ class DataPool:
 
         self._lock_schedule.acquire(timeout=0.001)
 
-        self.schedule = [[0, 0, 0., [0., 0., 0.]], ]
+        self.schedule = [[0, 0, 0., 0., 0., 0.], ]
         self.schedule_name = "init"
         self.schedule_duration = 0.0
 
@@ -282,7 +282,7 @@ class DataPool:
 
         self.schedule_name = name
         self.schedule_duration = duration
-        self.schedule = [[0, 0, 0., [0., 0., 0.]], ]*n_seg
+        self.schedule = [[0, 0, 0., 0., 0., 0.], ]*n_seg
 
         self._lock_schedule.release()
         return 1

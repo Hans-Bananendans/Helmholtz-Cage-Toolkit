@@ -257,18 +257,24 @@ def decode_xpacket(x_packet):  # Q Compatible
 
 
 
-def vals_to_segment(i_seg: int, n_seg: int, t_seg: float, Bc_seg: [float]):
-    """Encodes engineering values to a segment string. ~1250 ns/encode"""
-    return f"{i_seg} {n_seg} {t_seg} {Bc_seg[0]} {Bc_seg[1]} {Bc_seg[2]}"
+# def vals_to_segment(i_seg: int, n_seg: int, t_seg: float, Bc_seg: [float]):
+#     """Encodes engineering values to a segment string. ~1250 ns/encode"""
+#     return f"{i_seg} {n_seg} {t_seg} {Bc_seg[0]} {Bc_seg[1]} {Bc_seg[2]}"
+#
+#
+# def segment_to_vals(segment: str):
+#     """Decodes a segment string into engineering values. ~1150 ns/encode"""
+#     i_seg, n_seg, t_seg, BcX, BcY, BcZ = segment.split(" ")
+#     return int(i_seg), int(n_seg), float(t_seg), [float(BcX), float(BcY), float(BcZ)]
 
 
-def segment_to_vals(segment: str):
-    """Decodes a segment string into engineering values. ~1150 ns/encode"""
-    i_seg, n_seg, t_seg, BcX, BcY, BcZ = segment.split(" ")
-    return int(i_seg), int(n_seg), float(t_seg), [float(BcX), float(BcY), float(BcZ)]
-
-
-def encode_spacket_fromvals(i_seg: int, n_seg: int, t_seg: float, Bc_seg: [float]):  # Q Compatible
+def encode_spacket_fromvals(
+    i_seg: int,
+    n_seg: int,
+    t_seg: float,
+    Bx_seg: float,
+    By_seg: float,
+    Bz_seg: float):  # Q Compatible
     """ Encodes an s_packet, which has the following anatomy:
     s (1 B)    segment number (32 B)    number of segments (32 B)
         segment_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
@@ -279,12 +285,10 @@ def encode_spacket_fromvals(i_seg: int, n_seg: int, t_seg: float, Bc_seg: [float
         str(i_seg)[:16],
         str(n_seg)[:16],
         str(t_seg)[:16],
-        str(Bc_seg[0])[:16],
-        str(Bc_seg[1])[:16],
-        str(Bc_seg[2])[:16],
+        str(Bx_seg)[:16],
+        str(By_seg)[:16],
+        str(Bz_seg)[:16],
         _pad*123).encode()
-
-
 
 
 def decode_spacket_tovals(s_packet):  # Q Compatible (no changes)
@@ -301,9 +305,7 @@ def decode_spacket_tovals(s_packet):  # Q Compatible (no changes)
         int(s_decoded[1:33]),
         int(s_decoded[33:65]),
         float(s_decoded[65:85]),
-        [
-            float(s_decoded[85:101]),
-            float(s_decoded[101:117]),
-            float(s_decoded[117:133])
-        ]
+        float(s_decoded[85:101]),
+        float(s_decoded[101:117]),
+        float(s_decoded[117:133])
     ]
