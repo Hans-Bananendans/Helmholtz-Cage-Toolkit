@@ -81,7 +81,7 @@ class ConnectionWindow(QWidget):
         self.socket = QTcpSocket(self)
         self.socket.connected.connect(self.on_connected)
         self.socket.disconnected.connect(self.on_disconnected)
-        self.socket.readyRead.connect(self.read_socket)
+        self.socket.readyRead.connect(self.on_read_socket)
         # self.socket.errorOccurred.connect(self.display_error)
 
         layout0 = QGridLayout()
@@ -172,9 +172,9 @@ class ConnectionWindow(QWidget):
 
             self.datapool.status_bar.showMessage("Disconnected")
 
-    # def read_socket(self):
-    #     print("Signal: read_socket()")
-    #     pass
+    def on_read_socket(self):
+        print("Signal: read_socket()")
+        pass
 
     def on_connected(self):
         print("Signal: connected()")

@@ -5,7 +5,7 @@ from timeit import timeit
 
 
 tmult = int(1E6)    # 1E3 / 1E6 / 1E9 for ms / us / ns respectively
-N = int(1E6)        # Generic number of tests
+N = int(1E5)        # Generic number of tests
 
 
 
