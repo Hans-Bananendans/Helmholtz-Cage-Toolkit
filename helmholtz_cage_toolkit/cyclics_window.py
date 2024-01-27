@@ -299,7 +299,7 @@ class CyclicsInput(QGroupBox):
                         val.setAlignment(elements["alignment"])
 
 
-    @Slot()
+    # @Slot()
     def generate(self):
         # 1. Autoslurp values
         # 2. Assemble generation_parameters
@@ -876,7 +876,7 @@ class PlayerControls(QGroupBox):
         for button in buttons_group:
             button.setChecked(False)
 
-    @Slot()
+    # @Slot()
     def toggle_play(self):
         button = self.button_play
         # print(f"toggle_play() -> checked: {button.isChecked()}")
@@ -893,7 +893,7 @@ class PlayerControls(QGroupBox):
             self.scheduleplayer.stop()
             self.label_update_timer.stop()
 
-    @Slot()
+    # @Slot()
     def toggle_reset(self):
         # print("DO RESET")
         self.scheduleplayer.reset()
@@ -902,7 +902,7 @@ class PlayerControls(QGroupBox):
         # print(f"set_mult({mult})")
         self.scheduleplayer.set_march_mult(mult)
 
-    @Slot()
+    # @Slot()
     def toggle_mult10(self):
         # print(f"toggle_mult10() -> checked: {self.button_mult10.isChecked()}")
         if self.button_mult10.isChecked():
@@ -912,7 +912,7 @@ class PlayerControls(QGroupBox):
         else:
             self.set_mult(mult=1)
 
-    @Slot()
+    # @Slot()
     def toggle_mult100(self):
         # print(f"toggle_mult100() -> checked: {self.button_mult100.isChecked()}")
         if self.button_mult100.isChecked():
@@ -922,7 +922,7 @@ class PlayerControls(QGroupBox):
         else:
             self.set_mult(mult=1)
 
-    @Slot()
+    # @Slot()
     def toggle_mult1000(self):
         # print(f"toggle_mult1000() -> checked: {self.button_mult1000.isChecked()}")
         if self.button_mult1000.isChecked():
@@ -932,7 +932,7 @@ class PlayerControls(QGroupBox):
         else:
             self.set_mult(mult=1)
 
-    @Slot()
+    # @Slot()
     def update_labels(self, force_refresh=False):
         """ Updates the time and step label.
 

@@ -86,7 +86,7 @@ class ConnectionWindow(QWidget):
         # QDataStream instance should suffice.
         self.datastream = QDataStream(self.socket)
 
-    @Slot()
+    # @Slot()
     def connect_socket(self, timeout=3000):
         self.socket.connectToHost(self.server_address, self.server_port)
 
@@ -105,7 +105,7 @@ class ConnectionWindow(QWidget):
                 print("connect_socket(): socket closed manually")
                 self.socket.close()
 
-    @Slot()
+    # @Slot()
     def disconnect_socket(self, timeout=3000):
         self.socket.disconnectFromHost()
 
@@ -121,12 +121,12 @@ class ConnectionWindow(QWidget):
 
             self.datapool.status_bar.showMessage("Disconnected")
 
-    @Slot()
+    # @Slot()
     def on_read_socket(self):
         print("Signal: read_socket()")
         pass
 
-    @Slot()
+    # @Slot()
     def on_connected(self):
         print("Signal: connected()")
         for widget in self.widgets_to_enable:
@@ -134,7 +134,7 @@ class ConnectionWindow(QWidget):
         self.timer_get_bm.start(self.timer_get_bm_ms)
         self.timer_ping.start(self.timer_ping_ms)
 
-    @Slot()
+    # @Slot()
     def on_disconnected(self):
         print("Signal: disconnected()")
         self.timer_get_bm.stop()
@@ -160,7 +160,7 @@ class ConnectionWindow(QWidget):
     #     # return e_packet_decoded[1:e_packet_decoded.find('#')]
     #     return e_packet_parsed
 
-    @Slot()
+    # @Slot()
     def do_ping(self):
         t0 = time()
         socket_stream = QDataStream(self.socket)
@@ -223,7 +223,7 @@ class ConnectionWindow(QWidget):
     #     print(f"r_time: {bx}, {by}, {bz}] \u03bcT")
     #
     #     self.label_get_bm.setText(f"Bm2 = [{bx}, {by}, {bz}] \u03bcT  ({int(tt*1E6)} \u03bcs)")
-    @Slot()
+    # @Slot()
     def do_get_Bm(self):
         t0 = time()
 

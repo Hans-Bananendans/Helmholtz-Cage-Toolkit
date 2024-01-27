@@ -22,15 +22,15 @@ class SchedulePlayer:
         self.timer = QTimer()
         self.timer.timeout.connect(self.march)
 
-    @Slot()
+    # @Slot()
     def start(self):
         self.timer.start(self.march_interval)
 
-    @Slot()
+    # @Slot()
     def stop(self):
         self.timer.stop()
 
-    @Slot()
+    # @Slot()
     def reset(self):
         self.step = 0
         self.t = 0.0
@@ -40,7 +40,7 @@ class SchedulePlayer:
     def set_march_mult(self, march_mult):
         self.march_mult = march_mult
 
-    @Slot()
+    # @Slot()
     def march(self):
         """ Marches using self.timer
 

@@ -60,16 +60,16 @@ class MainWindow(QMainWindow):
         self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, tabbar)
         self.datapool.tab_bar = tabbar                  # Reference to datapool
 
-    @Slot()
+    # @Slot()
     def load(self):
         load_file(self.datapool)
         self.datapool.refresh()
 
-    @Slot()
+    # @Slot()
     def save(self):
         save_file(self.datapool)
 
-    @Slot()
+    # @Slot()
     def newfile(self):
         out = NewFileDialog().run()
         if out == 1:
@@ -233,7 +233,7 @@ class MainWindow(QMainWindow):
 
         return tabbar
 
-    @Slot()
+    # @Slot()
     def change_tab(self) -> None:
         """
         Allows navigation of the various "tabs" of the CentralWidget, which
