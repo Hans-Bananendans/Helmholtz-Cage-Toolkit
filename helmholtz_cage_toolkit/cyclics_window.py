@@ -837,6 +837,7 @@ class PlayerControls(QGroupBox):
         stylesheet_time_step_label = """
             QLabel {
                 background-color: #0a0a0a;
+                color: #ffffff;
                 font-family: mono;
                 font-size: 20px;
             }
