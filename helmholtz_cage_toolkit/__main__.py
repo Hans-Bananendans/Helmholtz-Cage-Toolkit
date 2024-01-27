@@ -12,12 +12,13 @@ in PySide6.
 # Imports
 import sys
 
-from helmholtz_cage_toolkit import *
 
-from PyQt5.QtWidgets import QApplication
-# from PySide6.QtWidgets import QApplication
+# from PyQt5.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 from qt_material import apply_stylesheet
 
+
+from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.main_window import MainWindow
 from helmholtz_cage_toolkit.config import config
 

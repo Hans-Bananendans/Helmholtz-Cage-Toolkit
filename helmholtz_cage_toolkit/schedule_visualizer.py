@@ -377,12 +377,15 @@ class SchedulePlayer:
         self.timer = QTimer()
         self.timer.timeout.connect(self.march)
 
+    @Slot
     def start(self):
         self.timer.start(self.march_interval)
 
+    @Slot
     def stop(self):
         self.timer.stop()
 
+    @Slot
     def reset(self):
         self.step = 0
         self.t = 0.0
@@ -392,6 +395,7 @@ class SchedulePlayer:
     def set_march_mult(self, march_mult):
         self.march_mult = march_mult
 
+    @Slot
     def march(self):
         """ Marches using self.timer
 
@@ -605,6 +609,7 @@ class PlayerControls(QGroupBox):
         for button in buttons_group:
             button.setChecked(False)
 
+    @Slot
     def toggle_play(self):
         button = self.button_play
         # print(f"toggle_play() -> checked: {button.isChecked()}")
@@ -621,15 +626,17 @@ class PlayerControls(QGroupBox):
             self.scheduleplayer.stop()
             self.label_update_timer.stop()
 
+    @Slot
     def toggle_reset(self):
         # print("DO RESET")
         self.scheduleplayer.reset()
 
-
+    @Slot
     def set_mult(self, mult):
         # print(f"set_mult({mult})")
         self.scheduleplayer.set_march_mult(mult)
 
+    @Slot
     def toggle_mult10(self):
         # print(f"toggle_mult10() -> checked: {self.button_mult10.isChecked()}")
         if self.button_mult10.isChecked():
@@ -639,7 +646,7 @@ class PlayerControls(QGroupBox):
         else:
             self.set_mult(mult=1)
 
-
+    @Slot
     def toggle_mult100(self):
         # print(f"toggle_mult100() -> checked: {self.button_mult100.isChecked()}")
         if self.button_mult100.isChecked():
@@ -649,7 +656,7 @@ class PlayerControls(QGroupBox):
         else:
             self.set_mult(mult=1)
 
-
+    @Slot
     def toggle_mult1000(self):
         # print(f"toggle_mult1000() -> checked: {self.button_mult1000.isChecked()}")
         if self.button_mult1000.isChecked():
@@ -659,6 +666,7 @@ class PlayerControls(QGroupBox):
         else:
             self.set_mult(mult=1)
 
+    @Slot
     def update_labels(self):
         """ Updates the time and step label.
 

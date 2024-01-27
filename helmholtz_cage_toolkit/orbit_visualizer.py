@@ -824,7 +824,7 @@ class OrbitVisualizer(GLViewWidget):
         vector.setDepthValue(0)
         return vector
 
-
+    @Slot()
     def satellite_update(self):
 
         xyz_sat = self.points[self.data.i_satpos]

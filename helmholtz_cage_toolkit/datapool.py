@@ -112,6 +112,7 @@ class DataPool:
     def get_schedule_steps(self):
         return len(self.schedule[0])
 
+    @Slot()
     def dump_datapool(self):
         print("\n ==== DATAPOOL DUMP ==== ")
         members = vars(self)
@@ -119,6 +120,7 @@ class DataPool:
             if key not in ("config",):
                 print(key, "=", members[key])
 
+    @Slot()
     def dump_config(self):
         print("\n ==== CONFIG DUMP ==== ")
         for key, val in self.config.items():

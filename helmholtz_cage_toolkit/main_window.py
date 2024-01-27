@@ -1,6 +1,7 @@
 from time import time
 
-from PyQt5 import Qt
+# from PyQt5 import Qt
+from PySide6 import Qt
 
 import pyqtgraph as pg
 import numpy as np
@@ -59,13 +60,16 @@ class MainWindow(QMainWindow):
         self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, tabbar)
         self.datapool.tab_bar = tabbar                  # Reference to datapool
 
+    @Slot()
     def load(self):
         load_file(self.datapool)
         self.datapool.refresh()
 
+    @Slot()
     def save(self):
         save_file(self.datapool)
 
+    @Slot()
     def newfile(self):
         out = NewFileDialog().run()
         if out == 1:
@@ -229,6 +233,7 @@ class MainWindow(QMainWindow):
 
         return tabbar
 
+    @Slot()
     def change_tab(self) -> None:
         """
         Allows navigation of the various "tabs" of the CentralWidget, which

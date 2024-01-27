@@ -1,8 +1,8 @@
-from PyQt5.QtCore import (
-    QTimer,
-)
+# from PyQt5.QtCore import (
+#     QTimer,
+# )
 
-# from helmholtz_cage_toolkit import *
+from helmholtz_cage_toolkit import *
 
 class SchedulePlayer:
     def __init__(self, datapool, march_interval=10, maxskips=10):
@@ -22,12 +22,15 @@ class SchedulePlayer:
         self.timer = QTimer()
         self.timer.timeout.connect(self.march)
 
+    @Slot()
     def start(self):
         self.timer.start(self.march_interval)
 
+    @Slot()
     def stop(self):
         self.timer.stop()
 
+    @Slot()
     def reset(self):
         self.step = 0
         self.t = 0.0
@@ -37,6 +40,7 @@ class SchedulePlayer:
     def set_march_mult(self, march_mult):
         self.march_mult = march_mult
 
+    @Slot()
     def march(self):
         """ Marches using self.timer
 

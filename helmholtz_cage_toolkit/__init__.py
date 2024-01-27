@@ -32,18 +32,21 @@ abs(12)
 import pyqtgraph as pg
 
 # ==== QT IMPORTS ====
-from PyQt5.QtCore import (
+from PySide6.QtCore import (
     QDataStream,
     QDir,
     QLineF,
     QRectF,
     QRunnable,
+    Signal,
+    Slot,
     QSize,
     Qt,
     QThreadPool,
     QTimer,
 )
-from PyQt5.QtGui import (
+from PySide6.QtGui import (
+    QAction,
     QColor,
     QFont,
     QIcon,
@@ -54,14 +57,12 @@ from PyQt5.QtGui import (
     QPainter,
     QTextFormat,
 )
-from PyQt5.QtNetwork import (
+from PySide6.QtNetwork import (
     QAbstractSocket,
     QHostAddress,
     QTcpSocket,
 )
-from PyQt5.QtWidgets import (
-    QAction,
-    QActionGroup,
+from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
     QDialog,
@@ -92,3 +93,64 @@ from PyQt5.QtWidgets import (
 )
 
 
+# # ==== QT IMPORTS ====
+# from PyQt5.QtCore import (
+#     QDataStream,
+#     QDir,
+#     QLineF,
+#     QRectF,
+#     QRunnable,
+#     QSize,
+#     Qt,
+#     QThreadPool,
+#     QTimer,
+# )
+# from PyQt5.QtGui import (
+#     QColor,
+#     QFont,
+#     QIcon,
+#     QImage,
+#     QKeySequence,
+#     QPixmap,
+#     QPalette,
+#     QPainter,
+#     QTextFormat,
+# )
+# from PyQt5.QtNetwork import (
+#     QAbstractSocket,
+#     QHostAddress,
+#     QTcpSocket,
+# )
+# from PyQt5.QtWidgets import (
+#     QAction,
+#     QActionGroup,
+#     QApplication,
+#     QComboBox,
+#     QDialog,
+#     QFileDialog,
+#     QGraphicsLineItem,
+#     QGraphicsRectItem,
+#     QGraphicsView,
+#     QGridLayout,
+#     QGroupBox,
+#     QHBoxLayout,
+#     QLabel,
+#     QLCDNumber,
+#     QLineEdit,
+#     QMainWindow,
+#     QMenuBar,
+#     QMessageBox,
+#     QPushButton,
+#     QSizePolicy,
+#     QSpinBox,
+#     QSplitter,
+#     QStackedWidget,
+#     QStatusBar,
+#     QTextEdit,
+#     QToolBar,
+#     QToolButton,
+#     QVBoxLayout,
+#     QWidget,
+# )
+#
+#

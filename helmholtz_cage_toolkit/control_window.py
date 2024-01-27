@@ -144,7 +144,7 @@ class GroupControlInput(QGroupBox):
             self.ilabel[i].setText(str(round(self.data.I_c[i], 3)))
             self.vlabel[i].setText(str(round(self.data.V_cc[i], 3)))
 
-    # @Slot()
+    @Slot()
     def submit(self):
         axis = ("X", "Y", "Z")
         for i in range(3):
@@ -159,7 +159,8 @@ class GroupControlInput(QGroupBox):
         self.data.supplies[0].set_current_out(self.data.I_c[0])
 
         self.redraw_values()
-    
+
+    @Slot()
     def panic_reset(self):
         axis = ("X", "Y", "Z")
         for i in range(3):
@@ -288,12 +289,11 @@ class GroupControlScheduler(QGroupBox):
     #     worker = Worker()
     #     self.threadpool.start(worker)
 
-    # @Slot()
+
     def update_current_time(self):
         self.current_time += 1
         self.update_playdisplay()
 
-    # @Slot()
     def update_current_step(self):
         self.current_step += 1
         self.update_playdisplay()
@@ -351,7 +351,7 @@ class GroupControlScheduler(QGroupBox):
 
         return parsedline
 
-    # @Slot()  # TODO: REMOVE
+    @Slot()  # TODO: REMOVE
     def testfunc1(self):
         scheduleinfo = ""
         scheduleinfo += "<span style=font-family:'Courier'; font-size:11pt; font-weight:600;>"
@@ -369,7 +369,7 @@ class GroupControlScheduler(QGroupBox):
         # print(scheduleinfo)
         self.scheduleview.setPlainText(scheduleinfo)
 
-    # @Slot()  # TODO: REMOVE
+    @Slot()  # TODO: REMOVE
     def testfunc2(self):
         scheduleinfo = ""
         scheduleinfo += self.scheduleview_parseheader() + "\n"
@@ -382,7 +382,7 @@ class GroupControlScheduler(QGroupBox):
         # print(scheduleinfo)
         self.scheduleview.setPlainText(scheduleinfo)
 
-    # @Slot()  # TODO: REMOVE
+    @Slot()  # TODO: REMOVE
     def update_scheduleview_html(self):
 
         # DEBUG
@@ -407,7 +407,7 @@ class GroupControlScheduler(QGroupBox):
         # print(scheduleinfo)
         self.scheduleview.setHtml(scheduleinfo)
 
-    # @Slot()
+    @Slot()
     def update_scheduleview(self):
         scheduleinfo = ""
         scheduleinfo += self.scheduleview_parseheader() + "\n"
@@ -420,7 +420,7 @@ class GroupControlScheduler(QGroupBox):
         # print(scheduleinfo)
         self.scheduleview.setPlainText(scheduleinfo)
 
-    # @Slot()
+    @Slot()
     def update_playdisplay(self):
 
         if self.entry_current:
@@ -433,7 +433,7 @@ class GroupControlScheduler(QGroupBox):
             + (str(self.current_step) + "/" + str(self.total_steps)).rjust(10)
         )
 
-    # @Slot()
+    @Slot()
     def load_schedule(self):
         filepath_dialog = QFileDialog.getOpenFileName(
             self,
@@ -584,6 +584,7 @@ class GroupFieldReadout(QGroupBox):
                 bx, by, bz = self.data.B_m
                 lcd.display(round((bx**2 + by**2 + bz**2)**(1/2), 3))
 
+    @Slot()
     def advance_clock(self):
         self.clock += 1
         self.widget_clock.setText(str(self.clock))
@@ -592,7 +593,7 @@ class GroupFieldReadout(QGroupBox):
         self.count += 1
         self.widget_counter.setText(str(self.count))
 
-    # @Slot()
+    @Slot()
     def b_read(self):
         if self.data.config["use_dummies"]:
             self.data.B_m = self.data.B_m
@@ -774,6 +775,7 @@ class Group2dPlot(QGroupBox):
         # yt = y * self.hhcplot.plot.getViewBox().mapSceneToView(QPoint(y, self.hhcplot.plot.height())).y()
         # print(xt, yt)
 
+    @Slot()
     def update_bvector(self):
         bx, by, bz = self.data.B_m
         xy = array([bx, by])
