@@ -11,6 +11,9 @@ in PySide6.
 
 # Imports
 import sys
+
+from helmholtz_cage_toolkit import *
+
 from PyQt5.QtWidgets import QApplication
 # from PySide6.QtWidgets import QApplication
 from qt_material import apply_stylesheet
@@ -18,7 +21,10 @@ from qt_material import apply_stylesheet
 from helmholtz_cage_toolkit.main_window import MainWindow
 from helmholtz_cage_toolkit.config import config
 
+
+
 if __name__ == "__main__":
+
     app = QApplication(sys.argv)
     if config["enable_skin"]:
         apply_stylesheet(app, theme="dark_teal.xml")

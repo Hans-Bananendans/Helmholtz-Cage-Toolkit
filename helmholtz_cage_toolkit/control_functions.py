@@ -1,9 +1,9 @@
 # Scans through all ADC channels and prints their output
 
-# Imports
 
 import numpy as np
 
+from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.config import config
 
 if config["use_dummies"]:

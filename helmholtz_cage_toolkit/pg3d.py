@@ -1,15 +1,6 @@
-# import numpy as np
-from numpy import (
-    pi,
-    array, ndarray,
-    sin, cos, arccos,
-    dot, zeros, eye
-)
-
-from time import time
-
-import pyqtgraph as pg
 import pyqtgraph.opengl as gl
+
+from helmholtz_cage_toolkit import *
 
 
 # ==== HEX to RGB functions
@@ -459,6 +450,5 @@ def uv3d(vector: ndarray):
     Seems more than twice as efficient as vector/np.linalg.norm()
     """
     return vector / (vector[0]**2+vector[1]**2+vector[2]**2)**(1/2)
-
 
 # print(R_ECEF_ECI(pi/4)@array([1,0,0]))  # TODO REMOVE

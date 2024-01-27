@@ -1,5 +1,3 @@
-import numpy as np
-
 
 class InterfaceBoard:
     def __init__(self, config):

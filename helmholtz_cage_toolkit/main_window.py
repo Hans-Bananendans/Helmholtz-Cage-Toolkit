@@ -1,42 +1,11 @@
-# Todo: Improve importing
+from time import time
 
-from PyQt5.QtCore import QDir, QSize, Qt
-from PyQt5.QtGui import (
-    QFont,
-    QIcon,
-    QImage,
-    QKeySequence,
-    QPixmap,
-    QPalette,
-    QColor,
-)
-from PyQt5.QtWidgets import (
-    QAction,
-    QActionGroup,
-    QGraphicsView,
-    QGroupBox,
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QLCDNumber,
-    QLineEdit,
-    QMainWindow,
-    QMenuBar,
-    QPushButton,
-    QSizePolicy,
-    QSpinBox,
-    QStackedWidget,
-    QStatusBar,
-    QToolBar,
-    QToolButton,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt5 import Qt
 
 import pyqtgraph as pg
 import numpy as np
-from time import time
 
+from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.control_window import ControlWindow
 from helmholtz_cage_toolkit.orbit_design_window import OrbitDesignWindow
 from helmholtz_cage_toolkit.cyclics_window import CyclicsWindow

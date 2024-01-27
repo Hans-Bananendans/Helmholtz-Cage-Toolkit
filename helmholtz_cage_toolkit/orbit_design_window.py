@@ -1,48 +1,4 @@
-from PyQt5.QtCore import QDir, QSize, Qt, QRunnable, QThreadPool, QTimer, QRectF, QLineF
-from PyQt5.QtGui import (
-    # QAction,
-    # QActionGroup,
-    QFont,
-    QIcon,
-    QImage,
-    QKeySequence,
-    QPixmap,
-    QPalette,
-    QColor,
-)
-from PyQt5.QtWidgets import (
-    QAction,
-    QActionGroup,
-    QFileDialog,
-    QGraphicsView,
-    QGraphicsLineItem,
-    QGraphicsRectItem,
-    QGroupBox,
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QLCDNumber,
-    QLineEdit,
-    QMainWindow,
-    QMenuBar,
-    QPushButton,
-    QSizePolicy,
-    QSpinBox,
-    QSplitter,
-    QStackedWidget,
-    QStatusBar,
-    QTextEdit,
-    QToolBar,
-    QToolButton,
-    QVBoxLayout,
-    QWidget,
-)
-
-import os
-import time
-import pyqtgraph as pg
-import numpy as np
-
+from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.datapool import DataPool
 from helmholtz_cage_toolkit.orbit_visualizer import OrbitVisualizer
 

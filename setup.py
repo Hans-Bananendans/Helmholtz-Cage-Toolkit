@@ -14,6 +14,7 @@ setup(
         "pyadi-iio",
         "pyIGRF",
         "PyQt5",
+        # "PySide6",
         "pyqtgraph",
         "qt_material",
         "scipy",

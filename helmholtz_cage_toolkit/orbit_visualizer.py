@@ -1,14 +1,5 @@
-import numpy as np
-from numpy import (
-    pi,
-    array, ndarray,
-    sin, cos, arccos,
-    dot, zeros, eye, linspace, vstack
-)
-
 # import matplotlib.pyplot as plt
 from time import time
-from PyQt5 import QtCore
 from scipy.special import jv
 from pyIGRF import igrf_value
 
@@ -21,6 +12,8 @@ from pyqtgraph.opengl import (
     GLViewWidget,
     MeshData,
 )
+
+from helmholtz_cage_toolkit import *
 
 from helmholtz_cage_toolkit.pg3d import (
     RX, RY, RZ, R,
@@ -36,6 +29,7 @@ from helmholtz_cage_toolkit.pg3d import (
 )
 
 from helmholtz_cage_toolkit.orbit import Orbit, Earth
+from helmholtz_cage_toolkit.utilities import cross3d
 
 # Goal: define and describe an orbit fully from its six orbital elements:
 # - Generalized OrbitVisualizer class that can:
@@ -328,13 +322,13 @@ class OrbitVisualizer(GLViewWidget):
         self.dth_E = Earth().axial_rate*self.dt
         self.year = 2020.
 
-        self.Rta_ECI_SI = np.empty((self.data.orbit_subs, 3, 3))
+        self.Rta_ECI_SI = empty((self.data.orbit_subs, 3, 3))
 
         for i in range(self.data.orbit_subs):
             self.Rta_ECI_SI[i, :, :] = vstack([
                 uv3d(self.v_xyz[i]),
                 self.huv,
-                np.cross(uv3d(self.v_xyz[i]), self.huv)])
+                cross3d(uv3d(self.v_xyz[i]), self.huv)])
 
         self.ps = self.data.config["ov_plotscale"]  # Plot scale
         self.c = self.data.config["ov_plotcolours"]
@@ -505,7 +499,7 @@ class OrbitVisualizer(GLViewWidget):
         # [self.addItem(comp) for comp in self.tripod_NED_components]
 
         # Timer
-        self.timer = QtCore.QTimer()
+        self.timer = QTimer()
         self.timer.timeout.connect(self.satellite_update)
         # self.timer.start(50)  # TODO
 
@@ -562,7 +556,7 @@ class OrbitVisualizer(GLViewWidget):
         ec = self.data.config["ov_earth_model_colours"]
 
         # Pre-allocate empty array for storing colour data for each mesh triangle
-        colours = np.ones((mesh.faceCount(), 4), dtype=float)
+        colours = ones((mesh.faceCount(), 4), dtype=float)
 
         # Add ocean base layer
         colours[:, 0:3] = hex2rgb(ec["ocean"])
@@ -586,9 +580,9 @@ class OrbitVisualizer(GLViewWidget):
                 p_land += 0.2
 
             # Flip a coin to determine land
-            if np.random.random() <= p_land:
+            if random() <= p_land:
                 i_land.append(i_f)
-                if tropic_line[0] <= i_f <= tropic_line[1] and np.random.random() >= 0.5:
+                if tropic_line[0] <= i_f <= tropic_line[1] and random() >= 0.5:
                     colours[i_f, 0:3] = hex2rgb(ec["green2"])
                 else:
                     colours[i_f, 0:3] = hex2rgb(ec["green1"])
@@ -601,7 +595,7 @@ class OrbitVisualizer(GLViewWidget):
             if i_f-sr[0] in i_land or i_f+sr[0] in i_land:
                 p_cloud += 0.3
 
-            if np.random.random() <= p_cloud:
+            if random() <= p_cloud:
                 i_cloud.append(i_f)
                 colours[i_f, 0:3] = hex2rgb(ec["cloud"])
 
@@ -818,12 +812,12 @@ class OrbitVisualizer(GLViewWidget):
         point = self.points[self.data.i_satpos]
 
         rlonglat = conv_ECEF_geoc(point)
-        xcalc = rlonglat[0] * np.cos(rlonglat[1]) * np.sin(np.pi / 2 - rlonglat[2])
-        ycalc = rlonglat[0] * np.sin(rlonglat[1]) * np.sin(np.pi / 2 - rlonglat[2])
-        zcalc = rlonglat[0] * np.cos(np.pi / 2 - rlonglat[2])
+        xcalc = rlonglat[0] * cos(rlonglat[1]) * sin(pi / 2 - rlonglat[2])
+        ycalc = rlonglat[0] * sin(rlonglat[1]) * sin(pi / 2 - rlonglat[2])
+        zcalc = rlonglat[0] * cos(pi / 2 - rlonglat[2])
 
         vector = GLLinePlotItem(
-            pos=[np.array([0, 0, 0]), np.array([xcalc, ycalc, zcalc])],
+            pos=[array([0, 0, 0]), array([xcalc, ycalc, zcalc])],
             color=(1.0, 1.0, 0, 0.8),
             antialias=self.data.config["ov_use_antialiasing"],
             width=1)

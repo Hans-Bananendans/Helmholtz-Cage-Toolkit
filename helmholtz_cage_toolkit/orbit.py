@@ -1,14 +1,8 @@
-import numpy as np
-from numpy import (
-    pi,
-    array, ndarray,
-    sin, cos, arccos, arctan,
-    dot, zeros, eye, linspace, column_stack, empty
-)
-
 from time import time
+
 from scipy.special import jv
 
+from helmholtz_cage_toolkit import *
 
 class Orbit:
     def __init__(self, body, h_r, e, i, raan, argp, ta):
@@ -123,7 +117,7 @@ class Orbit:
         vabs = (self.body.gm*(2/(xyzf[:, 0]**2+xyzf[:, 1]**2)**0.5 - 1/self.a))**0.5
 
         # Calculate vectorial velocities (flat)
-        v_xyzf = np.empty((len(true_anomaly), 3))
+        v_xyzf = empty((len(true_anomaly), 3))
         for i in range(len(true_anomaly)):
             tg = true_anomaly[i] - gamma[i]
             v_xyzf[i, 0:2] = vabs[i]*array([[cos(tg), -sin(tg)], [sin(tg), cos(tg)]])@array([0., 1.])
@@ -142,7 +136,7 @@ class Orbit:
 
         # Angular momentum unit vector (is constant in both magnitude and
         # direction for unperturbed orbits with e>1)
-        H_unit_vector = dot(T, np.array([0, 0, 1]))
+        H_unit_vector = dot(T, array([0, 0, 1]))
 
         print(f"[DEBUG] draw() time: {round((time()-t0)*1E6, 1)} us")
 

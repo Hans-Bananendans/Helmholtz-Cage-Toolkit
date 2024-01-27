@@ -1,78 +1,10 @@
-import numpy as np
-from numpy import (
-    pi,
-    array, ndarray,
-    sin, cos, arccos,
-    dot, zeros, ones, eye, linspace, vstack, column_stack,
-    empty, repeat,
-)
 import os
 import threading
-import matplotlib.pyplot as plt
+from ast import literal_eval
 from time import time, sleep
 
-import pyqtgraph as pg
-
-from ast import literal_eval
-from PyQt5 import QtCore
-from PyQt5.QtCore import (
-    QDir,
-    QSize,
-    Qt,
-    QRunnable,
-    QThreadPool,
-    QTimer,
-    QRectF,
-    QLineF,
-)
-
-from PyQt5.QtGui import (
-    # QAction,
-    # QActionGroup,
-    QFont,
-    QIcon,
-    QImage,
-    QKeySequence,
-    QPixmap,
-    QPalette,
-    QColor,
-    QPainter,
-)
-from PyQt5.QtWidgets import (
-    QAbstractButton,
-    QAction,
-    QActionGroup,
-    QDialog,
-    QFileDialog,
-    QGraphicsView,
-    QGraphicsLineItem,
-    QGraphicsRectItem,
-    QGroupBox,
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QLCDNumber,
-    QLineEdit,
-    QMainWindow,
-    QMenuBar,
-    QMessageBox,
-    QPushButton,
-    QSizePolicy,
-    QSpinBox,
-    QSplitter,
-    QStackedWidget,
-    QStatusBar,
-    QTextEdit,
-    QToolBar,
-    QToolButton,
-    QVBoxLayout,
-    QWidget,
-)
-
+from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.config import config
-
-# TODO: Generalize imports!
-
 
 
 def read_bsch_file(filename):

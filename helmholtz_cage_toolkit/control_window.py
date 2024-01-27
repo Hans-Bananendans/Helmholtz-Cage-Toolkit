@@ -1,47 +1,9 @@
-from PyQt5.QtCore import QDir, QSize, Qt, QRunnable, QThreadPool, QTimer, QRectF, QLineF
-from PyQt5.QtGui import (
-    # QAction,
-    # QActionGroup,
-    QFont,
-    QIcon,
-    QImage,
-    QKeySequence,
-    QPixmap,
-    QPalette,
-    QColor,
-)
-from PyQt5.QtWidgets import (
-    QAction,
-    QActionGroup,
-    QFileDialog,
-    QGraphicsView,
-    QGraphicsLineItem,
-    QGraphicsRectItem,
-    QGroupBox,
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QLCDNumber,
-    QLineEdit,
-    QMainWindow,
-    QMenuBar,
-    QPushButton,
-    QSizePolicy,
-    QSpinBox,
-    QSplitter,
-    QStackedWidget,
-    QStatusBar,
-    QTextEdit,
-    QToolBar,
-    QToolButton,
-    QVBoxLayout,
-    QWidget,
-)
-# from dummy_functions import (
-#     # TF_B_Ic,
-#     # TF_Ic_Vc,
-#     # b_read,
-# )
+import os
+import time
+
+import numpy as np  # Keep in here to prevent np.abs clashing with standard abs
+
+from helmholtz_cage_toolkit import *
 
 from helmholtz_cage_toolkit.control_functions import (
     setup_interface_board,
@@ -49,13 +11,13 @@ from helmholtz_cage_toolkit.control_functions import (
     setup_magnetometer,
     # adc_read,
 )
-
 from helmholtz_cage_toolkit.datapool import DataPool
 
-import os
-import time
-import pyqtgraph as pg
-import numpy as np
+# from dummy_functions import (
+#     # TF_B_Ic,
+#     # TF_Ic_Vc,
+#     # b_read,
+# )
 
 
 class ControlWindow(QWidget):
@@ -512,7 +474,7 @@ class GroupControlScheduler(QGroupBox):
     @staticmethod
     def parse_schedule(unparsed_schedule):
         # Pre-allocate ndarray
-        parsed_schedule = np.zeros((len(unparsed_schedule), 4))
+        parsed_schedule = zeros((len(unparsed_schedule), 4))
 
         for i, line in enumerate(unparsed_schedule):
 
@@ -619,7 +581,8 @@ class GroupFieldReadout(QGroupBox):
             if i < 3:
                 lcd.display(round(self.data.B_m[i], 3))
             elif i == 3:
-                lcd.display(round(np.linalg.norm(self.data.B_m), 3))
+                bx, by, bz = self.data.B_m
+                lcd.display(round((bx**2 + by**2 + bz**2)**(1/2), 3))
 
     def advance_clock(self):
         self.clock += 1
@@ -767,33 +730,33 @@ class Group2dPlot(QGroupBox):
 
     # @Slot()
     def random_move_arrow(self):
-        self.hhcplot_yz.arrow.setStyle(angle=np.random.uniform(0, 360))
-        self.hhcplot_yz.arrow.setPos(np.random.uniform(), np.random.uniform())
+        self.hhcplot_yz.arrow.setStyle(angle=uniform(0, 360))
+        self.hhcplot_yz.arrow.setPos(uniform(), uniform())
 
     # @Slot()
-    def point_vector_random(self):
+    def point_vector_random(self): # TODO DEPRECATED
         # x = -1; y = -1; z = 0
-        x = np.random.uniform(-1, 1)
-        y = np.random.uniform(-1, 1)
-        z = np.random.uniform(-1, 1)
+        x = uniform(-1, 1)
+        y = uniform(-1, 1)
+        z = uniform(-1, 1)
 
-        xy = np.array([x, y])
-        yz = np.array([y, z])
-        b = np.array([1, 0])
+        xy = array([x, y])
+        yz = array([y, z])
+        b = array([1, 0])
 
         if y != 0:
-            sign_y = y/np.abs(y)
+            sign_y = y / np.abs(y)
         else:
             sign_y = 1
-        angle_xy = sign_y * (180/np.pi*(np.arccos(np.dot(xy, b) / (np.linalg.norm(xy) * np.linalg.norm(b)))))
+        angle_xy = sign_y * (180/pi*(arccos(dot(xy, b) / (np.linalg.norm(xy) * np.linalg.norm(b)))))
         abslen_xy = np.linalg.norm(xy)
 
 
         if z != 0:
-            sign_z = z/np.abs(z)
+            sign_z = z / np.abs(z)
         else:
             sign_z = 1
-        angle_yz = sign_z * (180/np.pi*(np.arccos(np.dot(yz, b) / (np.linalg.norm(yz) * np.linalg.norm(b)))))
+        angle_yz = sign_z * (180/pi*(arccos(dot(yz, b) / (np.linalg.norm(yz) * np.linalg.norm(b)))))
         abslen_yz = np.linalg.norm(yz)
 
         self.hhcplot_xy.arrow.setStyle(angle=-angle_xy+180, tailLen=self.hhcplot_xy.arrow_length(abslen_xy))
@@ -813,31 +776,34 @@ class Group2dPlot(QGroupBox):
 
     def update_bvector(self):
         bx, by, bz = self.data.B_m
-        xy = np.array([bx, by])
-        yz = np.array([by, bz])
-        b = np.array([1, 0])
+        xy = array([bx, by])
+        yz = array([by, bz])
+        b = array([1, 0])
 
         if by != 0:
             sign_y = by/np.abs(by)
         else:
             sign_y = 1
-        angle_xy = sign_y * (180/np.pi*(np.arccos(np.dot(xy, b) / (np.linalg.norm(xy) * np.linalg.norm(b)))))
-        abslen_xy = np.linalg.norm(xy) 
-
+        norm_xy = (xy[0]**2 + xy[1]**2)**(1/2)
+        # norm_b = (b[0]**2 + b[1]**2)**(1/2) # Should always be 1, surely!
+        # angle_xy = sign_y * (180/pi*(arccos(dot(xy, b) / (norm_xy * norm_b))))
+        angle_xy = sign_y * (180/pi*(arccos(dot(xy, b) / norm_xy)))
 
         if bz != 0:
             sign_z = bz/np.abs(bz)
         else:
             sign_z = 1
-        angle_yz = sign_z * (180/np.pi*(np.arccos(np.dot(yz, b) / (np.linalg.norm(yz) * np.linalg.norm(b)))))
-        abslen_yz = np.linalg.norm(yz)
+
+        norm_yz = (yz[0]**2 + yz[1]**2)**(1/2)
+        # angle_yz = sign_z * (180/pi*(arccos(dot(yz, b) / (norm_yz * norm_b))))
+        angle_yz = sign_z * (180/pi*(arccos(dot(yz, b) / norm_yz)))
 
         # plot_correction = 100*1.28
 
-        self.hhcplot_xy.arrow.setStyle(angle=-angle_xy+180, tailLen=self.hhcplot_xy.arrow_length(abslen_xy))
+        self.hhcplot_xy.arrow.setStyle(angle=-angle_xy+180, tailLen=self.hhcplot_xy.arrow_length(norm_xy))
         self.hhcplot_xy.arrow.setPos(bx/self.bscale, by/self.bscale)
 
-        self.hhcplot_yz.arrow.setStyle(angle=-angle_yz+180, tailLen=self.hhcplot_yz.arrow_length(abslen_yz))
+        self.hhcplot_yz.arrow.setStyle(angle=-angle_yz+180, tailLen=self.hhcplot_yz.arrow_length(norm_yz))
         self.hhcplot_yz.arrow.setPos(by/self.bscale, bz/self.bscale)
 
 

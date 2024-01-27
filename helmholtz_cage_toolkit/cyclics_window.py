@@ -1,68 +1,7 @@
-from PyQt5 import QtCore
-from PyQt5.QtCore import (
-    QDir,
-    QSize,
-    Qt,
-    QRunnable,
-    QThreadPool,
-    QTimer,
-    QRectF,
-    QLineF,
-)
-
-from PyQt5.QtGui import (
-    # QAction,
-    # QActionGroup,
-    QFont,
-    QIcon,
-    QImage,
-    QKeySequence,
-    QPixmap,
-    QPalette,
-    QColor,
-    QPainter,
-    QTextFormat,
-)
-from PyQt5.QtWidgets import (
-    QAction,
-    QActionGroup,
-    QComboBox,
-    QFileDialog,
-    QGraphicsView,
-    QGraphicsLineItem,
-    QGraphicsRectItem,
-    QGroupBox,
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QLCDNumber,
-    QLineEdit,
-    QMainWindow,
-    QMenuBar,
-    QPushButton,
-    QSizePolicy,
-    QSpinBox,
-    QSplitter,
-    QStackedWidget,
-    QStatusBar,
-    QTextEdit,
-    QToolBar,
-    QToolButton,
-    QVBoxLayout,
-    QWidget,
-)
-
-from numpy import (
-    pi,
-    array, ndarray,
-    sin, cos, arccos,
-    dot, zeros, eye, linspace, vstack, column_stack,
-    empty, repeat,
-)
-
 import os
 from time import time, sleep
-import pyqtgraph as pg
+
+from helmholtz_cage_toolkit import *
 
 from helmholtz_cage_toolkit.schedule_player import SchedulePlayer
 from helmholtz_cage_toolkit.utilities import tB_to_schedule

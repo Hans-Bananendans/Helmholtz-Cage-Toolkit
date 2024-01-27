@@ -1,10 +1,10 @@
 import numpy as np
-from numpy import pi, array, sin, cos, arccos, ndarray, dot, eye
 from time import time
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 
 
+from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.pg3d import (
     RX, RY, RZ, R,
     PGPoint3D, PGVector3D, PGFrame3D,
@@ -54,7 +54,7 @@ def transform(xyz, a, d):
 
     s, c = sin(a), cos(a)
 
-    return np.dot(
+    return dot(
         array([
             [c[1]*c[2], c[1]*s[2], -s[1]],
             [-c[0]*s[2]+s[0]*s[1]*c[2], c[0]*c[2]+s[0]*s[1]*s[2], s[0]*c[1]],
@@ -70,7 +70,7 @@ def transform2(xyz, R, d, cor=array([0, 0, 0])):
     # Unifying function return in a single term (minimal scoped assignment):
     # Result: 13.3 us -> 13.0 us  (-2.2%)
 
-    return np.dot(R, xyz+d)
+    return dot(R, xyz+d)
 
 def rotate(xyz, R, cor=array([0, 0, 0])):
     # Optimizations:
@@ -81,7 +81,7 @@ def rotate(xyz, R, cor=array([0, 0, 0])):
     # Unifying function return in a single term (minimal scoped assignment):
     # Result: 13.3 us -> 13.0 us  (-2.2%)
 
-    return np.dot(R, xyz-cor)+cor
+    return dot(R, xyz-cor)+cor
 
 
 # ==== PyQtGraph 3D plot
@@ -132,7 +132,7 @@ w.addItem(Z1_plotitem)
 p1 = array([1, 1, 1])
 p1_plotitem = plotpoint(PGPoint3D(p1), w, hexcolour="00ff00")
 
-R = np.vstack([X1, Y1, Z1])
+R = vstack([X1, Y1, Z1])
 
 # CYAN point - Transform axis system, where point "rotates" BACKWARDS
 p1_t1 = R@p1

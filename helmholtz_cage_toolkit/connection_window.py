@@ -1,66 +1,13 @@
-from PyQt5.QtCore import (
-    QDataStream,
-    QDir,
-    QLineF,
-    QRectF,
-    QRunnable,
-    QSize,
-    Qt,
-    QThreadPool,
-    QTimer,
-)
-from PyQt5.QtGui import (
-    # QAction,
-    # QActionGroup,
-    QFont,
-    QIcon,
-    QImage,
-    QKeySequence,
-    QPixmap,
-    QPalette,
-    QColor,
-)
-from PyQt5.QtWidgets import (
-    QAction,
-    QActionGroup,
-    QFileDialog,
-    QGraphicsView,
-    QGraphicsLineItem,
-    QGraphicsRectItem,
-    QGroupBox,
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QLCDNumber,
-    QLineEdit,
-    QMainWindow,
-    QMenuBar,
-    QPushButton,
-    QSizePolicy,
-    QSpinBox,
-    QSplitter,
-    QStackedWidget,
-    QStatusBar,
-    QTextEdit,
-    QToolBar,
-    QToolButton,
-    QVBoxLayout,
-    QWidget,
-)
-from PyQt5.QtNetwork import QTcpSocket, QHostAddress, QAbstractSocket
-
 import os
-import time
-import pyqtgraph as pg
-import numpy as np
-import socket
 import sys
+import socket
 from time import sleep, time
 from threading import Thread
 
+from helmholtz_cage_toolkit import *
+from helmholtz_cage_toolkit.config import config
 import helmholtz_cage_toolkit.codec.scc2q as scc
 import helmholtz_cage_toolkit.client_functions
-from helmholtz_cage_toolkit.config import config
 
 
 class ConnectionWindow(QWidget):

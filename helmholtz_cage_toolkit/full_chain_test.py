@@ -1,19 +1,8 @@
-import numpy as np
-from numpy import (
-    pi,
-    array, ndarray,
-    sin, cos, arccos, arctan,
-    dot, zeros, eye, linspace, empty, vstack
-)
-
-import matplotlib.pyplot as plt
 from time import time
-from PyQt5 import QtCore
-from scipy.special import jv
-from pyIGRF.calculate import igrf12syn
 
-import pyqtgraph as pg
-from pyqtgraph.opengl import (
+from pyIGRF.calculate import igrf12syn
+from scipy.special import jv
+from pyqtgraph.opengl import (  # OpenGL extras on top of pyqtgraph import
     GLGridItem,
     GLLinePlotItem,
     GLMeshItem,
@@ -31,9 +20,11 @@ from helmholtz_cage_toolkit.pg3d import (
     sign, wrap, uv3d
 )
 
+from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.orbit import Orbit, Earth
 from helmholtz_cage_toolkit.datapool import DataPool
 from helmholtz_cage_toolkit.config import config
+from helmholtz_cage_toolkit.utilities import cross3d
 
 t0full = time()
 
@@ -133,23 +124,26 @@ dt = T_orbit/n_orbit_subs  # Note: only valid if "orbit_spacing" is set to "isoc
 dth_E = Earth().axial_rate * dt
 
 # 4.4
-t = np.arange(0., n_step*dt, dt)    # [rad] Earth angle from datum
+t = arange(0., n_step*dt, dt)    # [rad] Earth angle from datum
 
 # 4.5
-# gamma_orbit = np.empty(n_orbit_subs)
-# v_xyz_orbit = np.empty((n_orbit_subs, 3))
+# gamma_orbit = empty(n_orbit_subs)
+# v_xyz_orbit = empty((n_orbit_subs, 3))
 #
-Rta_ECI_SI = np.empty((n_orbit_subs, 3, 3))
+Rta_ECI_SI = empty((n_orbit_subs, 3, 3))
 
 
-for i in range(n_orbit_subs):  # TODO: Optimize later (currently 19 ms for 256 items)
+for i in range(n_orbit_subs):
+    # TODO: Optimize later (currently 19 ms for 256 items)
+    #  -> Update 27-01-2024: replaced np.cross() with cross3d -> BENCHMARK AGAIN
+
     # gamma_orbit[i] = arctan((e * sin(ta_orbit[i])) / (1 + e * cos(ta_orbit[i])))
 
     # Pre-calculate R_ECI_SI (precalculate to save on np.cross() calls later)
     Rta_ECI_SI[i, :, :] = vstack([
         uv3d(v_xyz_orbit[i]),
         H_unit_vector,
-        np.cross(uv3d(v_xyz_orbit[i]), H_unit_vector)])
+        cross3d(uv3d(v_xyz_orbit[i]), H_unit_vector)])
 
 
 # 5. Loop over i_step and calculate properties

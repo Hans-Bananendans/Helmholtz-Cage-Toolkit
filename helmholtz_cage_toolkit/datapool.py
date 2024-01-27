@@ -1,6 +1,7 @@
-import numpy as np
-from helmholtz_cage_toolkit.orbit_visualizer import Orbit, Earth
 import os
+
+from helmholtz_cage_toolkit import *
+from helmholtz_cage_toolkit.orbit_visualizer import Orbit, Earth
 # from file_handling import load_file, save_file, NewFileDialog
 
 class DataPool:
@@ -35,14 +36,14 @@ class DataPool:
         # Measurement
         self.adc_pollrate = self.config["adc_pollrate"]
         # TODO: Revert to 0. 0. 0.
-        self.B_m = np.array([0., 1., 0.])   # B measured by magnetometer
+        self.B_m = array([0., 1., 0.])   # B measured by magnetometer
         self.tBm = 0.0                      # Unix acquisition time of latest measurement
 
         # Command
-        self.B_c = np.array([0., 0., 0.])   # Commanded (=desired) magnetic field
-        self.I_c = np.array([0., 0., 0.])   # Voltage for voltage control
-        self.V_cc = np.array([0., 0., 0.])  # Voltage for voltage control
-        self.V_vc = np.array([0., 0., 0.])  # Voltage for voltage control
+        self.B_c = array([0., 0., 0.])   # Commanded (=desired) magnetic field
+        self.I_c = array([0., 0., 0.])   # Voltage for voltage control
+        self.V_cc = array([0., 0., 0.])  # Voltage for voltage control
+        self.V_vc = array([0., 0., 0.])  # Voltage for voltage control
 
         # Schedule
         self.init_schedule()
@@ -61,7 +62,7 @@ class DataPool:
         self.config = config
 
     def init_schedule(self):
-        self.schedule = np.zeros((6, 2))
+        self.schedule = zeros((6, 2))
         self.schedule_name = ""
         self.generator = "none"
         self.generation_parameters_cyclics = {}

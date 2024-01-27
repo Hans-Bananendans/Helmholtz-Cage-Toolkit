@@ -1,70 +1,7 @@
-from PyQt5 import QtCore
-from PyQt5.QtGui import (
-    # QAction,
-    # QActionGroup,
-    QFont,
-    QIcon,
-    QImage,
-    QKeySequence,
-    QPixmap,
-    QPalette,
-    QColor,
-    QPainter,
-)
-from PyQt5.QtWidgets import (
-    QAction,
-    QActionGroup,
-    QFileDialog,
-    QGraphicsView,
-    QGraphicsLineItem,
-    QGraphicsRectItem,
-    QGroupBox,
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QLCDNumber,
-    QLineEdit,
-    QMainWindow,
-    QMenuBar,
-    QPushButton,
-    QSizePolicy,
-    QSpinBox,
-    QSplitter,
-    QStackedWidget,
-    QStatusBar,
-    QTextEdit,
-    QToolBar,
-    QToolButton,
-    QVBoxLayout,
-    QWidget,
-)
-from PyQt5.QtCore import (
-    QDir,
-    QSize,
-    Qt,
-    QRunnable,
-    QThreadPool,
-    QTimer,
-    QRectF,
-    QLineF,
-)
-
-import numpy as np
-from numpy import (
-    pi,
-    array, ndarray,
-    sin, cos, arccos,
-    dot, zeros, eye, linspace, vstack, column_stack,
-    empty, repeat,
-)
-
-import threading
-import matplotlib.pyplot as plt
 from time import time, sleep
-from pyIGRF import igrf_value
-import pyqtgraph as pg
 from ast import literal_eval
 
+from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.config import config
 
 
@@ -126,11 +63,11 @@ class DataPool:
         # Measurement
         self.adc_pollrate = self.config["adc_pollrate"]
         # TODO: Revert to 0. 0. 0.
-        self.B_m = np.array([0., 1., 0.])   # B measured by magnetometer
+        self.B_m = array([0., 1., 0.])   # B measured by magnetometer
         self.tBm = 0.0                      # Unix acquisition time of latest measurement
 
 
-        self.schedule = np.zeros((6, 2))
+        self.schedule = zeros((6, 2))
 
     def get_schedule_duration(self):
         return self.schedule[2][-1]
@@ -911,7 +848,7 @@ n = len(t)
 
 
 
-schedule = [np.linspace(0, n-1, n, dtype=int), np.ones(n), t, B[0], B[1], B[2]]
+schedule = [linspace(0, n-1, n, dtype=int), ones(n), t, B[0], B[1], B[2]]
 
 datapool.schedule = schedule
 
