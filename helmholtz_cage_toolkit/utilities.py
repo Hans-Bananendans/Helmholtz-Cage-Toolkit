@@ -17,6 +17,6 @@ def cross3d(v1, v2):
     """Efficient cross product for 3D vectors to use instead of the much slower
     numpy.cross()
     """
-    return array([V1[1]*V2[2] - V1[2]*V2[1],
-                  V1[2]*V2[0] - V1[0]*V2[2],
-                  V1[0]*V2[1] - V1[1]*V2[0]])
+    return array([v1[1]*v2[2] - v1[2]*v2[1],
+                  v1[2]*v2[0] - v1[0]*v2[2],
+                  v1[0]*v2[1] - v1[1]*v2[0]])
