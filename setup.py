@@ -13,15 +13,11 @@ setup(
         "numpy",
         "pyadi-iio",
         "pyIGRF",
+        "PyOpenGL",
         "PyQt5",
-        # "PySide6",
+        # "PySide6",  # Upgrade with care: qt_material does not like PyQt5 and PySide6 installed at the same time, and the performance drop for plotting seems much worse for PySide6
         "pyqtgraph",
         "qt_material",
         "scipy",
     ],
-#   scripts=[
-#            "folder1/lib1",
-#            "folder1/folderA/libA",
-#            "folder2/lib2",
-#            ]
 )

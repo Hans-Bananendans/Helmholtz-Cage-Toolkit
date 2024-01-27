@@ -227,8 +227,8 @@ def save_file(datapool):
 
     datapool.set_window_title(suffix=filename)
 
-    print(f"File '{filename}' saved succesfully!")
-    print(f"[DEBUG] Saved file in {int((time() - t0) * 1000)} ms")
+    # print(f"File '{filename}' saved succesfully!")
+    print(f"[DEBUG] Saved {filename.split(os.sep)[-1]} in {int((time() - t0) * 1000)} ms")
 
 
 
@@ -261,10 +261,10 @@ def load_file(datapool):
 
     datapool.set_window_title(suffix=filename)
 
-    print(f"[DEBUG] Loaded file in {int((time() - t0) * 1000)} ms")
+    print(f"[DEBUG] Loaded {filename} in {int((time() - t0) * 1000)} ms")
     # print(f": {}")
 
-    # self.timer1.start(int(1000/self.data.config["plotwindow_updaterate"]))
+    # self.timer1.start(int(1000/self.data.config["visualizer_updaterate"]))
     # self.timer1.start(self.march_interval)  # TODO
 
 

@@ -48,9 +48,10 @@ config = {
 
 
     # ==== Plotwindow settings ====
-    "plotwindow_windowsize": (720, 420),
-    "plotwindow_bscale": 100_000,
-    "plotwindow_updaterate": 30,
+    "hhcplot_windowsize": (560, 220),
+    "visualizer_windowsize": (560, 120),
+    "visualizer_bscale": 100_000,
+    "visualizer_updaterate": 30,
 
 
     # ==== LCD box styling ====
@@ -182,6 +183,12 @@ config = {
         "noise_factorZ": 0.0,
     },
 
+    # ==== default_interpolation_parameters ====
+    "default_interpolation_parameters": {
+        "function": "none",
+        "factor": 1,
+    },
+
     # Lookup table for tab bar construction
     # TODO -> Requires use of exec() for .addAction() and .triggered.connect()
     "menu_dict": {
@@ -227,5 +234,39 @@ config = {
     },
 
     "default_tab": 0,
+
+    # ==== Stylesheets for individual widgets ====
+    "stylesheet_groupbox_smallmargins_notitle":
+        ''' 
+            QGroupBox {
+                padding: 0px;
+                padding-top: 0px;
+            }
+            QGroupBox::title {
+                padding: 0px;
+                height: 0px;
+            }
+        ''',
+    "stylesheet_groupbox_smallmargins":
+        ''' 
+            QGroupBox {
+                padding: 0px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                padding: 2px;
+                height: 0px;
+            }
+        ''',
+
+    "stylesheet_label_timestep":
+        ''' 
+            QLabel {
+                background-color: #0a0a0a;
+                color: #ffffff;
+                font-family: mono;
+                font-size: 20px;
+            }
+        ''',
 
 }

@@ -704,14 +704,14 @@ class Group2dPlot(QGroupBox):
         super().__init__("Visualizations")
         self.data = datapool
 
-        windowsize = (self.data.config["plotwindow_windowsize"][0],
-                      self.data.config["plotwindow_windowsize"][1])
+        windowsize = (self.data.config["hhcplot_windowsize"][0],
+                      self.data.config["hhcplot_windowsize"][1])
         self.setMinimumSize(QSize(windowsize[0], windowsize[1]))
         self.setMaximumSize(QSize(windowsize[0], windowsize[1]))
 
         layout0 = QGridLayout()
 
-        self.bscale = self.data.config["plotwindow_bscale"]
+        self.bscale = self.data.config["visualizer_bscale"]
         self.hhcplot_yz = HHCPlot(direction="YZ", bscale=self.bscale)
         self.hhcplot_xy = HHCPlot(direction="XY", bscale=self.bscale)
 
@@ -727,7 +727,7 @@ class Group2dPlot(QGroupBox):
 
         self.timer1 = QTimer()
         self.timer1.timeout.connect(self.update_bvector)
-        self.timer1.start(int(1000/self.data.config["plotwindow_updaterate"]))
+        self.timer1.start(int(1000/self.data.config["visualizer_updaterate"]))
 
     # @Slot()
     def random_move_arrow(self):

@@ -28,7 +28,69 @@ from numpy.random import (
     random,
     uniform,
 )
-abs(12)
+
+
+# ==== PyQt5 IMPORTS ====
+from PyQt5 import Qt
+
+from PyQt5.QtCore import (
+    QDataStream,
+    QDir,
+    QLineF,
+    QRectF,
+    QRunnable,
+    QSize,
+    Qt,
+    QThreadPool,
+    QTimer,
+)
+from PyQt5.QtGui import (
+    QColor,
+    QFont,
+    QIcon,
+    QImage,
+    QKeySequence,
+    QPixmap,
+    QPalette,
+    QPainter,
+    QTextFormat,
+)
+from PyQt5.QtNetwork import (
+    QAbstractSocket,
+    QHostAddress,
+    QTcpSocket,
+)
+from PyQt5.QtWidgets import (
+    QAction,
+    QActionGroup,
+    QApplication,
+    QComboBox,
+    QDialog,
+    QFileDialog,
+    QGraphicsLineItem,
+    QGraphicsRectItem,
+    QGraphicsView,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLCDNumber,
+    QLineEdit,
+    QMainWindow,
+    QMenuBar,
+    QMessageBox,
+    QPushButton,
+    QSizePolicy,
+    QSpinBox,
+    QSplitter,
+    QStackedWidget,
+    QStatusBar,
+    QTextEdit,
+    QToolBar,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 # # ==== QT IMPORTS ====
 # from PySide6.QtCore import (
@@ -92,67 +154,8 @@ abs(12)
 # )
 
 
-# ==== QT IMPORTS ====
-from PyQt5.QtCore import (
-    QDataStream,
-    QDir,
-    QLineF,
-    QRectF,
-    QRunnable,
-    QSize,
-    Qt,
-    QThreadPool,
-    QTimer,
-)
-from PyQt5.QtGui import (
-    QColor,
-    QFont,
-    QIcon,
-    QImage,
-    QKeySequence,
-    QPixmap,
-    QPalette,
-    QPainter,
-    QTextFormat,
-)
-from PyQt5.QtNetwork import (
-    QAbstractSocket,
-    QHostAddress,
-    QTcpSocket,
-)
-from PyQt5.QtWidgets import (
-    QAction,
-    QActionGroup,
-    QApplication,
-    QComboBox,
-    QDialog,
-    QFileDialog,
-    QGraphicsLineItem,
-    QGraphicsRectItem,
-    QGraphicsView,
-    QGridLayout,
-    QGroupBox,
-    QHBoxLayout,
-    QLabel,
-    QLCDNumber,
-    QLineEdit,
-    QMainWindow,
-    QMenuBar,
-    QMessageBox,
-    QPushButton,
-    QSizePolicy,
-    QSpinBox,
-    QSplitter,
-    QStackedWidget,
-    QStatusBar,
-    QTextEdit,
-    QToolBar,
-    QToolButton,
-    QVBoxLayout,
-    QWidget,
-)
-
-
-
-
+# Imported after Qt in case it matters
 import pyqtgraph as pg
+
+
+

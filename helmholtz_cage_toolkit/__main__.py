@@ -7,7 +7,6 @@ in PySide6.
 # Imports
 import sys
 
-# from PySide6.QtWidgets import QApplication
 
 from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.main_window import MainWindow

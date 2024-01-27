@@ -1,3 +1,22 @@
+"""
+Group hierarchy:
+
+parent
+├── CyclicsInput
+│   ├── group_common
+│   ├── group_xyz
+│   ├── group_interpolate
+│   └── button_generate
+│
+└── VisualizerCyclics
+    ├── SchedulePlayerCyclics (non-UI)
+    ├── EnvelopePlot
+    ├── PlayControls
+    ├── HHCPlot (YZ)
+    └── HHCPlot (-XY)
+
+"""
+
 import os
 from time import time, sleep
 
@@ -8,7 +27,9 @@ from helmholtz_cage_toolkit.utilities import tB_to_schedule
 from helmholtz_cage_toolkit.generator_cyclics import (
     generator_cyclics_single,
     generator_cyclics,
-    cyclics_generation_parameters
+    cyclics_generation_parameters,
+    interpolation_parameters,
+    interpolate,
 )
 
 
@@ -30,22 +51,17 @@ class CyclicsWindow(QWidget):
         layout0.addWidget(group_cyclics_input, 0, 0)
         layout0.addWidget(group_cyclics_visualizer, 0, 1)
         self.setLayout(layout0)
-    
 
 
 class CyclicsInput(QGroupBox):
     def __init__(self, datapool) -> None:
         super().__init__("Generation Parameters")
         self.datapool = datapool
-
         self.datapool.cyclics_input = self
 
+        self.setStyleSheet(self.datapool.config["stylesheet_groupbox_smallmargins"])
+
         self.setMinimumWidth(560)
-
-        # Todo: implement "autoslurping" of input field data based on single
-        #  dict with routing information.
-
-        defaults = self.datapool.config["cyclics_default_generation_parameters"]
 
         self.ui_elements = {
             "duration": {
@@ -60,18 +76,18 @@ class CyclicsInput(QGroupBox):
                 "label": QLabel("Resolution [S/s]:"),
                 "resolution": QLineEdit(),
             },
-            "predelay": {
-                "group": "common",
-                "pos": (2, 1),
-                "label": QLabel("Predelay [s]:"),
-                "predelay": QLineEdit(),
-            },
-            "postdelay": {
-                "group": "common",
-                "pos": (2, 4),
-                "label": QLabel("Postdelay [s]:"),
-                "postdelay": QLineEdit(),
-            },
+            # "predelay": {
+            #     "group": "common",
+            #     "pos": (2, 1),
+            #     "label": QLabel("Predelay [s]:"),
+            #     "predelay": QLineEdit(),
+            # },
+            # "postdelay": {
+            #     "group": "common",
+            #     "pos": (2, 4),
+            #     "label": QLabel("Postdelay [s]:"),
+            #     "postdelay": QLineEdit(),
+            # },
             "labels": {
                 "group": "xyz",
                 "pos": (1, 0),
@@ -141,83 +157,61 @@ class CyclicsInput(QGroupBox):
             },
         }
 
-        self.layout_xyz_grid = QGridLayout()
-        self.layout_common_grid = QGridLayout()
-
-        self.populate(defaults)
-
-        # for prop, elements in self.ui_elements.items():
-        #     for key, val in elements.items():
-        #         i, j = elements["pos"]
-        #
-        #         # print("key:", key, type(key))
-        #         # print("prop:", prop, type(prop))
-        #
-        #         if elements["group"] == "common":
-        #             if key == "label":
-        #                 layout_common_grid.addWidget(val, i, j)
-        #             if key == prop:
-        #                 layout_common_grid.addWidget(val, i, j+1)
-        #
-        #         elif elements["group"] == "xyz":
-        #             if key == "label":
-        #                 layout_xyz_grid.addWidget(val, i, 1)
-        #
-        #             if "X" in key:
-        #                 layout_xyz_grid.addWidget(val, i, 2)
-        #             elif "Y" in key:
-        #                 layout_xyz_grid.addWidget(val, i, 3)
-        #             elif "Z" in key:
-        #                 layout_xyz_grid.addWidget(val, i, 4)
-        #
-        #         if type(val) == QLineEdit:
-        #             val.setPlaceholderText(str(defaults[key]))
-        #             val.setAlignment(Qt.AlignCenter)
-        #         elif type(val) == QComboBox:
-        #             val.addItems(elements["cb_items"])
-        #             val.setCurrentIndex(elements["cb_items"].index(defaults[key]))
-        #         elif type(val) == QLabel:
-        #             if "alignment" in elements:
-        #                 val.setAlignment(elements["alignment"])
-
-
-
-        self.layout_interpolation = QHBoxLayout()
-
-        interpolation_ui_elements = {
-            "cb_items": ["NOT YET IMPLEMENTED", "linear", "cubic"],  # TODO: Expand
+        self.interpolation_ui_elements = {
+            "cb_items": ["none", "linear"],  # TODO: Expand with cubic, spline, etc.
             "label_function": QLabel("Function:"),
-            "fbaseX": QComboBox(),
+            "function": QComboBox(),
             "label_factor": QLabel("Factor:"),
-            "duration": QLineEdit(),
+            "factor": QLineEdit(),
         }
 
-        for key, val in interpolation_ui_elements.items():
-            if type(val) == QLabel:
-                self.layout_interpolation.addWidget(val)
-            elif type(val) == QLineEdit:
-                # val.setPlaceholderText(str(1))
-                val.setPlaceholderText("NOT YET IMPLEMENTED")
-                self.layout_interpolation.addWidget(val)
-            elif type(val) == QComboBox:
-                val.addItems(interpolation_ui_elements["cb_items"])
-                self.layout_interpolation.addWidget(val)
+        # Make two layouts for the generation parameters
+        self.layout_common_grid = QGridLayout()
+        self.layout_xyz_grid = QGridLayout()
 
+        # Make a layout for the interpolation parameters
+        self.layout_interpolation = QHBoxLayout()
 
+        # Call functions to populate these layouts
+        self.populate_cyclics()
+        self.populate_interpolation_parameters()
+
+        # Get the default values for both sets
+        defaults_cyclics = self.datapool.config["cyclics_default_generation_parameters"]
+        defaults_interpolation = self.datapool.config["default_interpolation_parameters"]
+
+        # Deposit the default values onto the fields
+        self.deposit_cyclics(defaults_cyclics)
+        self.deposit_interpolation_parameters(defaults_interpolation)
+
+        # Create a button to trigger self.generate()
         button_generate = QPushButton("Generate!")
         button_generate.clicked.connect(self.generate)
 
-
-        layout0 = QVBoxLayout()
-
+        # Groupbox for common generation parameters
         group_common = QGroupBox()
         group_common.setLayout(self.layout_common_grid)
+        group_common.setStyleSheet(
+            self.datapool.config["stylesheet_groupbox_smallmargins_notitle"]
+        )
 
+        # Groupbox for XYZ specific generation parameters
         group_xyz = QGroupBox()
         group_xyz.setLayout(self.layout_xyz_grid)
+        group_xyz.setStyleSheet(
+            self.datapool.config["stylesheet_groupbox_smallmargins_notitle"]
+        )
 
+        # Groupbox for interpolation parameters
         group_interpolation = QGroupBox("Interpolation")
         group_interpolation.setLayout(self.layout_interpolation)
+        group_interpolation.setStyleSheet(
+            self.datapool.config["stylesheet_groupbox_smallmargins"]
+        )
+
+
+        # Create and configure main layout
+        layout0 = QVBoxLayout()
 
         layout0.addWidget(group_common)
         layout0.addWidget(group_xyz)
@@ -226,43 +220,11 @@ class CyclicsInput(QGroupBox):
 
         self.setLayout(layout0)
 
-    def autoslurp(self):
-        """Automatically visits the user-editable widgets in the user
-        interface and slurps their values into a dict.
+    def populate_cyclics(self):
+        """Populates the UI with input widgets for cyclics generation
+        parameters.
         """
-        print("[DEBUG] autoslurp()")
-
-        inputs = cyclics_generation_parameters
-
-        # First fill inputs with generation parameters already in datapool:
-        for key, val in self.datapool.generation_parameters_cyclics.items():
-            inputs[key] = val
-
-        # Now overwrite everything with the values in the input widgets:
-        for prop, elements in self.ui_elements.items():
-            for key, val in elements.items():
-                if type(val) == QLineEdit:
-                    if key in inputs.keys() and val.text() != "":
-                        if key in ("duration", "resolution"):
-                            inputs[key] = int(float(val.text()))
-                        else:
-                            inputs[key] = float(val.text())
-                elif type(val) == QComboBox:
-                    if key in inputs.keys():
-                        inputs[key] = val.currentText()
-                    # print(prop, key, val.currentText())
-
-        # for key, val in inputs.items():
-        #     print(f"{key}: {val} ({type(val)})")  # [DEBUG]
-
-        return inputs
-
-
-    def populate(self, contents):
-        """Does the opposite of autoslurp(); populates values from
-        datapool.generation_parameters_cyclics onto the user-editable widgets.
-        """
-        print("[DEBUG] populate()")
+        print("[DEBUG] populate_cyclics()")
         for prop, elements in self.ui_elements.items():
             for key, val in elements.items():
                 i, j = elements["pos"]
@@ -288,33 +250,156 @@ class CyclicsInput(QGroupBox):
                         self.layout_xyz_grid.addWidget(val, i, 4)
 
                 if type(val) == QLineEdit:
-                    val.setPlaceholderText(str(contents[key]))
                     val.setAlignment(Qt.AlignCenter)
                 elif type(val) == QComboBox:
                     if val.count() == 0:
                         val.addItems(elements["cb_items"])
-                    val.setCurrentIndex(elements["cb_items"].index(contents[key]))
+                        val.setMinimumWidth(128)  # TODO: Dirty fix, improve in future
                 elif type(val) == QLabel:
                     if "alignment" in elements:
                         val.setAlignment(elements["alignment"])
 
+    def populate_interpolation_parameters(self):
+        """Populates the UI with input widgets for interpolation parameters.
+        """
+        print("[DEBUG] populate_interpolation_parameters()")
+
+        for key, val in self.interpolation_ui_elements.items():
+            if type(val) == QLabel:
+                self.layout_interpolation.addWidget(val)
+            elif type(val) == QLineEdit:
+                self.layout_interpolation.addWidget(val)
+            elif type(val) == QComboBox:
+                if val.count() == 0:
+                    val.addItems(self.interpolation_ui_elements["cb_items"])
+                    val.setMinimumWidth(128)  # TODO: Dirty fix, improve in future
+                self.layout_interpolation.addWidget(val)
+
+
+    def slurp_cyclics(self):
+        """Automatically visits the user-editable widgets in the user
+        interface and slurps their values into a dict.
+        """
+        print("[DEBUG] slurp_cyclics()")
+
+        # Load defaults as template
+        inputs = cyclics_generation_parameters
+
+        # First fill inputs with generation parameters already in datapool:
+        for key, val in self.datapool.generation_parameters_cyclics.items():
+            inputs[key] = val
+
+        # Now overwrite everything with the values in the input widgets:
+        for prop, elements in self.ui_elements.items():
+            for key, val in elements.items():
+                if type(val) == QLineEdit:
+                    if key in inputs.keys() and val.text() != "":
+                        if key in ("duration", "resolution"):
+                            inputs[key] = int(float(val.text()))
+                        else:
+                            inputs[key] = float(val.text())
+                elif type(val) == QComboBox:
+                    if key in inputs.keys():
+                        inputs[key] = val.currentText()
+                    # print(prop, key, val.currentText())
+
+        # for key, val in inputs.items():
+        #     print(f"{key}: {val} ({type(val)})")  # [DEBUG]
+
+        return inputs
+
+    def slurp_interpolation_parameters(self):
+        """Automatically visits the user-editable widgets in the user
+        interface and slurps their values into a dict.
+        """
+
+        print("[DEBUG] slurp_interpolation_parameters()")
+        # Load defaults as template
+        inputs = interpolation_parameters
+
+        # First fill inputs with generation parameters already in datapool:
+        for key, val in self.datapool.interpolation_parameters.items():
+            inputs[key] = val
+
+        # Now overwrite everything with the values in the input widgets:
+        for key, val in self.interpolation_ui_elements.items():
+            if type(val) == QLineEdit:
+                if key in inputs.keys() and val.text() != "":
+                    if key in ("factor",):
+                        inputs[key] = int(float(val.text()))
+                    else:
+                        inputs[key] = float(val.text())
+            elif type(val) == QComboBox:
+                if key in inputs.keys():
+                    inputs[key] = val.currentText()
+
+        for key, val in inputs.items():
+            print(f"{key}: {val} ({type(val)})")  # [DEBUG]
+
+        return inputs
+
+
+    def deposit_cyclics(self, contents):
+        """Does the opposite of slurp_cyclics(); deposits values from
+        datapool.generation_parameters_cyclics onto the user-editable widgets.
+        """
+        print("[DEBUG] populate_cyclics()")
+        if contents == {}:
+            contents = self.datapool.config["cyclics_default_generation_parameters"]
+
+        for prop, elements in self.ui_elements.items():
+            for key, val in elements.items():
+                if type(val) == QLineEdit:
+                    val.setPlaceholderText(str(contents[key]))
+                elif type(val) == QComboBox:
+                    val.setCurrentIndex(elements["cb_items"].index(contents[key]))
+
+
+    def deposit_interpolation_parameters(self, contents):
+        """Deposits values from datapool.interpolation_parameters onto the
+        user-editable widgets.
+        """
+        print("[DEBUG] deposit_interpolation_parameters()")
+        if contents == {}:
+            contents = self.datapool.config["default_interpolation_parameters"]
+
+
+        for key, val in self.interpolation_ui_elements.items():
+            if type(val) == QLineEdit:
+                val.setPlaceholderText(str(contents[key]))
+            elif type(val) == QComboBox:
+                print("TEST", key, val, self.interpolation_ui_elements["cb_items"])
+                print(contents)
+                val.setCurrentIndex(
+                    self.interpolation_ui_elements["cb_items"].index(contents[key])
+                )
+
 
     # @Slot()
     def generate(self):
-        # 1. Autoslurp values
-        # 2. Assemble generation_parameters
-        # 3. Shove into generator_cyclics(), get (t, B)
-        # 4. Do interpolation (placeholder)
-        # 5. Flood to datapool.schedule, datapool.generation_parameters
-        # 6. Schedule changed -> self.datapool.refresh()
-        print("[DEBUG] generate()")
-        generation_parameters = self.autoslurp()
+        """Invokes the Cyclics Generator
+        1. slurp values
+        2. Assemble generation_parameters
+        3. Shove into generator_cyclics(), get (t, B)
+        4. Slurp interpolation_parameters
+        4. Do interpolation()
+        6. Flood to datapool.schedule, datapool.generation_parameters
+        7. Schedule changed -> self.datapool.refresh()
+        """
+        # print("[DEBUG] generate()")
+        generation_parameters = self.slurp_cyclics()
         t, B = generator_cyclics(generation_parameters)
 
-        # TODO: Interpolate()
+        interpolation_parameters = self.slurp_interpolation_parameters()
+
+        t, B = interpolate(t,
+                           B,
+                           interpolation_parameters["factor"],
+                           interpolation_parameters["function"])
 
         self.datapool.schedule = tB_to_schedule(t, B)
         self.datapool.generation_parameters_cyclics = generation_parameters
+        self.datapool.interpolation_parameters = interpolation_parameters
 
         self.datapool.refresh()
 
@@ -323,54 +408,65 @@ class VisualizerCyclics(QGroupBox):
     def __init__(self, datapool) -> None:
         # super().__init__("Visualizations")
         super().__init__()
+
+        # Import datapool reference
         self.datapool = datapool
+        # Place reference to self into datapool for reference
         self.datapool.cyclics_visualizer = self
 
-        # windowsize = (self.data.config["plotwindow_windowsize"][0],
-        #               self.data.config["plotwindow_windowsize"][1])
-        # self.setMinimumSize(QSize(windowsize[0], windowsize[1]))
-        # self.setMaximumSize(QSize(windowsize[0], windowsize[1]))
-        windowsize = (560, 820)
+        # Apply stylesheet for smaller margins
+        self.setStyleSheet(
+            self.datapool.config["stylesheet_groupbox_smallmargins_notitle"]
+        )
+
+        # Apply stylesheet for smaller margin
+        windowsize = (self.datapool.config["visualizer_windowsize"][0],
+                      self.datapool.config["visualizer_windowsize"][1])
         self.setMinimumSize(QSize(windowsize[0], windowsize[1]))
-        # self.setMaximumSize(QSize(windowsize[0], windowsize[1]))
 
-        layout0 = QVBoxLayout()
-
-        self.widget_cyclicsplot = CyclicsPlot(self.datapool)
+        # Fetch preconfigured bscale, which plotting functions will use
+        self.bscale = self.datapool.config["visualizer_bscale"]
 
 
-        layout_hhcplot = QGridLayout()
+        # Define envelope plot
+        self.widget_envelopeplot = EnvelopePlot(self.datapool)
 
-        self.bscale = self.datapool.config["plotwindow_bscale"]  # TODO
-        # self.bscale = 100_000
+        # Define HHC plots
         self.hhcplot_yz = HHCPlot(direction="YZ")
         self.hhcplot_mxy = HHCPlot(direction="mXY")
 
-
-        print(self.hhcplot_yz.plot_obj.dataItems)
+        # Plot path ghosts on HHC plots
         self.plot_ghosts()
-        print(self.hhcplot_yz.plot_obj.dataItems)
-        # print("THIS", vars(self.hhcplot_yz.plot_obj))
 
+
+        # Put HHC Plots and relevant labels in their own layout
+        layout_hhcplot = QGridLayout()
         layout_hhcplot.addWidget(QLabel("Front view (YZ)"), 0, 0)
         layout_hhcplot.addWidget(self.hhcplot_yz, 1, 0)
 
         layout_hhcplot.addWidget(QLabel("Top view (-XY)"), 0, 1)
         layout_hhcplot.addWidget(self.hhcplot_mxy, 1, 1)
-        # layout0.addWidget(QLabel("Layout2dPlots"))
 
 
+        # Define subclassed SchedulePlayer object (does not have a UI)
         self.scheduleplayer = SchedulePlayerCyclics(
-            self.hhcplot_mxy, self.hhcplot_yz, self.widget_cyclicsplot,
+            self.hhcplot_mxy, self.hhcplot_yz, self.widget_envelopeplot,
             self.bscale, self.datapool)
+        # Pass reference to datapool for reference
         self.datapool.cyclics_scheduleplayer = self.scheduleplayer
+        # Set playback multiplier
         self.mult = 1
 
+        # Create PlayerControl widget
         self.group_playcontrols = PlayerControls(
             self.datapool, self.scheduleplayer
         )
 
-        layout0.addWidget(self.widget_cyclicsplot)
+
+        # Make main layout
+        layout0 = QVBoxLayout()
+
+        layout0.addWidget(self.widget_envelopeplot)
         layout0.addWidget(self.group_playcontrols)
         layout0.addLayout(layout_hhcplot)
 
@@ -378,9 +474,17 @@ class VisualizerCyclics(QGroupBox):
 
 
     def refresh(self):
+        """When the schedule, or other parameters relevant to the
+        VisualizerCyclics item are changed, it is important to call an update
+        to every aspect that has to be updated, such as timers, plots, etc.
+
+        This refresh() function is a one-stop shop for all required updates
+        relevant to VisualizerCyclics.
+
+        """
         # First clear data previously plotted:
         # XYZ lines in envelope plot
-        for item in self.widget_cyclicsplot.plot_obj.dataItems:
+        for item in self.widget_envelopeplot.plot_obj.dataItems:
             item.clear()
         # Ghosts in HHC plots:
         for item in [self.hhcplot_yz.plot_obj.dataItems[-1],
@@ -388,9 +492,9 @@ class VisualizerCyclics(QGroupBox):
             item.clear()
 
         # Refresh envelope plot
-        self.widget_cyclicsplot.generate_envelope_plot()
+        self.widget_envelopeplot.generate_envelope_plot()
 
-        # Refresh ghosts on HHC plots
+        # Refresh path ghosts on HHC plots
         self.plot_ghosts()
 
         # Refresh play controls
@@ -398,14 +502,14 @@ class VisualizerCyclics(QGroupBox):
         self.group_playcontrols.refresh()
 
     def plot_ghosts(self):
+        """Plots hazy, dotted paths indicating the magnetic field vector
+        movement during the schedule.
+        """
         ghost_pen = pg.mkPen((0, 255, 255, 64), width=1, style=Qt.DotLine)
-        # self.hhcplot_xy.plot_obj.plot(self.data.schedule[3]/self.bscale,  # X
-        #                               self.data.schedule[4]/self.bscale,  # Y
-        #                               pen=ghost_pen)
 
         self.hhcplot_mxy.plot_obj.plot(
-            self.datapool.schedule[4]/self.bscale,      # X
-            -self.datapool.schedule[3]/self.bscale,     # Y
+            self.datapool.schedule[4]/self.bscale,      # Y
+            -self.datapool.schedule[3]/self.bscale,     # -X
             pen=ghost_pen
         )
         self.hhcplot_yz.plot_obj.plot(
@@ -415,14 +519,11 @@ class VisualizerCyclics(QGroupBox):
         )
 
 
-
 class HHCPlot(pg.GraphicsLayoutWidget):
     def __init__(self, direction="YZ"):
         super().__init__()
 
         self.direction = direction
-        # self.bscale = bscale
-        # self.bscale = 10_000_000  # TODO
 
         self.plot_obj = self.addPlot(row=0, col=0, antialias=True)
         self.resize(360, 360)
@@ -443,8 +544,6 @@ class HHCPlot(pg.GraphicsLayoutWidget):
         else:
             raise ValueError("Parameter 'direction' must be 'XY' or 'YZ'!")
 
-        # self.arrow_length = 100 * 1.28  # Correcting for plot abnormalities
-
         self.arrow_pen = pg.mkPen("c", width=3)
         self.arrow_tail = QGraphicsLineItem(QLineF(0, 0, 0, 0))
         self.arrow_tail.setPen(self.arrow_pen)
@@ -454,13 +553,6 @@ class HHCPlot(pg.GraphicsLayoutWidget):
         self.plot_obj.addItem(self.arrow_tail)
         self.plot_obj.addItem(self.arrow_tip)
 
-
-        # self.arrow = pg.ArrowItem(angle=0, headLen=20, tailLen=self.arrow_length(), pen=None, brush='y', pxMode=False)
-        # self.plot_obj.addItem(self.arrow)
-        # self.arrow.setPos(-1, 0)
-
-    # def arrow_length(self, l=1.0):
-    #     return 100*1.28*l/self.bscale - 20
 
     def plot_hhc_elements_mxy(self):
 
@@ -503,16 +595,6 @@ class HHCPlot(pg.GraphicsLayoutWidget):
         for item in table:
             item.setPen(pg.mkPen("#FFF6"))
             self.plot_obj.addItem(item)
-
-    # @staticmethod
-    # def draw_wall_element(plot_obj, aspect_ratio=0.05, stripes=20, direction="vertical", side="pos"):
-    #
-    #     pen = pg.mkPen("w", width=2)
-    #     length = 2
-    #     midpos = [1, 0]
-    #
-    #     if direction == "vertical":
-    #         mainwall = QGraphicsLineItem(QLineF(midpos[0], -length/2, midpos[0], length/2))
 
     def plot_hhc_elements_xy(self):
 
@@ -596,25 +678,21 @@ class HHCPlot(pg.GraphicsLayoutWidget):
             self.plot_obj.addItem(item)
 
 
-class CyclicsPlot(pg.GraphicsLayoutWidget):
+class EnvelopePlot(pg.GraphicsLayoutWidget):
     def __init__(self, datapool):
         super().__init__()
 
         self.datapool = datapool
         self.datapool.cyclics_plot = self
 
-        # self.bscale = 10_000_000  # TODO
-
         self.plot_obj = self.addPlot(row=0, col=0)
         self.resize(720, 360)
-        # self.plot_obj.setRange(xRange=(-1, 1), yRange=(-1, 1))
         self.plot_obj.showGrid(x=True, y=True)
         self.plot_obj.showAxis('bottom', True)
         self.plot_obj.showAxis('left', True)
         self.plot_obj.getAxis("bottom").setLabel(text="Time", units="s")
         self.plot_obj.getAxis("left").setLabel(text="B", units="T")
         self.plot_obj.getAxis("left").setScale(scale=1E-9)
-
 
         self.vline = pg.InfiniteLine(angle=90, movable=False,
                                      pen=pg.mkPen("c", width=2),)
@@ -623,20 +701,20 @@ class CyclicsPlot(pg.GraphicsLayoutWidget):
 
         self.generate_envelope_plot()
 
+    # @staticmethod
+    # def detect_predelay(x):
+    #     if 0.99 * (x[1] - x[0]) > x[3] - x[2] and abs(x[2] - x[1]) < 1E-6:
+    #         return x[1] - x[0]
+    #     else:
+    #         return 0.0
+    #
+    # @staticmethod
+    # def detect_postdelay(x):
+    #     if 0.99 * (x[-1] - x[-2]) > x[-4] - x[-3] and abs(x[-2] - x[-3]) < 1E-6:
+    #         return x[-1] - x[-2]
+    #     else:
+    #         return 0.0
 
-    @staticmethod
-    def detect_predelay(x):
-        if 0.99 * (x[1] - x[0]) > x[3] - x[2] and abs(x[2] - x[1]) < 1E-6:
-            return x[1] - x[0]
-        else:
-            return 0.0
-
-    @staticmethod
-    def detect_postdelay(x):
-        if 0.99 * (x[-1] - x[-2]) > x[-4] - x[-3] and abs(x[-2] - x[-3]) < 1E-6:
-            return x[-1] - x[-2]
-        else:
-            return 0.0
 
     def generate_envelope_plot(self, show_actual=True, show_points=False):
 
@@ -647,25 +725,43 @@ class CyclicsPlot(pg.GraphicsLayoutWidget):
 
         colours = [(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255)]
 
-        # Detect predelay and postdelay, for more accurate staggered plots
-        # Detection algorithms are not guaranteed to catch predelays
-        predelay = False
-        postdelay = False
-        push = [0, -1]
-        try:
-            if self.detect_predelay(t) > 0.0:
-                predelay = True
-                push[0] = 2
-        except:  # noqa  # TODO Replace this system with lookup of gen parameters
-            pass
-        try:
-            if self.detect_postdelay(t) > 0.0:
-                postdelay = True
-                push[1] = -2
-        except:  # noqa  # TODO Replace this system with lookup of gen parameters
-            pass
+        # TODO: Predelay and postdelay were unexposed in GUI as of 27-01-2024
+        #  as its limited value was not worth the substantial complication of
+        #  the code implementation. Delete the following commented code after
+        #  some QA testing.
+        # # Detect predelay and postdelay, for more accurate staggered plots
+        # # Detection algorithms are not guaranteed to catch predelays
+        # predelay = False
+        # postdelay = False
+        # push = [0, -1]
+        #
+        # try:
+        #     if self.detect_predelay(t) > 0.0:
+        #         predelay = True
+        #         push[0] = 2
+        # except:  # noqa  # TODO Replace this system with lookup of gen parameters
+        #     pass
+        # try:
+        #     if self.detect_postdelay(t) > 0.0:
+        #         postdelay = True
+        #         push[1] = -2
+        # except:  # noqa  # TODO Replace this system with lookup of gen parameters
+        #     pass
 
-        # Generate dataset by
+        # # Correct staggered plots in case of predelay and postdelay
+        # predelay = False
+        # postdelay = False
+        # push = [0, -1]
+        #
+        # if self.datapool.generation_parameters_cyclics["predelay"] > 0.0:
+        #     predelay = True
+        #     push[0] = 2
+        # if self.datapool.generation_parameters_cyclics["postdelay"] > 0.0:
+        #     postdelay = True
+        #     push[1] = -2
+
+        # Generate staggered dataset by copying using repeat and then shifting
+        push = [0, -1]
         t_stag = repeat(t[push[0]:push[1]], 2)[1:]
         B_stag = array((repeat(B[0, push[0]:push[1]], 2)[:-1],
                         repeat(B[1, push[0]:push[1]], 2)[:-1],
@@ -676,16 +772,16 @@ class CyclicsPlot(pg.GraphicsLayoutWidget):
             if show_actual:
                 # Staggered line
                 self.plot_obj.plot(t_stag, B_stag[i], pen=colours[i])
-                # Line patches for predelay
-                if predelay:
-                    self.plot_obj.plot([t[0], t[1], t_stag[0]],
-                                       [B[i, 0], B[i, 1], B_stag[i, 0]],
-                                       pen=colours[i])
-                # Line patches for postdelay
-                if postdelay:
-                    self.plot_obj.plot([t_stag[-1], t[-2], t[-1]],
-                                       [B_stag[i, -1], B[i, -2], B[i, -1]],
-                                       pen=colours[i])
+                # # Line patches for predelay
+                # if predelay:
+                #     self.plot_obj.plot([t[0], t[1], t_stag[0]],
+                #                        [B[i, 0], B[i, 1], B_stag[i, 0]],
+                #                        pen=colours[i])
+                # # Line patches for postdelay
+                # if postdelay:
+                #     self.plot_obj.plot([t_stag[-1], t[-2], t[-1]],
+                #                        [B_stag[i, -1], B[i, -2], B[i, -1]],
+                #                        pen=colours[i])
             else:
                 self.plot_obj.plot(t, B[i], pen=colours[i])
 
@@ -704,15 +800,16 @@ class CyclicsPlot(pg.GraphicsLayoutWidget):
         #                symbol="o",
         #                symbolSize=6)
 
+
 class SchedulePlayerCyclics(SchedulePlayer):
-    def __init__(self, hhcplot_xy, hhcplot_yz, widget_cyclicsplot, bscale,
+    def __init__(self, hhcplot_xy, hhcplot_yz, widget_envelopeplot, bscale,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # External variables: self.datapool.get_schedule_steps()
         self.hhcplot_xy = hhcplot_xy
         self.hhcplot_yz = hhcplot_yz
-        self.widget_cyclicsplot = widget_cyclicsplot
+        self.widget_envelopeplot = widget_envelopeplot
         self.bscale = bscale
 
     def update(self):
@@ -744,7 +841,7 @@ class SchedulePlayerCyclics(SchedulePlayer):
 
         # t5 = time()  # [TIMING] ~210 us
 
-        self.widget_cyclicsplot.vline.setPos(self.t)
+        self.widget_envelopeplot.vline.setPos(self.t)
 
         # t6 = time()  # [TIMING] total ~700 us
 
@@ -759,34 +856,34 @@ class SchedulePlayerCyclics(SchedulePlayer):
 
 
 class PlayerControls(QGroupBox):
-    def __init__(self, datapool, scheduleplayer, label_update_interval=25) -> None:
+    """Defines a set of UI elements for playback control. It is linked to an
+    instance to the SchedulePlayer class, which handles the actual playback."""
+    def __init__(self, datapool, scheduleplayer, label_update_interval=30) -> None:
         super().__init__()
 
         self.datapool = datapool
+        self.setStyleSheet(
+            self.datapool.config["stylesheet_groupbox_smallmargins_notitle"]
+        )
+
         self.scheduleplayer = scheduleplayer
 
+        # Speed at which labels will update themselves. Slave the act of
+        # performing the update to a QTimer.
         self.label_update_interval = label_update_interval
         self.label_update_timer = QTimer()
         self.label_update_timer.timeout.connect(self.update_labels)
 
+        # To keep overhead on the update_label() function minimal, already
+        # generate the strings of the total schedule duration and steps
         self.str_step_prev = 0
         self.str_duration = "/{:.3f}".format(round(self.datapool.get_schedule_duration(), 3))
         self.str_steps = "/{}".format(self.datapool.get_schedule_steps())
 
-        stylesheet_groupbox_smallmargins = """  
-        QGroupBox {
-            padding: 0px;
-            padding-top: 0px;
-        }
-        QGroupBox::title {
-            padding: 0px;
-            height: 0px;
-        }
-        """
-        self.setStyleSheet(stylesheet_groupbox_smallmargins)
-
+        # Main layout
         layout0 = QHBoxLayout()
 
+        # Generate and configure playback buttons
         self.button_play = QPushButton()
         self.button_play.setIcon(QIcon("./assets/icons/feather/play.svg"))
         self.button_play.toggled.connect(self.toggle_play)
@@ -829,21 +926,8 @@ class PlayerControls(QGroupBox):
             button.setIconSize(button_size_icon)
             layout0.addWidget(button)
 
-        # self.setAutoFillBackground()
-        # self.setContentsMargins(0, 0, 0, 0)
 
-
-
-        stylesheet_time_step_label = """
-            QLabel {
-                background-color: #0a0a0a;
-                color: #ffffff;
-                font-family: mono;
-                font-size: 20px;
-            }
-        """
-
-        # Labels
+        # Generate and configure playback labels
         self.label_t = QLabel("0.000/0.000")
         self.label_t.setMinimumWidth(256)
         self.label_step = QLabel("0/0")
@@ -851,14 +935,9 @@ class PlayerControls(QGroupBox):
         self.update_labels()
 
         for label in (self.label_t, self.label_step):
-            label.setStyleSheet(stylesheet_time_step_label)
+            label.setStyleSheet(self.datapool.config["stylesheet_label_timestep"])
             label.setAlignment(Qt.AlignRight)
             layout0.addWidget(label)
-
-        # layout_labels = QGridLayout()
-        # layout_labels.addWidget(self.label_t, 1, 1)
-        # layout_labels.addWidget(self.label_step, 1, 2)
-        # layout0.addLayout(layout_labels)
 
         self.setLayout(layout0)
 
@@ -873,65 +952,67 @@ class PlayerControls(QGroupBox):
         self.str_steps = "/{}".format(self.datapool.get_schedule_steps())
         self.update_labels(force_refresh=True)
 
-    def uncheck_buttons(self, buttons_group):
-        for button in buttons_group:
-            button.setChecked(False)
+    # def uncheck_buttons(self, buttons_group): # TODO DELETE UNUSED
+    #     for button in buttons_group:
+    #         button.setChecked(False)
 
     # @Slot()
     def toggle_play(self):
+        # Shorthand to self.button_play:
         button = self.button_play
-        # print(f"toggle_play() -> checked: {button.isChecked()}")
+
+        # If user clicked button and playback has to "turn on", start playback
+        # immediately, start the label update timer, and change the icon to
+        # indicate it now functions as pause button.
         if button.isChecked():
-            button.setIcon(QIcon("./assets/icons/feather/pause.svg"))
-            # print("DO PLAY")
             self.scheduleplayer.start()
             self.label_update_timer.start(self.label_update_interval)
+            button.setIcon(QIcon("./assets/icons/feather/pause.svg"))
 
-            # self.timer1.start(self.march_interval)
+        # If user clicked button and playback has to "pause", stop playback
+        # immediately, stop the label update timer, and change the icon to
+        # indicate it now functions as play button.
         else:
-            button.setIcon(QIcon("./assets/icons/feather/play.svg"))
-            # print("DO PAUSE")
             self.scheduleplayer.stop()
             self.label_update_timer.stop()
+            button.setIcon(QIcon("./assets/icons/feather/play.svg"))
 
     # @Slot()
     def toggle_reset(self):
-        # print("DO RESET")
         self.scheduleplayer.reset()
 
     def set_mult(self, mult):
-        # print(f"set_mult({mult})")
+        # Sets the march multiplier on the SchedulePlayer
         self.scheduleplayer.set_march_mult(mult)
 
-    # @Slot()
     def toggle_mult10(self):
-        # print(f"toggle_mult10() -> checked: {self.button_mult10.isChecked()}")
+        # If toggled, uncheck other mult buttons, and set playback to x10
         if self.button_mult10.isChecked():
             self.button_mult100.setChecked(False)
             self.button_mult1000.setChecked(False)
-            self.set_mult(mult=10)
+            self.set_mult(10)
         else:
-            self.set_mult(mult=1)
+            self.set_mult(1)
 
     # @Slot()
     def toggle_mult100(self):
-        # print(f"toggle_mult100() -> checked: {self.button_mult100.isChecked()}")
+        # If toggled, uncheck other mult buttons, and set playback to x100
         if self.button_mult100.isChecked():
             self.button_mult10.setChecked(False)
             self.button_mult1000.setChecked(False)
-            self.set_mult(mult=100)
+            self.set_mult(100)
         else:
-            self.set_mult(mult=1)
+            self.set_mult(1)
 
     # @Slot()
     def toggle_mult1000(self):
-        # print(f"toggle_mult1000() -> checked: {self.button_mult1000.isChecked()}")
+        # If toggled, uncheck other mult buttons, and set playback to x1000
         if self.button_mult1000.isChecked():
             self.button_mult10.setChecked(False)
             self.button_mult100.setChecked(False)
-            self.set_mult(mult=1000)
+            self.set_mult(1000)
         else:
-            self.set_mult(mult=1)
+            self.set_mult(1)
 
     # @Slot()
     def update_labels(self, force_refresh=False):
@@ -947,63 +1028,15 @@ class PlayerControls(QGroupBox):
         Total improvement from ~150 us to ~50 us
         """
         # t0 = time()  # [TIMING]
-        # label_t_str = str((self.scheduleplayer.t * 2001) // 2 / 1000) + self.str_duration
-        # label_t_str = str((self.scheduleplayer.t * 2001) // 2 / 1000)
-        label_t_str = "{:.3f}{}".format((self.scheduleplayer.t * 2001) // 2 / 1000, self.str_duration)
-        # t1 = time())  # [TIMING]
-        self.label_t.setText(label_t_str)
-
+        self.label_t.setText("{:.3f}".format(
+                (self.scheduleplayer.t * 2001) // 2 / 1000) + self.str_duration)
+        # t1 = time()  # [TIMING]
 
         if self.scheduleplayer.step != self.str_step_prev or force_refresh:
             self.label_step.setText(
-                # str(self.scheduleplayer.step) + self.str_steps
-                "{:}{}".format(self.scheduleplayer.step, self.str_steps)
+                str(self.scheduleplayer.step) + self.str_steps
             )
             self.str_step_prev = self.scheduleplayer.step
 
-
-
-    # def update_labels(self, force_refresh=False):
-    #     """ Updates the time and step label.
-    #
-    #     Optimizations:
-    #      - Pre-generate the string with total steps and duration, so they do
-    #         not have to be calculated in the loop.
-    #      - Replace the only instance of round with a custom 3-digit round that
-    #         has ~30 us less overhead.
-    #      - Save ~10 us of overhead per cycle by not updating steps label when
-    #         step was not updated internally.
-    #     Total improvement from ~150 us to ~50 us
-    #     """
-    #     # t0 = time()  # [TIMING]
-    #     label_t_str = str((self.scheduleplayer.t * 2001) // 2 / 1000) + self.str_duration
-    #     # t1 = time())  # [TIMING]
-    #     self.label_t.setText(label_t_str)
-    #
-    #     # self.label_t.setText(
-    #     #     str(round(self.scheduleplayer.t, 3))
-    #     #     + "/"
-    #     #     + str(round(self.datapool.get_schedule_duration(), 3))
-    #     # )
-    #
-    #     # t2 = time())  # [TIMING]
-    #
-    #     # if force_refresh:
-    #     #     self.label_step.setText(
-    #     #         str(self.scheduleplayer.step) + self.str_steps
-    #     #     )
-    #     #     self.str_step_prev = self.scheduleplayer.step
-    #
-    #     if self.scheduleplayer.step != self.str_step_prev or force_refresh:
-    #         self.label_step.setText(
-    #             str(self.scheduleplayer.step) + self.str_steps
-    #         )
-    #         self.str_step_prev = self.scheduleplayer.step
-    #
-    #     # self.label_step.setText(
-    #     #     str(self.scheduleplayer.step)
-    #     #     + "/"
-    #     #     + str(self.datapool.get_schedule_steps())
-    #     # )
-    #
-    #     # print(f"[TIMING] update_labels(): {round((t1-t0)*1E6)} us  {round((t2-t1)*1E6)} us  {round((time()-t2)*1E6)} us")  # [TIMING]
+        # t2 = time()  # [TIMING]
+        # print(f"[TIMING] update_labels(): {round((t1-t0)*1E6)} us  {round((t2-t1)*1E6)} us")  # [TIMING]

@@ -259,7 +259,7 @@ class HHCPlot(pg.GraphicsLayoutWidget):
 
 
 
-class CyclicsPlot(pg.GraphicsLayoutWidget):
+class EnvelopePlot(pg.GraphicsLayoutWidget):
     def __init__(self, datapool):
         super().__init__()
 
@@ -476,14 +476,14 @@ class SchedulePlayer:
 
 
 class SchedulePlayerCyclics(SchedulePlayer):
-    def __init__(self, hhcplot_xy, hhcplot_yz, widget_cyclicsplot, bscale,
+    def __init__(self, hhcplot_xy, hhcplot_yz, widget_envelopeplot, bscale,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # External variables: self.datapool.get_schedule_steps()
         self.hhcplot_xy = hhcplot_xy
         self.hhcplot_yz = hhcplot_yz
-        self.widget_cyclicsplot = widget_cyclicsplot
+        self.widget_envelopeplot = widget_envelopeplot
         self.bscale = bscale
 
     def update(self):
@@ -515,7 +515,7 @@ class SchedulePlayerCyclics(SchedulePlayer):
 
         # t5 = time()  # [TIMING] ~210 us
 
-        self.widget_cyclicsplot.vline.setPos(self.t)
+        self.widget_envelopeplot.vline.setPos(self.t)
 
         # t6 = time()  # [TIMING] total ~700 us
 
@@ -713,8 +713,8 @@ class VisualizerCyclics(QGroupBox):
         self.datapool = datapool
 
 
-        # windowsize = (self.data.config["plotwindow_windowsize"][0],
-        #               self.data.config["plotwindow_windowsize"][1])
+        # windowsize = (self.data.config["visualizer_windowsize"][0],
+        #               self.data.config["visualizer_windowsize"][1])
         # self.setMinimumSize(QSize(windowsize[0], windowsize[1]))
         # self.setMaximumSize(QSize(windowsize[0], windowsize[1]))
         windowsize = (760, 820)
@@ -725,12 +725,12 @@ class VisualizerCyclics(QGroupBox):
         layout0 = QVBoxLayout()
 
 
-        self.widget_cyclicsplot = CyclicsPlot(self.datapool)
+        self.widget_envelopeplot = EnvelopePlot(self.datapool)
 
 
         layout_hhcplot = QGridLayout()
 
-        self.bscale = self.datapool.config["plotwindow_bscale"]  # TODO
+        self.bscale = self.datapool.config["visualizer_bscale"]  # TODO
         self.bscale = 100_000
         self.hhcplot_yz = HHCPlot(direction="YZ", bscale=self.bscale)
         self.hhcplot_mxy = HHCPlot(direction="mXY", bscale=self.bscale)
@@ -745,7 +745,7 @@ class VisualizerCyclics(QGroupBox):
 
 
         self.scheduleplayer = SchedulePlayerCyclics(
-            self.hhcplot_mxy, self.hhcplot_yz, self.widget_cyclicsplot,
+            self.hhcplot_mxy, self.hhcplot_yz, self.widget_envelopeplot,
             self.bscale, self.datapool)
         # self.march_interval: int = int(10)
         # self.t = 0.0
@@ -758,13 +758,13 @@ class VisualizerCyclics(QGroupBox):
             self.datapool, self.scheduleplayer
         )
 
-        layout0.addWidget(self.widget_cyclicsplot)
+        layout0.addWidget(self.widget_envelopeplot)
         layout0.addWidget(self.group_playcontrols)
         layout0.addLayout(layout_hhcplot)
 
         self.setLayout(layout0)
 
-        # self.timer1.start(int(1000/self.data.config["plotwindow_updaterate"]))
+        # self.timer1.start(int(1000/self.data.config["visualizer_updaterate"]))
         # self.timer1.start(self.march_interval)  # TODO
 
 

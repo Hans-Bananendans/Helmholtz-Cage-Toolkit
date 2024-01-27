@@ -17,7 +17,7 @@ class DataPool:
         self.tab_bar = None
         self.tabcontainer = None
 
-        self.bscale = self.config["plotwindow_bscale"]
+        self.bscale = self.config["visualizer_bscale"]
         self.cyclics_visualizer = None
         self.cyclics_input = None
 
@@ -75,27 +75,15 @@ class DataPool:
         generation parameters are changed.
         """
         print("[DEBUG] refresh()")
-        # self.set_window_title()  # Reset window title to clear any old filenames
 
-        # Populate cyclics_input with whatever genparams in datapool:
-        self.cyclics_input.populate(self.generation_parameters_cyclics)
+        # Deposit cyclics_input with whatever interpolation_parameters in datapool:
+        self.cyclics_input.deposit_interpolation_parameters(self.interpolation_parameters)
+
+        # Deposit cyclics_input with whatever genparams in datapool:
+        self.cyclics_input.deposit_cyclics(self.generation_parameters_cyclics)
 
         # Refresh the plots and play controls in the Cyclics Visualizer:
         self.cyclics_visualizer.refresh()
-
-        # First clear data previously plotted:
-        # XYZ lines in envelope plot
-        # for item in self.cyclics_visualizer.widget_cyclicsplot.plot_obj.dataItems:
-        #     item.clear()
-        # Ghosts in HHC plots:
-        # for item in [self.cyclics_visualizer.hhcplot_yz.plot_obj.dataItems[-1],
-        #              self.cyclics_visualizer.hhcplot_mxy.plot_obj.dataItems[-1]]:
-        #     item.clear()
-        #
-        # self.cyclics_visualizer.widget_cyclicsplot.generate_envelope_plot()
-        # self.cyclics_visualizer.plot_ghosts()
-        # self.cyclics_visualizer.scheduleplayer.init_values()
-        # self.cyclics_visualizer.group_playcontrols.refresh()
 
         # TODO: Add UI elements from Orbital Generator
 

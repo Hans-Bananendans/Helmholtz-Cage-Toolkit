@@ -297,7 +297,7 @@ t, B, _, _, _ = read_bsch_file(filename)
 # n_steps = len(BX)
 
 
-# bscale = config["plotwindow_bscale"]
+# bscale = config["visualizer_bscale"]
 
 #
 # print(hhcplot_yz, type(hhcplot_yz))

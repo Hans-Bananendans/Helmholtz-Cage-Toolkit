@@ -399,7 +399,7 @@ class DummyGroupbox(QGroupBox):
         self.set_window_title(suffix=filename)
         # print(f": {}")
 
-        # self.timer1.start(int(1000/self.data.config["plotwindow_updaterate"]))
+        # self.timer1.start(int(1000/self.data.config["visualizer_updaterate"]))
         # self.timer1.start(self.march_interval)  # TODO
 
 

@@ -2,6 +2,28 @@ from scipy.signal import sawtooth, square
 
 from helmholtz_cage_toolkit import *
 
+def interpolate(t,
+                B,
+                factor: int,
+                type: str):
+
+    if type == "linear":
+        t_interp = linspace(t[0], t[-1], len(t)*factor)
+        B_interp = [
+            array(interp(t_interp, t, B[0])),
+            array(interp(t_interp, t, B[1])),
+            array(interp(t_interp, t, B[2])),
+        ]
+        return t_interp, B_interp
+    else:
+        return t, B
+
+interpolation_parameters = {
+    "function": "none",
+    "factor": 1,
+}
+
+
 def generator_cyclics_single(x,
                              fbase: str,
                              amplitude,

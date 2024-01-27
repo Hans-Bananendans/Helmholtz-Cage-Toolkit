@@ -1,17 +1,17 @@
 from time import time
 
 # from PyQt5 import Qt
-from PySide6 import Qt
+# from PySide6 import Qt
 
 import pyqtgraph as pg
 import numpy as np
 
 from helmholtz_cage_toolkit import *
+from helmholtz_cage_toolkit.datapool import DataPool
 from helmholtz_cage_toolkit.control_window import ControlWindow
-from helmholtz_cage_toolkit.orbit_design_window import OrbitDesignWindow
 from helmholtz_cage_toolkit.cyclics_window import CyclicsWindow
 from helmholtz_cage_toolkit.connection_window import ConnectionWindow
-from helmholtz_cage_toolkit.datapool import DataPool
+from helmholtz_cage_toolkit.orbit_design_window import OrbitDesignWindow
 from helmholtz_cage_toolkit.file_handling import load_file, save_file, NewFileDialog
 
 
