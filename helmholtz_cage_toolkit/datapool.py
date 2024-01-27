@@ -1,5 +1,5 @@
 import numpy as np
-from orbit_visualizer import Orbit, Earth
+from helmholtz_cage_toolkit.orbit_visualizer import Orbit, Earth
 import os
 # from file_handling import load_file, save_file, NewFileDialog
 

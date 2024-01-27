@@ -5,7 +5,7 @@ import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 
 
-from pg3d import (
+from helmholtz_cage_toolkit.pg3d import (
     RX, RY, RZ, R,
     PGPoint3D, PGVector3D, PGFrame3D,
     plotgrid, plotpoint, plotpoints, plotvector, plotframe,

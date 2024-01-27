@@ -37,12 +37,12 @@ import pyqtgraph as pg
 import numpy as np
 from time import time
 
-from control_window import ControlWindow
-from orbit_design_window import OrbitDesignWindow
-from cyclics_window import CyclicsWindow
-from connection_window import ConnectionWindow
-from datapool import DataPool
-from file_handling import load_file, save_file, NewFileDialog
+from helmholtz_cage_toolkit.control_window import ControlWindow
+from helmholtz_cage_toolkit.orbit_design_window import OrbitDesignWindow
+from helmholtz_cage_toolkit.cyclics_window import CyclicsWindow
+from helmholtz_cage_toolkit.connection_window import ConnectionWindow
+from helmholtz_cage_toolkit.datapool import DataPool
+from helmholtz_cage_toolkit.file_handling import load_file, save_file, NewFileDialog
 
 
 class TestTab(QWidget):

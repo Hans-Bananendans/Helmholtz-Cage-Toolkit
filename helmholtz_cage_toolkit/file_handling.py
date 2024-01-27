@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 from time import time, sleep
 
 import pyqtgraph as pg
-from config import config
 
 from ast import literal_eval
 from PyQt5 import QtCore
@@ -69,6 +68,8 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from helmholtz_cage_toolkit.config import config
 
 # TODO: Generalize imports!
 

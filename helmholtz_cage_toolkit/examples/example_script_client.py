@@ -2,8 +2,8 @@ import sys
 import socket
 from time import time, sleep
 
-import codec.scc2q as scc
-import client_functions as cf
+import helmholtz_cage_toolkit.codec.scc2q as scc
+import helmholtz_cage_toolkit.client_functions as cf
 
 """
 Example of how to set up a client using Python scripting. The main 

@@ -22,7 +22,7 @@ from pyqtgraph.opengl import (
     MeshData,
 )
 
-from pg3d import (
+from helmholtz_cage_toolkit.pg3d import (
     RX, RY, RZ, R,
     PGPoint3D, PGVector3D, PGFrame3D,
     plotgrid, plotpoint, plotpoints, plotvector, plotframe,
@@ -31,9 +31,9 @@ from pg3d import (
     sign, wrap, uv3d
 )
 
-from orbit import Orbit, Earth
-from datapool import DataPool
-from config import config
+from helmholtz_cage_toolkit.orbit import Orbit, Earth
+from helmholtz_cage_toolkit.datapool import DataPool
+from helmholtz_cage_toolkit.config import config
 
 t0full = time()
 

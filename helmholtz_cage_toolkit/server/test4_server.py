@@ -3,7 +3,7 @@ from threading import Thread, Lock, main_thread, active_count
 
 from numpy.random import random
 from time import time, sleep
-import codec.scc2q as scc
+import helmholtz_cage_toolkit.codec.scc2q as scc
 
 
 # Dummy functions
@@ -483,7 +483,7 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             elif type_id == "s":
                 # print("[DEBUG] Detected b-package")
 
-                segment = scc.decode_spacket_tovals(packet_in)
+                segment = scc.decode_spacket(packet_in)
                 self.server.datapool.set_schedule_segment(segment)
                 # Send segment number back as a verification
                 packet_out = scc.encode_mpacket(str(segment[0]))

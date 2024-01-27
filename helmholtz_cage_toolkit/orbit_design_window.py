@@ -38,14 +38,14 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from datapool import DataPool
-
 import os
 import time
 import pyqtgraph as pg
 import numpy as np
 
-from orbit_visualizer import OrbitVisualizer
+from helmholtz_cage_toolkit.datapool import DataPool
+from helmholtz_cage_toolkit.orbit_visualizer import OrbitVisualizer
+
 
 class OrbitDesignWindow(QWidget):
     def __init__(self, config, datapool):

@@ -43,14 +43,14 @@ from PyQt5.QtWidgets import (
 #     # b_read,
 # )
 
-from control_functions import (
+from helmholtz_cage_toolkit.control_functions import (
     setup_interface_board,
     setup_supplies,
     setup_magnetometer,
     # adc_read,
 )
 
-from datapool import DataPool
+from helmholtz_cage_toolkit.datapool import DataPool
 
 import os
 import time

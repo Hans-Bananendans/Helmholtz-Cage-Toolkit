@@ -4,7 +4,7 @@
 
 import numpy as np
 
-from config import config
+from helmholtz_cage_toolkit.config import config
 
 if config["use_dummies"]:
     print("Notice: Using dummy functions...")

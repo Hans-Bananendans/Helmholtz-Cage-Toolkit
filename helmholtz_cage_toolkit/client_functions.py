@@ -1,9 +1,9 @@
-import codec.scc2q as scc
 from time import time
 from socket import socket
 from PyQt5.QtNetwork import QTcpSocket
 from PyQt5.QtCore import QDataStream
 
+import helmholtz_cage_toolkit.codec.scc2q as scc
 
 def send_and_receive(packet,
                      socket_obj,

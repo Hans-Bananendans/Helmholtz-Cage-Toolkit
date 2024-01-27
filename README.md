@@ -31,7 +31,7 @@ source .venv/bin/activate
 Then clone the repository and install the requirements:
 ```bash
 git clone https://github.com/Hans-Bananendans/Helmholtz-Cage-Toolkit.git
-pip install -r ./requirements.txt
+pip install .
 ```
 
 ## Dependencies
@@ -45,10 +45,10 @@ as well a number of other dependencies, all of which can be found in `requiremen
 
 ## Screenshots
 
-![alt text](./main_v1/extras/screenshot_cyclics_ui.png?raw=true)
+![alt text](helmholtz_cage_toolkit/extras/screenshot_cyclics_ui.png?raw=true)
 User interface for one of the generators that can be used to generate time-dependent inputs to the Helmholtz cage setup.
 
-![alt text](./main_v1/extras/screenshot_orbital_early.png?raw=true)
+![alt text](helmholtz_cage_toolkit/extras/screenshot_orbital_early.png?raw=true)
 Early look at user interface of another input generators, which propagates a low Earth orbit (LEO) over time and acquires the local magnetic field data in the body frame of a simulated satellite. The local field is simulated using the IGRF.
 
 

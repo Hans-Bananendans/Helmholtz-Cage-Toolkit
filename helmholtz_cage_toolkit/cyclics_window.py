@@ -64,14 +64,13 @@ import os
 from time import time, sleep
 import pyqtgraph as pg
 
-from schedule_player import SchedulePlayer
-
-from generator_cyclics import (
+from helmholtz_cage_toolkit.schedule_player import SchedulePlayer
+from helmholtz_cage_toolkit.utilities import tB_to_schedule
+from helmholtz_cage_toolkit.generator_cyclics import (
     generator_cyclics_single,
     generator_cyclics,
     cyclics_generation_parameters
 )
-from utilities import tB_to_schedule
 
 
 class CyclicsWindow(QWidget):

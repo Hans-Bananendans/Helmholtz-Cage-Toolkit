@@ -1,34 +1,4 @@
-import numpy as np
-from numpy import (
-    pi,
-    array, ndarray,
-    sin, cos, arccos,
-    dot, zeros, eye, linspace, vstack, column_stack,
-    empty, repeat,
-)
-
-import threading
-import matplotlib.pyplot as plt
-from time import time, sleep
-
-from pyIGRF import igrf_value
-
-import pyqtgraph as pg
-from config import config
-
-from ast import literal_eval
 from PyQt5 import QtCore
-from PyQt5.QtCore import (
-    QDir,
-    QSize,
-    Qt,
-    QRunnable,
-    QThreadPool,
-    QTimer,
-    QRectF,
-    QLineF,
-)
-
 from PyQt5.QtGui import (
     # QAction,
     # QActionGroup,
@@ -68,7 +38,34 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from PyQt5.QtCore import (
+    QDir,
+    QSize,
+    Qt,
+    QRunnable,
+    QThreadPool,
+    QTimer,
+    QRectF,
+    QLineF,
+)
 
+import numpy as np
+from numpy import (
+    pi,
+    array, ndarray,
+    sin, cos, arccos,
+    dot, zeros, eye, linspace, vstack, column_stack,
+    empty, repeat,
+)
+
+import threading
+import matplotlib.pyplot as plt
+from time import time, sleep
+from pyIGRF import igrf_value
+import pyqtgraph as pg
+from ast import literal_eval
+
+from helmholtz_cage_toolkit.config import config
 
 
 def read_bsch_file(filename):

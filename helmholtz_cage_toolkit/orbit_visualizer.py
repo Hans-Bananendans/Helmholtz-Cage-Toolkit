@@ -6,7 +6,7 @@ from numpy import (
     dot, zeros, eye, linspace, vstack
 )
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from time import time
 from PyQt5 import QtCore
 from scipy.special import jv
@@ -22,7 +22,7 @@ from pyqtgraph.opengl import (
     MeshData,
 )
 
-from pg3d import (
+from helmholtz_cage_toolkit.pg3d import (
     RX, RY, RZ, R,
     PGPoint3D, PGVector3D, PGFrame3D,
     plotgrid, plotpoint, plotpoints, plotvector, plotframe,
@@ -35,7 +35,7 @@ from pg3d import (
     R_ECI_ECEF, R_ECEF_ECI
 )
 
-from orbit import Orbit, Earth
+from helmholtz_cage_toolkit.orbit import Orbit, Earth
 
 # Goal: define and describe an orbit fully from its six orbital elements:
 # - Generalized OrbitVisualizer class that can:

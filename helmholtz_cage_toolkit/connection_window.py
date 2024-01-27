@@ -58,9 +58,9 @@ import sys
 from time import sleep, time
 from threading import Thread
 
-import codec.scc2q as scc
-import client_functions
-from config import config
+import helmholtz_cage_toolkit.codec.scc2q as scc
+import helmholtz_cage_toolkit.client_functions
+from helmholtz_cage_toolkit.config import config
 
 
 class ConnectionWindow(QWidget):
