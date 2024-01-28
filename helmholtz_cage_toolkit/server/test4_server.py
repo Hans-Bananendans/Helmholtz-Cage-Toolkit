@@ -254,6 +254,13 @@ class DataPool:
         datapool.write_Bm_period = period  # Implemented non-thread-safe
         return 1
 
+    def get_play_mode(self):
+        print("[DEBUG] get_play_mode()")
+        return self.play_mode  # Implemented non-thread-safe
+
+    def get_play_status(self):
+        print("[DEBUG] get_play_status()")
+        return self.play_status  # Implemented non-thread-safe
 
     def set_schedule_segment(self, segment: list):
         print("set_schedule_segment()")
@@ -277,7 +284,7 @@ class DataPool:
         return 1
 
     def allocate_schedule(self, name: str, n_seg: int, duration: float):
-        print("allocate_schedule()")
+        print("[DEBUG] allocate_schedule()")
 
         self._lock_schedule.acquire(timeout=0.001)
 
@@ -287,6 +294,18 @@ class DataPool:
 
         self._lock_schedule.release()
         return 1
+
+    def get_schedule_info(self):
+        print("[DEBUG] get_schedule_info()")
+
+        self._lock_schedule.acquire(timeout=0.001)
+
+        name = self.schedule_name
+        length = len(self.schedule)
+        duration = self.schedule_duration
+
+        self._lock_schedule.release()
+        return name, length, duration
 
     def print_schedule_info(self):
         self._lock_schedule.acquire(timeout=0.001)

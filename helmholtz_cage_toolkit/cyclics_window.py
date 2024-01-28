@@ -958,16 +958,13 @@ class PlayerControls(QGroupBox):
 
     # @Slot()
     def toggle_play(self):
-        # Shorthand to self.button_play:
-        button = self.button_play
-
         # If user clicked button and playback has to "turn on", start playback
         # immediately, start the label update timer, and change the icon to
         # indicate it now functions as pause button.
-        if button.isChecked():
+        if self.button_play.isChecked():
             self.scheduleplayer.start()
             self.label_update_timer.start(self.label_update_interval)
-            button.setIcon(QIcon("./assets/icons/feather/pause.svg"))
+            self.button_play.setIcon(QIcon("./assets/icons/feather/pause.svg"))
 
         # If user clicked button and playback has to "pause", stop playback
         # immediately, stop the label update timer, and change the icon to
@@ -975,7 +972,7 @@ class PlayerControls(QGroupBox):
         else:
             self.scheduleplayer.stop()
             self.label_update_timer.stop()
-            button.setIcon(QIcon("./assets/icons/feather/play.svg"))
+            self.button_play.setIcon(QIcon("./assets/icons/feather/play.svg"))
 
     # @Slot()
     def toggle_reset(self):
