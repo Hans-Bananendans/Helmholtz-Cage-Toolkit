@@ -87,20 +87,30 @@ def ping(socket, datastream: QDataStream = None):
         return -1
 
 
-# def ping(socket):
-#     packet_out = SCC.encode_epacket("")
-#
-#     tstart = time()
-#     socket.sendall(packet_out)              # Send 1 byte message: '0x65'
-#     packet_in = socket.recv(SSC.buffer_size)    # Receive response
-#     tend = time()
-#
-#     response = SCC.decode_epacket(packet_in)
-#
-#     if response == "":
-#         return tend - tstart
-#     else:
-#         return -1
+def ping_n(socket, n=8, datastream: QDataStream = None):
+    """Pings n times, calculates the average ping time, and returns it.
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+    # Assemble packet before starting timer
+    times = [0.]*n
+
+    for i in range(n):
+        packet_out = scc.encode_epacket("")  # Packet will be 0x65 + n * 0x23
+
+        tstart = time()
+        packet_in = send_and_receive(packet_out, socket, datastream=datastream)
+        tend = time()
+
+        # Verification
+        response = scc.decode_epacket(packet_in)
+        if response != "":
+            return -1
+        else:
+            times[i] = tend-tstart
+
+    return sum(times)/len(times)
 
 
 def echo(socket,
@@ -586,7 +596,7 @@ def transfer_segment(
     return int(confirm)
 
 
-def transfer_schedule(
+def transfer_schedule(  # TODO Incorporate schedule validation tools
     socket,
     schedule,
     name: str = "schedule1",

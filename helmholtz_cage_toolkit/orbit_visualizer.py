@@ -746,8 +746,8 @@ class OrbitVisualizer(GLViewWidget):
         B_NED = array([bx, by, bz])
         self.B = R_NED_ECI(self.rlonglat[1], self.rlonglat[2]) @ B_NED
 
-        print("B_NED:", B_NED)
-        print("B_ECI:", self.B)
+        # print("B_NED:", B_NED)
+        # print("B_ECI:", self.B)
 
         base = self.points[self.data.i_satpos]
         tip = base + self.B*self.bv_scale

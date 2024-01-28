@@ -224,7 +224,7 @@ class CyclicsInput(QGroupBox):
         """Populates the UI with input widgets for cyclics generation
         parameters.
         """
-        print("[DEBUG] populate_cyclics()")
+        # print("[DEBUG] populate_cyclics()")
         for prop, elements in self.ui_elements.items():
             for key, val in elements.items():
                 i, j = elements["pos"]
@@ -262,7 +262,7 @@ class CyclicsInput(QGroupBox):
     def populate_interpolation_parameters(self):
         """Populates the UI with input widgets for interpolation parameters.
         """
-        print("[DEBUG] populate_interpolation_parameters()")
+        # print("[DEBUG] populate_interpolation_parameters()")
 
         for key, val in self.interpolation_ui_elements.items():
             if type(val) == QLabel:
@@ -333,8 +333,8 @@ class CyclicsInput(QGroupBox):
                 if key in inputs.keys():
                     inputs[key] = val.currentText()
 
-        for key, val in inputs.items():
-            print(f"{key}: {val} ({type(val)})")  # [DEBUG]
+        # for key, val in inputs.items():
+        #     print(f"{key}: {val} ({type(val)})")  # [DEBUG]
 
         return inputs
 
@@ -343,7 +343,7 @@ class CyclicsInput(QGroupBox):
         """Does the opposite of slurp_cyclics(); deposits values from
         datapool.generation_parameters_cyclics onto the user-editable widgets.
         """
-        print("[DEBUG] populate_cyclics()")
+        # print("[DEBUG] populate_cyclics()")
         if contents == {}:
             contents = self.datapool.config["cyclics_default_generation_parameters"]
 
@@ -359,7 +359,7 @@ class CyclicsInput(QGroupBox):
         """Deposits values from datapool.interpolation_parameters onto the
         user-editable widgets.
         """
-        print("[DEBUG] deposit_interpolation_parameters()")
+        # print("[DEBUG] deposit_interpolation_parameters()")
         if contents == {}:
             contents = self.datapool.config["default_interpolation_parameters"]
 
@@ -368,8 +368,6 @@ class CyclicsInput(QGroupBox):
             if type(val) == QLineEdit:
                 val.setPlaceholderText(str(contents[key]))
             elif type(val) == QComboBox:
-                print("TEST", key, val, self.interpolation_ui_elements["cb_items"])
-                print(contents)
                 val.setCurrentIndex(
                     self.interpolation_ui_elements["cb_items"].index(contents[key])
                 )
