@@ -23,7 +23,7 @@ class ConnectionWindow(QWidget):
         # print(self.codec)
         # self.buffer_size = self.codec.packet_size()
         # print(f"CONFIGURED BUFFER: {self.buffer_size}")
-        self.connect_on_startup = config["connect_on_startup"]
+        # self.connect_on_startup = config["connect_on_startup"]
 
         self.socket = QTcpSocket(self)
         self.socket.connected.connect(self.on_connected)
@@ -72,6 +72,19 @@ class ConnectionWindow(QWidget):
 
         self.setLayout(layout0)
 
+        # ==== TIMERS
+        if self.datapool.config["connect_on_startup"]:
+            self.timer_connect_on_startup = Qtimer()
+            self.timer_connect_on_startup.timeout.connect(
+                self.connect_on_startup
+            )
+            self.timer_connect_on_startup.start(
+                self.datapool.config["connect_on_startup_delay"]
+            )
+
+        self.timer_update_time_labels = QTimer()
+        self.timer_update_time_labels.timeout.connect(self.update_time_labels)
+
         self.timer_get_bm = QTimer()
         self.timer_get_bm.timeout.connect(self.do_get_Bm)
         self.timer_get_bm_ms = 500
@@ -86,8 +99,21 @@ class ConnectionWindow(QWidget):
         # QDataStream instance should suffice.
         self.datastream = QDataStream(self.socket)
 
-    # @Slot()
+
+    def connect_on_startup(self):
+        """Slot for the one-off `timer_connect_on_startup`.
+
+        Stops the timer, and attempt to connect to host.
+        """
+        self.timer_connect_on_startup.stop()
+        self.connect_socket()
+
+
+
     def connect_socket(self, timeout=3000):
+        """Tries to make a connection between self.socket and the host. Will
+        handle failed attempts. Will update the status_bar.
+        """
         self.socket.connectToHost(self.server_address, self.server_port)
 
         # Try to connect for `timeout` ms before giving up

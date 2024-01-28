@@ -14,7 +14,9 @@ config = {
     "server_port": 7777,
     "buffer_size": 1024,
     "connect_on_startup": False,
-    "pings_per_test": 64,
+    "connect_on_startup_delay": 3000,
+    "label_update_period": 4000,
+    "pings_per_test": 16,
 
     # ==== ADC settings ====
     "adc_pollrate": 30,

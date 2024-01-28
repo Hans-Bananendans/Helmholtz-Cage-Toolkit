@@ -28,6 +28,10 @@ class DataPool:
         # self.software_version = self.config["VERSION"]
         self.set_window_title()
 
+
+        self.socket_tstart = None
+
+
         # Devices
         self.interface_board = None
         self.supplies = [None, None, None]

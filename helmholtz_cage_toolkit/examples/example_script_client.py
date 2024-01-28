@@ -1,7 +1,9 @@
 import sys
 import socket
 from time import time, sleep
+from hashlib import blake2b
 
+from helmholtz_cage_toolkit import *
 import helmholtz_cage_toolkit.codec.scc2q as scc
 import helmholtz_cage_toolkit.client_functions as cf
 
@@ -112,7 +114,24 @@ if __name__ == "__main__":
                 s, test_schedule, test_schedule_name, timing=timing
             )
         )
-        cf.print_schedule_info(s)
+        print(""); sleep(1)
+
+
+        # ==== Schedule info
+        sch_name, sch_length, sch_duration = cf.get_schedule_info(s)
+        print("Schedule details sent by server:")
+        print("Schedule name:    ", sch_name)
+        print("Schedule length:  ", sch_length, "segments")
+        print("Schedule duration:", sch_duration, "s")
+        print(""); sleep(1)
+
+
+        # ==== Schedule verification
+        print("Hash of server-side schedule:", cf.get_schedule_hash(s))
+        print("Hash of local copy:", cf.schedule_hash(test_schedule))
+        print(""); sleep(1)
+        print("Automatic verification of schedule using verify_schedule():")
+        print(cf.verify_schedule(s, test_schedule))  # True if hashes match
         print(""); sleep(1)
 
 

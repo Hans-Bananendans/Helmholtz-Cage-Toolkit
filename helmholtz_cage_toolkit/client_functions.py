@@ -1,5 +1,6 @@
 from time import time
 from socket import socket
+from hashlib import blake2b
 
 from helmholtz_cage_toolkit import *
 import helmholtz_cage_toolkit.codec.scc2q as scc
@@ -186,7 +187,7 @@ def get_server_uptime(socket,
 
     server_uptime = scc.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("server_uptime"),
+            scc.encode_xpacket("get_server_uptime"),
             socket,
             datastream=datastream
         )
@@ -213,7 +214,7 @@ def get_socket_uptime(socket,
 
     socket_uptime = scc.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("socket_uptime"),
+            scc.encode_xpacket("get_socket_uptime"),
             socket,
             datastream=datastream
         )
@@ -454,6 +455,7 @@ def print_schedule_info(
     )
     return int(confirm)
 
+
 def print_schedule(
     socket,
     max_entries: int = 32,
@@ -472,6 +474,44 @@ def print_schedule(
         )
     )
     return int(confirm)
+
+
+def get_schedule_info(
+    socket,
+    datastream: QDataStream = None):
+    """Gets some information about the schedule on the server side. Gets the
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+
+    name, length_string, duration_string = scc.decode_mpacket(
+        send_and_receive(
+            scc.encode_xpacket("get_schedule_info"),
+            socket,
+            datastream=datastream
+        )
+    ).split(",")
+    return name, int(length_string), float(duration_string)
+
+
+def get_schedule_hash(
+    socket,
+    datastream: QDataStream = None):
+    """Requests the server to hash its schedule and send the result.
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+
+    hash_string = scc.decode_mpacket(
+        send_and_receive(
+            scc.encode_xpacket("get_schedule_hash"),
+            socket,
+            datastream=datastream
+        )
+    )
+    return hash_string
 
 
 def initialize_schedule(
@@ -611,6 +651,36 @@ def transfer_schedule(
         print(f"transfer_schedule(). Transferred schedule in {round((tend - tstart) * 1E3, 3)} ms")
 
     return 1
+
+
+def schedule_hash(schedule: list):
+    """Creates a schedule digest using the BLAKE2b algorithm"""
+    return blake2b(array(schedule).tobytes(), digest_size=64).hexdigest()
+
+
+def verify_schedule(
+    socket,
+    schedule,
+    datastream: QDataStream = None):
+    """Function to compare the integrity of a transferred schedule with the
+    local copy.
+
+    It achieves this by casting the string into a bytearray by first casting
+    it to a Numpy array.
+    It does this by hashing the string of the complete schedule
+    locally, and requesting the server to send the hash from its side.
+    This function then outputs the boolean result of the comparison.
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+
+    hash_schedule_server = get_schedule_hash(socket, datastream=datastream)
+    hash_schedule_local = schedule_hash(schedule)
+
+    return hash_schedule_local == hash_schedule_server
+
+
 
 # def print_schedule_info(socket):
 #     socket.sendall(SCC.encode_xpacket("print_schedule_info"))
@@ -766,6 +836,55 @@ def get_current_time_step(
     ).split(",")
     #      Current segment    n segments         Instantaneous playback time
     return int(ts_string[0]), int(ts_string[1]), float(ts_string[2])
+
+
+def get_play_mode(
+    socket,
+    datastream: QDataStream = None):
+    """Requests the current value of play_mode.
+
+    True means that the Bc thread on the server is looping in `play mode`
+    False means that the Bc thread is looping in `manual mode`.
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+
+    play_mode_string = scc.decode_mpacket(
+        send_and_receive(
+            scc.encode_xpacket("get_play_mode"),
+            socket,
+            datastream=datastream
+        )
+    )
+    if play_mode_string == "True":
+        return True
+    elif play_mode_string == "False":
+        return False
+    else:
+        raise AssertionError("Received invalid play_mode '{play_mode_string}'")
+
+def get_play_status(
+    socket,
+    datastream: QDataStream = None):
+    """Requests the current value of play_status.
+
+    Can only have two values: "play" or "stop".
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+
+    play_status_string = scc.decode_mpacket(
+        send_and_receive(
+            scc.encode_xpacket("get_play_status"),
+            socket,
+            datastream=datastream
+        )
+    )
+    return play_status_string
+
+
 
 # def activate_play_mode(socket):
 #     socket.sendall(SCC.encode_xpacket("activate_play_mode"))

@@ -1,3 +1,23 @@
+import hashlib
+from numpy import array
+from time import time
+
+test_schedule = [
+    [0, 6, 0.0, 0.0, 0.0, 0.0],
+    [1, 6, 3.0, 1.0, 0.0, 0.0],
+    [2, 6, 5.0, 2.0, 0.0, 0.0],
+    [3, 6, 7.0, 3.0, 0.0, 0.0],
+    [4, 6, 9.0, 4.0, 0.0, 0.0],
+    [5, 6, 10.0, 0.0, 0.0, 0.0],
+]
+t0 = time()
+bshash = hashlib.blake2b(array(test_schedule).tobytes(), digest_size=64).digest()
+t1 = time()
+bshash_hex = hashlib.blake2b(array(test_schedule).tobytes(), digest_size=64).hexdigest()
+t2 = time()
+print(bshash, len(bshash))
+print(bshash_hex, len(bshash_hex), type(bshash_hex))
+print("Time:", int((t1-t0)*1E6), ",", int((t2-t1)*1E6), "\u03bcs")
 
 
 # import sys

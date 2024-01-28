@@ -1,6 +1,8 @@
 from socketserver import TCPServer, ThreadingMixIn, BaseRequestHandler
 from threading import Thread, Lock, main_thread, active_count
 
+from hashlib import blake2b
+from numpy import array
 from numpy.random import random
 from time import time, sleep
 
@@ -295,6 +297,16 @@ class DataPool:
         self._lock_schedule.release()
         return 1
 
+    def get_schedule(self):
+        print("[DEBUG] get_schedule()")
+
+        self._lock_schedule.acquire(timeout=0.001)
+
+        schedule = self.schedule
+
+        self._lock_schedule.release()
+        return schedule
+
     def get_schedule_info(self):
         print("[DEBUG] get_schedule_info()")
 
@@ -342,6 +354,10 @@ class DataPool:
                 print(self.schedule[i_seg])
 
         self._lock_schedule.release()
+
+
+        print(str(self.get_schedule()))
+        print(hash(str(self.get_schedule())))
         return 1
 
 
@@ -473,7 +489,7 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 break
             type_id = scc.packet_type(packet_in)
             # t1 = time()  # [TIMING]
-            print("[DEBUG] packet_in:", packet_in)
+            # print("[DEBUG] packet_in:", packet_in)
 
             if type_id == "m":
                 # print("[DEBUG] Detected m-package")
@@ -517,7 +533,7 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             else:
                 raise ValueError(f"Encountered uninterpretable type_id '{type_id}' in received packet.")
 
-            print("[DEBUG] packet_out:", packet_out)
+            # print("[DEBUG] packet_out:", packet_out)
 
             # t2 = time()  # [TIMING]
 
@@ -532,13 +548,34 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
         packet_out = None
 
         # Requests the server uptime:
-        if fname == "server_uptime":
+        if fname == "get_server_uptime":
             packet_out = scc.encode_mpacket(str(self.server.uptime()))
 
         # Requests the uptime of the communication socket, from the perspective
         # of the server
-        elif fname == "socket_uptime":
+        elif fname == "get_socket_uptime":
             packet_out = scc.encode_mpacket(str(time()-self.socket_tstart))
+
+        # Requests the value of play mode (False indicates `manual mode`)
+        elif fname == "get_play_mode":
+            packet_out = scc.encode_mpacket(str(self.server.datapool.get_play_mode()))
+
+        # Requests the value of play status (False indicates `manual mode`)
+        elif fname == "get_play_status":
+            packet_out = scc.encode_mpacket(self.server.datapool.get_play_status())
+
+        # Requests the schedule name, length, and duration as csv string
+        elif fname == "get_schedule_info":
+            name, length, duration = self.server.datapool.get_schedule_info()
+            packet_out = scc.encode_mpacket(f"{name},{length},{duration}")
+
+        # Gets the schedule hash
+        elif fname == "get_schedule_hash":
+            t0 = time()
+            schedule = self.server.datapool.get_schedule()
+            hs = blake2b(array(schedule).tobytes(), digest_size=64).hexdigest()
+            print(f"Hash in {int((time()-t0)*1E6)} \u03bcs")
+            packet_out = scc.encode_mpacket(hs)
 
         # Alternative echo, mainly for testing purposes. Echoes the first
         # argument given to it, or an empty string if no arguments were given.
