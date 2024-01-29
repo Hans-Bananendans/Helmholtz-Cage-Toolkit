@@ -10,7 +10,7 @@ def send_and_receive(packet,
                      socket_obj,
                      datastream: QDataStream = None,
                      buffer_size: int = scc.packet_size,
-                     t_wait_ms: int = 100):
+                     t_wait_ms: int = 1000):
     """Wrapper for sequentially sending and receiving a packet over TCP, with
     built-in support for the standard `socket` library backend, as well as the
     QTcpSocket backend.
@@ -565,13 +565,14 @@ def allocate_schedule(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    confirm = scc.decode_mpacket(
-        send_and_receive(
-            scc.encode_xpacket("allocate_schedule", name, n_seg, duration),
-            socket,
-            datastream=datastream
-        )
+    print(f"[DEBUG] allocate_schedule(): {socket}, {name}({type(name)}), {n_seg}({type(n_seg)}), {float(duration)}({type(float(duration))})")
+    packet_in = send_and_receive(
+        scc.encode_xpacket("allocate_schedule", name, n_seg, float(duration)),
+        socket,
+        datastream=datastream
     )
+    print(f"[DEBUG] allocate_schedule(): packet_in: {packet_in}")
+    confirm = scc.decode_mpacket(packet_in)
     return int(confirm)
 
 

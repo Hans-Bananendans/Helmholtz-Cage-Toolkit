@@ -20,8 +20,8 @@ of the functions included in `client_function.py`.
 """
 
 
-# HOST = "169.254.241.64"  # whatever outside connection
-HOST = "127.0.0.1"  # localhost
+HOST = "169.254.241.64"  # whatever outside connection
+# HOST = "127.0.0.1"  # localhost
 PORT = 7777
 
 test_schedule_name = "test_schedule_name"

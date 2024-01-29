@@ -10,27 +10,56 @@ import helmholtz_cage_toolkit.codec.scc2q as scc
 import helmholtz_cage_toolkit.client_functions as cf
 
 
+# From https://doc.qt.io/qtforpython-5/PySide2/QtNetwork/QAbstractSocket.html#PySide2.QtNetwork.PySide2.QtNetwork.QAbstractSocket.SocketError
+socketerror_lookup = (
+    ("QAbstractSocket.ConnectionRefusedError", "The connection was refused by the peer (or timed out)."),
+    ("QAbstractSocket.RemoteHostClosedError", "The remote host closed the connection. Note that the client socket (i.e., this socket) will be closed after the remote close notification has been sent."),
+    ("QAbstractSocket.HostNotFoundError", "The host address was not found."),
+    ("QAbstractSocket.SocketAccessError", "The socket operation failed because the application lacked the required privileges."),
+    ("QAbstractSocket.SocketResourceError", "The local system ran out of resources (e.g., too many sockets)."),
+    ("QAbstractSocket.SocketTimeoutError", "The socket operation timed out."),
+    ("QAbstractSocket.DatagramTooLargeError", "The datagram was larger than the operating system’s limit (which can be as low as 8192 bytes)."),
+    ("QAbstractSocket.NetworkError", "An error occurred with the network (e.g., the network cable was accidentally plugged out)."),
+    ("QAbstractSocket.AddressInUseError", "The address specified to bind() is already in use and was set to be exclusive."),
+    ("QAbstractSocket.SocketAddressNotAvailableError", "The address specified to bind() does not belong to the host."),
+    ("QAbstractSocket.UnsupportedSocketOperationError", "The requested socket operation is not supported by the local operating system (e.g., lack of IPv6 support)."),
+    ("QAbstractSocket.ProxyAuthenticationRequiredError", "The socket is using a proxy, and the proxy requires authentication."),
+    ("QAbstractSocket.SslHandshakeFailedError", "The SSL/TLS handshake failed, so the connection was closed (only used in QSslSocket )"),
+    ("QAbstractSocket.UnfinishedSocketOperationError", "Used by QAbstractSocketEngine only, The last operation attempted has not finished yet (still in progress in the background)."),
+    ("QAbstractSocket.ProxyConnectionRefusedError", "Could not contact the proxy server because the connection to that server was denied"),
+    ("QAbstractSocket.ProxyConnectionClosedError", "The connection to the proxy server was closed unexpectedly (before the connection to the final peer was established)"),
+    ("QAbstractSocket.ProxyConnectionTimeoutError", "The connection to the proxy server timed out or the proxy server stopped responding in the authentication phase."),
+    ("QAbstractSocket.ProxyNotFoundError", "The proxy address set with setProxy() (or the application proxy) was not found."),
+    ("QAbstractSocket.ProxyProtocolError", "The connection negotiation with the proxy server failed, because the response from the proxy server could not be understood."),
+    ("QAbstractSocket.OperationError", "An operation was attempted while the socket was in a state that did not permit it."),
+    ("QAbstractSocket.SslInternalError", "The SSL library being used reported an internal error. This is probably the result of a bad installation or misconfiguration of the library."),
+    ("QAbstractSocket.SslInvalidUserDataError", "Invalid data (certificate, key, cypher, etc.) was provided and its use resulted in an error in the SSL library."),
+    ("QAbstractSocket.TemporaryError", "A temporary error occurred (e.g., operation would block and socket is non-blocking)."),
+    ("QAbstractSocket.UnknownSocketError", "An unidentified error occurred."),
+)
+
+
 class ConnectionWindow(QWidget):
     def __init__(self, config, datapool):
         super().__init__()
 
         self.datapool = datapool
 
-        # Load relevant parameters from config file
-        # self.server_address = config["server_address"]
-        # self.server_port = config["server_port"]
-
+        # Define instance variables
         self.socket_uptime = 0.0
         self.server_uptime = 0.0
+        self.packet_exchanged = 0
 
         self.socket = QTcpSocket(self)
         self.socket.connected.connect(self.on_connected)
         self.socket.disconnected.connect(self.on_disconnected)
         self.socket.readyRead.connect(self.on_read_socket)
-        # self.socket.errorOccurred.connect(self.display_error)
+        self.socket.errorOccurred.connect(self.on_socketerror)
 
-        self.datapool.status_bar.showMessage("Disconnected")
-
+        # Since all TCP communication is implemented using blocking, only
+        # one request should ever be active at a time. As a result, a single
+        # QDataStream instance should suffice.
+        self.ds = QDataStream(self.socket)
 
 
         # ==== CONNECTBOX
@@ -86,27 +115,31 @@ class ConnectionWindow(QWidget):
         layout_statusbox.addWidget(self.label_status, 0, 1)
 
         layout_statusbox.addWidget(QLabel("Host:"), 1, 0)
-        self.label_host = QLabel("<host>")
-        layout_statusbox.addWidget(self.label_host, 1, 1)
+        self.label_server = QLabel("<host>")
+        layout_statusbox.addWidget(self.label_server, 1, 1)
 
         layout_statusbox.addWidget(QLabel("Client (you):"), 2, 0)
         self.label_client = QLabel("<client>")
         layout_statusbox.addWidget(self.label_client, 2, 1)
 
         layout_statusbox.addWidget(QLabel("Host uptime:"), 3, 0)
-        self.label_host_uptime = QLabel(f"{int(self.server_uptime)} s")
-        layout_statusbox.addWidget(self.label_host_uptime, 3, 1)
+        self.label_server_uptime = QLabel(f"{int(self.server_uptime)} s")
+        layout_statusbox.addWidget(self.label_server_uptime, 3, 1)
 
         layout_statusbox.addWidget(QLabel("Socket uptime:"), 4, 0)
         self.label_socket_uptime = QLabel(f"{int(self.socket_uptime)} s")
         layout_statusbox.addWidget(self.label_socket_uptime, 4, 1)
 
-        layout_statusbox.addWidget(QLabel("Response time"), 5, 0)
+        layout_statusbox.addWidget(QLabel("Packets exchanged:"), 5, 0)
+        self.label_packets_exchanged = QLabel(str(self.packet_exchanged))
+        layout_statusbox.addWidget(self.label_packets_exchanged, 5, 1)
+
+        layout_statusbox.addWidget(QLabel("Response time"), 6, 0)
         self.label_ping_avg = QLabel()
-        layout_statusbox.addWidget(self.label_ping_avg, 5, 1)
+        layout_statusbox.addWidget(self.label_ping_avg, 6, 1)
         self.button_ping_avg = QPushButton("test")
         self.button_ping_avg.clicked.connect(self.do_ping_avg)
-        layout_statusbox.addWidget(self.button_ping_avg, 5, 2)
+        layout_statusbox.addWidget(self.button_ping_avg, 6, 2)
 
 
         group_statusbox = QGroupBox()
@@ -122,23 +155,23 @@ class ConnectionWindow(QWidget):
 
         layout_hhcbox.addWidget(QLabel("HHC mode:"), 0, 0)
         self.label_hhcmode = QLabel("")
-        layout_statusbox.addWidget(self.label_hhcmode, 0, 1)
+        layout_hhcbox.addWidget(self.label_hhcmode, 0, 1)
 
         layout_hhcbox.addWidget(QLabel("HHC status:"), 1, 0)
         self.label_hhcstatus = QLabel("")
-        layout_statusbox.addWidget(self.label_hhcstatus, 1, 1)
+        layout_hhcbox.addWidget(self.label_hhcstatus, 1, 1)
 
         layout_hhcbox.addWidget(QLabel("Schedule name:"), 2, 0)
         self.label_schedule_name = QLabel("")
-        layout_statusbox.addWidget(self.label_schedule_name, 2, 1)
+        layout_hhcbox.addWidget(self.label_schedule_name, 2, 1)
 
         layout_hhcbox.addWidget(QLabel("Segments:"), 3, 0)
         self.label_schedule_length = QLabel("")
-        layout_statusbox.addWidget(self.label_schedule_length, 3, 1)
+        layout_hhcbox.addWidget(self.label_schedule_length, 3, 1)
 
         layout_hhcbox.addWidget(QLabel("Duration:"), 4, 0)
         self.label_schedule_duration = QLabel("")
-        layout_statusbox.addWidget(self.label_schedule_duration, 4, 1)
+        layout_hhcbox.addWidget(self.label_schedule_duration, 4, 1)
 
 
         group_hhcbox = QGroupBox()
@@ -152,13 +185,13 @@ class ConnectionWindow(QWidget):
         self.button_transfer_schedule = QPushButton(
             QIcon("./assets/icons/feather/upload.svg"), "TRANSFER TO HHC"
         )
-        self.button_transfer_schedule.clicked.connect(self.transfer_schedule)
+        self.button_transfer_schedule.clicked.connect(self.do_transfer_schedule)
         self.button_transfer_schedule.setMinimumWidth(320)
 
         self.button_clear_schedule = QPushButton(
             QIcon("./assets/icons/feather/trash.svg"), "CLEAR"
         )
-        self.button_clear_schedule.clicked.connect(self.clear_schedule)
+        self.button_clear_schedule.clicked.connect(self.do_clear_schedule)
 
 
         layout_transferbox = QHBoxLayout()
@@ -173,43 +206,7 @@ class ConnectionWindow(QWidget):
         group_transferbox.setLayout(layout_transferbox)
 
 
-
-        # button_ping = QPushButton("PING")
-        # button_ping.clicked.connect(self.do_ping)
-        # self.label_ping = QLabel()
-
-        # button_get_bm = QPushButton("Get Bm")
-        # button_get_bm.clicked.connect(self.do_get_Bm)
-        # self.label_get_bm = QLabel()
-
-        # # Disable widgets in widgets_to_enable group until connection is made
-        self.widgets_to_enable = (
-            self.button_disconnect,
-
-            self.label_host,
-            self.label_client,
-            self.label_host_uptime,
-            self.label_socket_uptime,
-            self.label_ping_avg,
-            self.button_ping_avg,
-
-            self.label_hhcmode,
-            self.label_hhcstatus,
-            self.label_schedule_name,
-            self.label_schedule_length,
-            self.label_schedule_duration,
-
-            self.button_transfer_schedule,
-            self.button_clear_schedule,
-        )
-
-
         # ==== MAIN LAYERS
-
-        for widget in self.widgets_to_enable:
-            widget.setEnabled(False)
-
-
 
         layout1 = QVBoxLayout()
         layout1.addWidget(group_connectbox)
@@ -256,10 +253,59 @@ class ConnectionWindow(QWidget):
             self.update_general_labels)
 
 
-        # Since all TCP communication is implemented using blocking, only
-        # one request should ever be active at a time. As a result, a single
-        # QDataStream instance should suffice.
-        self.ds = QDataStream(self.socket)
+
+        # ==== PRECONFIG
+        # Gather timers. Leave self.timer_connect_on_startup out
+        self.timers = (
+            self.timer_correct_time,
+            self.timer_update_time_labels,
+            self.timer_update_general_labels,
+        )
+        self.timers_intervals = [0]*len(self.timers)
+
+        self.widgets_online_only = (
+            self.button_disconnect,
+
+            self.label_server,
+            self.label_client,
+            self.label_server_uptime,
+            self.label_socket_uptime,
+            self.label_packets_exchanged,
+            self.label_ping_avg,
+            self.button_ping_avg,
+
+            self.label_hhcmode,
+            self.label_hhcstatus,
+            self.label_schedule_name,
+            self.label_schedule_length,
+            self.label_schedule_duration,
+
+            self.button_transfer_schedule,
+            self.button_clear_schedule,
+        )
+
+        self.widgets_offline_only = (
+            self.button_connect,
+            self.lineedit_address,
+            self.lineedit_port,
+        )
+
+        # Disable widgets in widgets_online_only group until connection is made
+        for widget in self.widgets_online_only:
+            widget.setEnabled(False)
+
+        self.datapool.status_bar.showMessage("Disconnected")
+
+
+        self.hhc_play_mode = "-"
+        self.hhc_play_status = "-"
+        self.hhc_schedule_info = ("-", "-", "-")
+
+        self.label_hhcmode.setText("-")
+        self.label_hhcstatus.setText("-")
+        self.label_schedule_name.setText("-")
+        self.label_schedule_length.setText("-")
+        self.label_schedule_duration.setText("-")
 
 
     def connect_on_startup(self):
@@ -278,27 +324,15 @@ class ConnectionWindow(QWidget):
         # self.socket.connectToHost(self.server_address, self.server_port)
         address = self.lineedit_address.text()
         port = int(self.lineedit_port.text())
-
-        print(f"[DEBUG] Connecting to {address} {type(address)}, {port} {type(port)} ")
-
         self.socket.connectToHost(address, port)
         # self.socket.connectToHost("127.0.0.1", 7777)
 
-        # Try to connect for `timeout` ms before giving up
-        if self.socket.waitForConnected(timeout):
-            self.server_address = address
-            self.server_port = port
-            self.datapool.status_bar.showMessage(
-                f"Connected to server at {address}:{port}"
-            )
+        # Try to connect for a while, before giving up
+        if self.socket.waitForConnected():
+            pass
         else:
-            self.datapool.status_bar.showMessage(
-                f"Connection error: {self.socket.errorString()}"
-            )
-
-            print(f"Error in connect_socket(): {self.socket.errorString()}")
+            # If socket is somehow still open, close it
             if self.socket.isOpen():
-                print("connect_socket(): socket closed manually")
                 self.socket.close()
 
     # @Slot()
@@ -308,29 +342,32 @@ class ConnectionWindow(QWidget):
         # Try to connect for `timeout` ms before giving up
         if self.socket.state() == QAbstractSocket.UnconnectedState or \
                 socket.waitForDisconnected(timeout):
-            self.datapool.status_bar.showMessage("Disconnected")
+            pass
         else:
-            print(f"Error in disconnect_socket(): {self.socket.errorString()}")
+            # If socket is somehow still open, close it
             if self.socket.isOpen():
-                print("disconnect_socket(): socket closed manually")
                 self.socket.close()
 
-            self.datapool.status_bar.showMessage("Disconnected")
 
     # @Slot()
     def on_read_socket(self):
-        print("Signal: read_socket()")
-        pass
+        # print("[DEBUG] SIGNAL: readyRead")
+        self.packet_exchanged += 1
+        # TODO AFTER TESTING, MOVE THIS TO self.update_general_labels()
+        self.label_packets_exchanged.setText(str(self.packet_exchanged))
 
     # @Slot()
     def on_connected(self):
-        print("Signal: connected()")
+        # print("[DEBUG] SIGNAL: socket.connected")
+
         # Set connection status to connected.
         self.label_status.setText("ONLINE")
         self.label_status.setStyleSheet("""QLabel {color: #00aa00;}""")
 
-        for widget in self.widgets_to_enable:
+        for widget in self.widgets_online_only:
             widget.setEnabled(True)
+        for widget in self.widgets_offline_only:
+            widget.setEnabled(False)
 
         self.server_uptime = cf.get_server_uptime(self.socket, datastream=self.ds)
         self.socket_uptime = 0.0
@@ -344,22 +381,48 @@ class ConnectionWindow(QWidget):
         self.timer_update_general_labels.start(
             self.datapool.config["label_update_period"])
 
+        # Display addresses and ports
+        server_address = self.socket.peerAddress().toString()
+        server_port = self.socket.peerPort()
+        self.label_server.setText("{}:{}".format(server_address, server_port))
+        self.label_client.setText("{}:{}".format(
+            self.socket.localAddress().toString(), self.socket.localPort()
+        ))
+        print(f"Connected to server at {server_address}:{server_port}")
+        self.datapool.status_bar.showMessage(
+            f"Connected to server at {server_address}:{server_port}"
+        )
+
+        self.packet_exchanged = 0
+
         self.do_ping_avg()
 
     # @Slot()
     def on_disconnected(self):
-        print("Signal: disconnected()")
+        # print("[DEBUG] SIGNAL: socket.disconnected")
+
         self.label_status.setText("OFFLINE")
         self.label_status.setStyleSheet("""QLabel {color: #ff0000;}""")
 
+        self.label_server.setText("<host>")
+        self.label_client.setText("<client>")
+        print("Disconnected")
         self.datapool.status_bar.showMessage("Disconnected")
 
-        for widget in self.widgets_to_enable:
+        for widget in self.widgets_online_only:
             widget.setEnabled(False)
+        for widget in self.widgets_offline_only:
+            widget.setEnabled(True)
 
         self.timer_update_time_labels.stop()
         self.timer_correct_time.stop()
         self.timer_update_general_labels.stop()
+
+    def on_socketerror(self, socketerror: QAbstractSocket.SocketError):
+        # print("[DEBUG] SIGNAL: socket.errorOccurred")
+        print("The socket encountered the following error: ", end="")
+        print(f"{socketerror_lookup[socketerror][0].split('.')[-1]}: ", end="")
+        print(f"{socketerror_lookup[socketerror][1]}")
 
 
     # @staticmethod
@@ -410,8 +473,8 @@ class ConnectionWindow(QWidget):
 
 
     def correct_time(self):
-        self.server_uptime = cf.get_server_uptime(s, datastream=self.ds)
-        self.socket_uptime = cf.get_socket_uptime(s, datastream=self.ds)
+        self.server_uptime = cf.get_server_uptime(self.socket, datastream=self.ds)
+        self.socket_uptime = cf.get_socket_uptime(self.socket, datastream=self.ds)
 
         self.label_server_uptime.setText(f"{int(self.server_uptime)} s")
         self.label_socket_uptime.setText(f"{int(self.socket_uptime)} s")
@@ -425,13 +488,62 @@ class ConnectionWindow(QWidget):
         self.label_socket_uptime.setText(f"{int(self.socket_uptime)} s")
 
     def update_general_labels(self):
-        pass  # TODO
+        hhc_play_mode = cf.get_play_mode(self.socket, self.ds)
+        if hhc_play_mode != self.hhc_play_mode:
+            if hhc_play_mode:
+                self.label_hhcmode.setText("play mode")
+            else:
+                self.label_hhcmode.setText("manual mode")
+        self.hhc_play_mode = hhc_play_mode
 
-    def transfer_schedule(self):
-        pass  # TODO
+        hhc_play_status = cf.get_play_status(self.socket, self.ds)
+        if hhc_play_status != self.hhc_play_status:
+                self.label_hhcstatus.setText(hhc_play_status)
+        self.hhc_play_status = hhc_play_status
 
-    def clear_schedule(self):
-        pass  # TODO
+        hhc_schedule_info = cf.get_schedule_info(self.socket, self.ds)
+        if hhc_schedule_info != self.hhc_schedule_info:
+            self.label_schedule_name.setText(hhc_schedule_info[0])
+            self.label_schedule_length.setText(str(hhc_schedule_info[1]))
+            self.label_schedule_duration.setText("{:.3f} s".format(
+                hhc_schedule_info[2]))
+        self.hhc_schedule_info = hhc_schedule_info
+
+
+    def suspend_timers(self):
+        print("[DEBUG] suspend_timers()")
+        for i, timer in enumerate(self.timers):
+            self.timers_intervals[i] = timer.interval()
+            timer.stop()
+
+    def resume_timers(self):
+        print("[DEBUG] resume_timers()")
+        for i, timer in enumerate(self.timers):
+            timer.start(self.timers_intervals[i])
+
+
+    def do_transfer_schedule(self):
+        self.suspend_timers()
+
+        t0 = time()
+        schedule_datastream = QDataStream()
+        schedule = list(column_stack(self.datapool.schedule))
+        ack = cf.transfer_schedule(
+            self.socket,
+            schedule,
+            name="myschedule",
+            datastream=schedule_datastream
+        )
+
+        print("Done. Transferred {} segments in {:.0f} \u03bcs".format(
+            len(schedule),
+            (time()-t0)*1E6
+        ))
+
+        self.resume_timers()
+
+    def do_clear_schedule(self):
+        ack = cf.initialize_schedule(self.socket, datastream=self.ds)
 
 
 

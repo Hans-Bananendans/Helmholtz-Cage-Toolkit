@@ -523,6 +523,7 @@ class MainWindow(QMainWindow):
 
         self.packetcount = 0
 
+        self.socket_tstart = 0.0
         self.socket_uptime = 0.0
         self.server_uptime = 0.0
 
@@ -536,6 +537,12 @@ class MainWindow(QMainWindow):
         self.socket.errorOccurred.connect(self.on_socketerror)
 
         self.ds = QDataStream()
+
+
+        # ====================================================================
+        # ==== TIMERS ========================================================
+        self.socket_uptime_timer = QTimer()
+        self.socket_uptime_timer.timeout.connect(self.do_uptime_update)
 
 
         # ==== CONNECTBOX ====================================================
@@ -601,13 +608,17 @@ class MainWindow(QMainWindow):
         self.label_socket_uptime = QLabel(f"{int(self.socket_uptime)} s")
         layout_statusbox.addWidget(self.label_socket_uptime, 4, 1)
 
-        layout_statusbox.addWidget(QLabel("Response time"), 5, 0)
+        layout_statusbox.addWidget(QLabel("Packets exchanged:"), 5, 0)
+        self.label_packets_exchanged = QLabel(str(self.packetcount))
+        layout_statusbox.addWidget(self.label_packets_exchanged, 5, 1)
+
+        layout_statusbox.addWidget(QLabel("Response time"), 6, 0)
         self.label_ping_avg = QLabel()
-        layout_statusbox.addWidget(self.label_ping_avg, 5, 1)
+        layout_statusbox.addWidget(self.label_ping_avg, 6, 1)
         self.button_ping_avg = QPushButton("test")
         # self.button_ping_avg.clicked.connect(self.do_ping_avg)
         self.button_ping_avg.clicked.connect(self.do_echo)
-        layout_statusbox.addWidget(self.button_ping_avg, 5, 2)
+        layout_statusbox.addWidget(self.button_ping_avg, 6, 2)
 
 
         group_statusbox = QGroupBox()
@@ -646,7 +657,10 @@ class MainWindow(QMainWindow):
             widget.setEnabled(False)
 
 
-    def do_connect(self):
+
+
+
+    def do_connect(self, timeout=3000):
         address = self.lineedit_address.text()
         port = int(self.lineedit_port.text())
         print(f"Connecting to {address}:{port}")
@@ -681,6 +695,9 @@ class MainWindow(QMainWindow):
     def on_connect(self):
         print("[DEBUG] SIGNAL: socket.connected")
         # Turn status label to green and display ONLINE
+        self.socket_tstart = time()
+        self.socket_uptime_timer.start(1000)
+
         self.label_status.setText("ONLINE")
         self.label_status.setStyleSheet("""QLabel {color: #00aa00;}""")
 
@@ -691,11 +708,14 @@ class MainWindow(QMainWindow):
         for widget in self.widgets_offline_only:
             widget.setEnabled(False)
 
+
     def on_disconnect(self):
         print("[DEBUG] SIGNAL: socket.disconnected")
         # Turn status label to red and display OFFLINE
         self.label_status.setText("OFFLINE")
         self.label_status.setStyleSheet("""QLabel {color: #ff0000;}""")
+
+        self.socket_uptime_timer.stop()
 
         for widget in self.widgets_online_only:
             widget.setEnabled(False)
@@ -734,6 +754,12 @@ class MainWindow(QMainWindow):
         print("[DEBUG] do_echo()")
         echo = cf.echo(self.socket, "Hello there!")
         print(echo)
+
+
+    def do_uptime_update(self):
+        # print("[DEBUG] do_uptime_update()")
+        self.socket_uptime = time()-self.socket_tstart
+        self.label_socket_uptime.setText("{:.0f} s".format(self.socket_uptime))
 
 
 if __name__ == "__main__":

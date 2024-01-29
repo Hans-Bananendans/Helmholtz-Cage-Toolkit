@@ -50,6 +50,7 @@ packet, and this is to force a degree of consistency across implementations.
 Users desiring additional functionality are advised to subclass SCC instead.
 """
 
+from numpy import float64
 
 
 packet_size = 256   # Referable packet length for buffer size configuration
@@ -186,7 +187,7 @@ def encode_xpacket(cmd: str, *args):  # Q Compatible
 
     Unoptimized as of 25-01-2024. ~10000-20000 ns/encode (FX-8350)
     """
-    recognized_types = (int, float, str, bool)
+    recognized_types = (int, float, str, bool, float64)
 
     n_args = len(args)
     n_correct_type = sum([type(arg) in recognized_types for arg in args])
@@ -297,13 +298,13 @@ def decode_spacket(s_packet):  # Q Compatible (no changes)
         segment_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
 
     to segment values.
-
+    # TODO: Re-benchmark performance after adding extra float() calls
     Optimization: 2150 ns/decode (FX-8350)
     """
     s_decoded = s_packet.decode()
     return [
-        int(s_decoded[1:33]),
-        int(s_decoded[33:65]),
+        int(float(s_decoded[1:33])),
+        int(float(s_decoded[33:65])),
         float(s_decoded[65:85]),
         float(s_decoded[85:101]),
         float(s_decoded[101:117]),
