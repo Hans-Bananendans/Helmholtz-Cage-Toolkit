@@ -277,11 +277,11 @@ class ConnectionWindow(QWidget):
         """
         # self.socket.connectToHost(self.server_address, self.server_port)
         address = self.lineedit_address.text()
-        host = int(self.lineedit_port.text())
+        port = int(self.lineedit_port.text())
 
-        print(f"[DEBUG] Connecting to {address} {type(address)}, {host} {type(host)} ")
+        print(f"[DEBUG] Connecting to {address} {type(address)}, {port} {type(port)} ")
 
-        self.socket.connectToHost(address, host)
+        self.socket.connectToHost(address, port)
         # self.socket.connectToHost("127.0.0.1", 7777)
 
         # Try to connect for `timeout` ms before giving up
@@ -289,7 +289,7 @@ class ConnectionWindow(QWidget):
             self.server_address = address
             self.server_port = port
             self.datapool.status_bar.showMessage(
-                f"Connected to server at {address}:{host}"
+                f"Connected to server at {address}:{port}"
             )
         else:
             self.datapool.status_bar.showMessage(

@@ -80,6 +80,7 @@ def ping(socket, datastream: QDataStream = None):
     tend = time()
 
     # Verification
+    # print("[DEBUG] packet_in:", packet_in)  # TODO REMOVE
     response = scc.decode_epacket(packet_in)
     if response == "":
         return tend - tstart

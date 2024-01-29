@@ -231,14 +231,14 @@ class ConnectionWindowDummy(QGroupBox):
 
 
         # ==== TIMERS
-        if self.datapool.config["connect_on_startup"]:
-            self.timer_connect_on_startup = Qtimer()
-            self.timer_connect_on_startup.timeout.connect(
-                self.connect_on_startup
-            )
-            self.timer_connect_on_startup.start(
-                self.datapool.config["connect_on_startup_delay"]
-            )
+        # if self.datapool.config["connect_on_startup"]:
+        #     self.timer_connect_on_startup = Qtimer()
+        #     self.timer_connect_on_startup.timeout.connect(
+        #         self.connect_on_startup
+        #     )
+        #     self.timer_connect_on_startup.start(
+        #         self.datapool.config["connect_on_startup_delay"]
+        #     )
 
         # self.timer_update_time_labels = QTimer()
         # self.timer_update_time_labels.timeout.connect(self.update_time_labels)
@@ -254,12 +254,14 @@ class ConnectionWindowDummy(QGroupBox):
         # Since all TCP communication is implemented using blocking, only
         # one request should ever be active at a time. As a result, a single
         # QDataStream instance should suffice.
+
         self.ds = QDataStream(self.socket)
 
 
 
     def connect_socket(self, timeout=3000):
         self.socket.connectToHost(self.server_address, self.server_port)
+
 
         # Try to connect for `timeout` ms before giving up
         if self.socket.waitForConnected(timeout):
