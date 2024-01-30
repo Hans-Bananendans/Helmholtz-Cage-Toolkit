@@ -510,29 +510,28 @@ class ConnectionWindow(QWidget):
         self.hhc_schedule_info = hhc_schedule_info
 
 
-    def suspend_timers(self):
+    def suspend_timers(self):  # TODO Keep in here for now, but not sure if needed
         print("[DEBUG] suspend_timers()")
         for i, timer in enumerate(self.timers):
             self.timers_intervals[i] = timer.interval()
             timer.stop()
 
-    def resume_timers(self):
+    def resume_timers(self):  # TODO Keep in here for now, but not sure if needed
         print("[DEBUG] resume_timers()")
         for i, timer in enumerate(self.timers):
             timer.start(self.timers_intervals[i])
 
 
     def do_transfer_schedule(self):
-        self.suspend_timers()
+        # self.suspend_timers()  # TODO: Remove after tests
 
         t0 = time()
-        schedule_datastream = QDataStream()
         schedule = list(column_stack(self.datapool.schedule))
-        ack = cf.transfer_schedule(
+        confirm = cf.transfer_schedule(
             self.socket,
             schedule,
-            name="myschedule",
-            datastream=schedule_datastream
+            "myschedule",
+            datastream=self.ds
         )
 
         print("Done. Transferred {} segments in {:.0f} \u03bcs".format(
@@ -540,7 +539,52 @@ class ConnectionWindow(QWidget):
             (time()-t0)*1E6
         ))
 
-        self.resume_timers()
+        # print("[DEBUG] TYPE CHECK: {}|{}, {}|{}, {}|{}, {}|{}, {}|{}, {}|{}".format(
+        #     schedule[1][0], type(schedule[1][0]),
+        #     schedule[1][1], type(schedule[1][1]),
+        #     schedule[1][2], type(schedule[1][2]),
+        #     schedule[1][3], type(schedule[1][3]),
+        #     schedule[1][4], type(schedule[1][4]),
+        #     schedule[1][5], type(schedule[1][5]),))
+
+        # Simulates the effect of s-packet encoding and decoding on a copy of
+        # the local schedule, so that the local schedule and remote schedule
+        # can be hashed apples-to-apples.
+        for i, row in enumerate(schedule):
+            schedule[i] = [
+                int(float(str(row[0])[:16])),
+                int(float(str(row[1])[:16])),
+                float(str(row[2])[:16]),
+                float(str(row[3])[:16]),
+                float(str(row[4])[:16]),
+                float(str(row[5])[:16])
+            ]
+
+        # print("[DEBUG] TYPE CHECK: {}|{}, {}|{}, {}|{}, {}|{}, {}|{}, {}|{}".format(
+        #     schedule[1][0], type(schedule[1][0]),
+        #     schedule[1][1], type(schedule[1][1]),
+        #     schedule[1][2], type(schedule[1][2]),
+        #     schedule[1][3], type(schedule[1][3]),
+        #     schedule[1][4], type(schedule[1][4]),
+        #     schedule[1][5], type(schedule[1][5]),))
+
+
+        # print("[DEBUG] Print schedule @ server")
+        # confirm1 = cf.print_schedule(self.socket, datastream=self.ds)
+
+        # Verify transfer by comparing BLAKE2b hash of local and remote schedule
+
+        verify = cf.verify_schedule(self.socket, schedule, datastream=self.ds)
+        if verify:
+            print("Transfer verification: PASS")
+        else:
+            print("Transfer verification: FAIL")
+            local_hash = cf.schedule_hash(schedule)
+            print("Local hash:", local_hash)
+            remote_hash = cf.get_schedule_hash(self.socket, datastream=self.ds)
+            print("Remote hash:", remote_hash)
+
+        # self.resume_timers()  # TODO: Remove after tests
 
     def do_clear_schedule(self):
         ack = cf.initialize_schedule(self.socket, datastream=self.ds)

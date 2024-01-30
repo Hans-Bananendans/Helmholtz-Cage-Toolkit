@@ -10,7 +10,7 @@ def send_and_receive(packet,
                      socket_obj,
                      datastream: QDataStream = None,
                      buffer_size: int = scc.packet_size,
-                     t_wait_ms: int = 1000):
+                     timeout_ms: int = 1000):
     """Wrapper for sequentially sending and receiving a packet over TCP, with
     built-in support for the standard `socket` library backend, as well as the
     QTcpSocket backend.
@@ -49,11 +49,11 @@ def send_and_receive(packet,
         datastream.writeRawData(packet)
         # ts = time()  # [TIMING]
         # Return the response
-        if socket_obj.waitForReadyRead(t_wait_ms):
+        if socket_obj.waitForReadyRead(timeout_ms):
             # tr = time()  # [TIMING]
             # print(f"send_and_receive(): {int((tr-ts)*1E6)} \u03bcs")  # [TIMING]
             return datastream.readRawData(buffer_size)
-        # If no response was received within `t_wait_ms`, call it a failure
+        # If no response was received within `timeout_ms`, call it a failure
         else:
             print(f"No response received to packet {packet}")
             return None
@@ -508,8 +508,14 @@ def get_schedule_info(
 
 def get_schedule_hash(
     socket,
-    datastream: QDataStream = None):
+    datastream: QDataStream = None,
+    timeout_ms=10000):
     """Requests the server to hash its schedule and send the result.
+
+    For large schedules (>1M segments), calculating the hash can take over one
+    second, which is the default timeout for the send_and_receive() call.
+    Therefore, get_schedule_hash() allows you to raise this limit by specifying
+    a value for `timeout_ms`, set to 10 seconds by default.
 
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
@@ -519,7 +525,8 @@ def get_schedule_hash(
         send_and_receive(
             scc.encode_xpacket("get_schedule_hash"),
             socket,
-            datastream=datastream
+            datastream=datastream,
+            timeout_ms=timeout_ms,
         )
     )
     return hash_string
@@ -629,15 +636,17 @@ def transfer_schedule(  # TODO Incorporate schedule validation tools
     if schedule[-1][0]+1 != len(schedule):
         raise AssertionError(f"The segment numbers of schedule '{name}' do not match its length!")
 
-    # TODO: Is this desirable behaviour, given that user already has control
-    #  of this aspect by choosing to pass a QDataStream as an argument?
-    # To help with performance, transfer_schedule() assumes that it is allowed
-    # uninterrupted access to the TCP connection. If using a QTcpSocket and
-    # no datastream is pre-specified, `transfer_schedule()` will now make one
-    # once, to speed up transfer.
-    elif type(socket) == QTcpSocket and not datastream:
-        datastream = QDataStream(socket_obj)
+    # # TODO: Is this desirable behaviour, given that user already has control
+    # #  of this aspect by choosing to pass a QDataStream as an argument?
+    # # To help with performance, transfer_schedule() assumes that it is allowed
+    # # uninterrupted access to the TCP connection. If using a QTcpSocket and
+    # # no datastream is pre-specified, `transfer_schedule()` will now make one
+    # # once, to speed up transfer.
+    # elif type(socket) == QTcpSocket and not datastream:
+    #     datastream = QDataStream(socket_obj)
 
+    print(f"[DEBUG] transfer_schedule(), about to do:")
+    print(f"[DEBUG  allocate_schedule({socket}, {name}|{type(name)}, {len(schedule)}|{type(len(schedule))}, {schedule[-1][2]}|{type(schedule[-1][2])}")
     # First allocate schedule
     confirm = allocate_schedule(
         socket, name, len(schedule), schedule[-1][2], datastream=datastream
@@ -683,11 +692,29 @@ def verify_schedule(
     locally, and requesting the server to send the hash from its side.
     This function then outputs the boolean result of the comparison.
 
+    For large schedules (>1M segments), calculating the hash can take some
+    time, and for schedules of this size, verify_schedule automatically
+    estimates some appropriate TCP interaction timeout, according to:
+
+    timeout_ms = 125% * ( computation_factor * 1,000 [ms] / 1,000,000 )
+
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
 
-    hash_schedule_server = get_schedule_hash(socket, datastream=datastream)
+    # For large schedules, estimate raised timeout:
+    if len(schedule) >= 1_000_000:
+        cf = 1.0
+        timeout_ms = int(1.25*(cf*1000/len(schedule)))
+        print("Large schedule detected. Dynamically set timeout to {:.3f} s".format(
+            timeout_ms))
+        print("If the verification fails due to timeout, please increase the timeout limit")
+
+
+    hash_schedule_server = get_schedule_hash(
+        socket,
+        timeout_ms=timeout_ms,
+        datastream=datastream)
     hash_schedule_local = schedule_hash(schedule)
 
     return hash_schedule_local == hash_schedule_server

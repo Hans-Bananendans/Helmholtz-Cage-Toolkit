@@ -265,7 +265,7 @@ class DataPool:
         return self.play_status  # Implemented non-thread-safe
 
     def set_schedule_segment(self, segment: list):
-        print("set_schedule_segment()")
+        # print("set_schedule_segment()")
 
         self._lock_schedule.acquire(timeout=0.001)
 
@@ -356,8 +356,8 @@ class DataPool:
         self._lock_schedule.release()
 
 
-        print(str(self.get_schedule()))
-        print(hash(str(self.get_schedule())))
+        # print(str(self.get_schedule()))
+        # print(hash(str(self.get_schedule())))
         return 1
 
 
@@ -489,7 +489,7 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 break
             type_id = scc.packet_type(packet_in)
             # t1 = time()  # [TIMING]
-            print("[DEBUG] packet_in:", packet_in)
+            # print("[DEBUG] packet_in:", packet_in)
 
             if type_id == "m":
                 # print("[DEBUG] Detected m-package")
@@ -533,7 +533,7 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             else:
                 raise ValueError(f"Encountered uninterpretable type_id '{type_id}' in received packet.")
 
-            print("[DEBUG] packet_out:", packet_out)
+            # print("[DEBUG] packet_out:", packet_out)
 
             # t2 = time()  # [TIMING]
 

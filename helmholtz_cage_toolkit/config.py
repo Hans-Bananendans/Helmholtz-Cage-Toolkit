@@ -11,10 +11,10 @@ config = {
 
 
     # ==== TCP connection settings ====
-    # "server_address": "127.0.0.1",
-    "server_address": "169.254.241.64",
+    "server_address": "127.0.0.1",
+    # "server_address": "169.254.241.64",
     "server_port": 7777,
-    # "buffer_size": 1024,
+    # "buffer_size": 1024,  # Specified by codec instead
 
     "connect_on_startup": False,
     "connect_on_startup_delay": 3000,
