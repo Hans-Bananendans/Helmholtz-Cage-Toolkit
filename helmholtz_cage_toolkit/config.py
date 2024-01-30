@@ -209,14 +209,14 @@ config = {
             "icon": "./assets/icons/link.svg"
         },
         1: {
-            "name": "ControlWindow",
+            "name": "CommandWindow",
             "checkable": True,
             "icon": "./assets/icons/feather/sliders.svg"
         },
         2: {
             "name": "OrbitDesignWindow",
             "checkable": True,
-            "icon": "./assets/icons/feather/disc.svg"
+            "icon": "./assets/icons/orbitB.svg"
         },
         3: {
             "name": "GeneratorWindow",
@@ -224,17 +224,22 @@ config = {
             "icon": "./assets/icons/feather/activity.svg"
         },
         4: {
-            "name": "Tab 4",
+            "name": "WebcamWindow",
             "checkable": True,
-            "icon": "./assets/icons/feather/box.svg"
+            "icon": "./assets/icons/feather/video.svg"
         },
         5: {
-            "name": "Tab 5",
+            "name": "ControlWindow",
             "checkable": True,
-            "icon": "./assets/icons/feather/box.svg"
+            "icon": "./assets/icons/feather/sliders.svg"
         },
         6: {
             "name": "Tab 6",
+            "checkable": True,
+            "icon": "./assets/icons/feather/box.svg"
+        },
+        7: {
+            "name": "Tab 7",
             "checkable": True,
             "icon": "./assets/icons/feather/info.svg"
         },

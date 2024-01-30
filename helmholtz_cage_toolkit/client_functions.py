@@ -682,7 +682,8 @@ def schedule_hash(schedule: list):
 def verify_schedule(
     socket,
     schedule,
-    datastream: QDataStream = None):
+    datastream: QDataStream = None,
+    timeout_ms=10000):
     """Function to compare the integrity of a transferred schedule with the
     local copy.
 

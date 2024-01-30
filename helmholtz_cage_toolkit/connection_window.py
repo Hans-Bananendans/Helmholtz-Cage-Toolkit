@@ -227,7 +227,7 @@ class ConnectionWindow(QWidget):
         layout0 = QHBoxLayout()
 
         layout0.addWidget(group1)
-        layout0.addWidget(QWidget())
+        layout0.addWidget(QWidget())  # Right half of window as placeholder
 
         self.setLayout(layout0)
 

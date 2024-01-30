@@ -11,6 +11,8 @@ from helmholtz_cage_toolkit.datapool import DataPool
 from helmholtz_cage_toolkit.control_window import ControlWindow
 from helmholtz_cage_toolkit.cyclics_window import CyclicsWindow
 from helmholtz_cage_toolkit.connection_window import ConnectionWindow
+from helmholtz_cage_toolkit.webcam_window import WebcamWindow
+from helmholtz_cage_toolkit.command_window import CommandWindow
 from helmholtz_cage_toolkit.orbit_design_window import OrbitDesignWindow
 from helmholtz_cage_toolkit.file_handling import load_file, save_file, NewFileDialog
 
@@ -216,11 +218,15 @@ class MainWindow(QMainWindow):
             if i == 0:
                 self.tabcontainer.addWidget(ConnectionWindow(self.config, self.datapool))
             elif i == 1:
-                self.tabcontainer.addWidget(ControlWindow(self.config, self.datapool))
+                self.tabcontainer.addWidget(CommandWindow(self.config, self.datapool))
             elif i == 2:
                 self.tabcontainer.addWidget(OrbitDesignWindow(self.config, self.datapool))
             elif i == 3:
                 self.tabcontainer.addWidget(CyclicsWindow(self.config, self.datapool))
+            elif i == 4:
+                self.tabcontainer.addWidget(WebcamWindow(self.config, self.datapool))
+            elif i == 5:
+                self.tabcontainer.addWidget(ControlWindow(self.config, self.datapool))
             else:
                 self.tabcontainer.addWidget(TestTab(attrs["name"]))
 
