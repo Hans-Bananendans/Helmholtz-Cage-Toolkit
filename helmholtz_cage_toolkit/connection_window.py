@@ -234,7 +234,7 @@ class ConnectionWindow(QWidget):
 
         # ==== TIMERS
         if self.datapool.config["connect_on_startup"]:
-            self.timer_connect_on_startup = Qtimer()
+            self.timer_connect_on_startup = QTimer()
             self.timer_connect_on_startup.timeout.connect(
                 self.connect_on_startup
             )
