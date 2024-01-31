@@ -54,17 +54,17 @@ import helmholtz_cage_toolkit.client_functions as cf
 #
 #         # layout_connectbox2.addWidget(QLabel("Address:"))
 #         #
-#         # self.lineedit_address = QLineEdit()
-#         # self.lineedit_address.setPlaceholderText("<server address>")
-#         # self.lineedit_address.setText(self.datapool.config["server_address"])
-#         # layout_connectbox2.addWidget(self.lineedit_address)
+#         # self.le_address = QLineEdit()
+#         # self.le_address.setPlaceholderText("<server address>")
+#         # self.le_address.setText(self.datapool.config["server_address"])
+#         # layout_connectbox2.addWidget(self.le_address)
 #         #
 #         # layout_connectbox2.addWidget(QLabel("Port:"))
 #         #
-#         # self.lineedit_port = QLineEdit()
-#         # self.lineedit_port.setPlaceholderText("<port>")
-#         # self.lineedit_port.setText(str(self.datapool.config["server_port"]))
-#         # layout_connectbox2.addWidget(self.lineedit_port)
+#         # self.le_port = QLineEdit()
+#         # self.le_port.setPlaceholderText("<port>")
+#         # self.le_port.setText(str(self.datapool.config["server_port"]))
+#         # layout_connectbox2.addWidget(self.le_port)
 #
 #         layout_connectbox = QVBoxLayout()
 #
@@ -330,8 +330,8 @@ import helmholtz_cage_toolkit.client_functions as cf
 #     #     handle failed attempts. Will update the status_bar.
 #     #     """
 #     #     # self.socket.connectToHost(self.server_address, self.server_port)
-#     #     address = self.lineedit_address.text()
-#     #     host = int(self.lineedit_port.text())
+#     #     address = self.le_address.text()
+#     #     host = int(self.le_port.text())
 #     #
 #     #     print(f"[DEBUG] Connecting to {address} {type(address)}, {host} {type(host)} ")
 #     #
@@ -561,17 +561,17 @@ class MainWindow(QMainWindow):
 
         layout_connectbox2.addWidget(QLabel("Address:"))
 
-        self.lineedit_address = QLineEdit()
-        self.lineedit_address.setPlaceholderText("<server address>")
-        self.lineedit_address.setText("127.0.0.1")
-        layout_connectbox2.addWidget(self.lineedit_address)
+        self.le_address = QLineEdit()
+        self.le_address.setPlaceholderText("<server address>")
+        self.le_address.setText("127.0.0.1")
+        layout_connectbox2.addWidget(self.le_address)
 
         layout_connectbox2.addWidget(QLabel("Port:"))
 
-        self.lineedit_port = QLineEdit()
-        self.lineedit_port.setPlaceholderText("<port>")
-        self.lineedit_port.setText(str(7777))
-        layout_connectbox2.addWidget(self.lineedit_port)
+        self.le_port = QLineEdit()
+        self.le_port.setPlaceholderText("<port>")
+        self.le_port.setText(str(7777))
+        layout_connectbox2.addWidget(self.le_port)
 
         layout_connectbox = QVBoxLayout()
 
@@ -649,8 +649,8 @@ class MainWindow(QMainWindow):
 
         self.widgets_offline_only = (
             self.button_connect,
-            self.lineedit_address,
-            self.lineedit_port,
+            self.le_address,
+            self.le_port,
         )
 
         for widget in self.widgets_online_only:
@@ -661,8 +661,8 @@ class MainWindow(QMainWindow):
 
 
     def do_connect(self, timeout=3000):
-        address = self.lineedit_address.text()
-        port = int(self.lineedit_port.text())
+        address = self.le_address.text()
+        port = int(self.le_port.text())
         print(f"Connecting to {address}:{port}")
         self.socket.connectToHost(address, port)
 

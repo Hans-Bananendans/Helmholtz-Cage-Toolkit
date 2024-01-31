@@ -60,7 +60,11 @@ from PyQt5.QtNetwork import (
     QHostAddress,
     QTcpSocket,
 )
+
+from PyQt5.QtSvg import QSvgWidget
+
 from PyQt5.QtWidgets import (
+    QAbstractButton,
     QAction,
     QActionGroup,
     QApplication,
@@ -83,6 +87,7 @@ from PyQt5.QtWidgets import (
     QSizePolicy,
     QSpinBox,
     QSplitter,
+    QStackedLayout,
     QStackedWidget,
     QStatusBar,
     QTextEdit,

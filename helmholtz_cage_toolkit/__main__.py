@@ -19,7 +19,7 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     if config["enable_skin"]:
-        apply_stylesheet(app, theme="dark_teal.xml")
+        apply_stylesheet(app, theme="dark_amber.xml")
     window = MainWindow(config)
     window.show()
     app.exec()

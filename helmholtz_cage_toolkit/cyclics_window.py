@@ -925,6 +925,7 @@ class PlayerControls(QGroupBox):
             layout0.addWidget(button)
 
 
+
         # Generate and configure playback labels
         self.label_t = QLabel("0.000/0.000")
         self.label_t.setMinimumWidth(256)
