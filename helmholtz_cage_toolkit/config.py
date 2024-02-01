@@ -7,8 +7,6 @@ config = {
     "verbosity": 1,
     "use_dummies": True,
     "default_windowsize": (1280, 720),
-    "enable_skin": True,
-
 
     # ==== TCP connection settings ====
     "server_address": "127.0.0.1",
@@ -195,6 +193,45 @@ config = {
         "function": "none",
         "factor": 1,
     },
+
+
+
+    # ==== Themes ====
+    "enable_theme": True,
+    "theme": "dark_teal",  # <- Write key from "available_themes" here
+
+    "available_themes": {
+        "dark_amber": "dark_amber.xml",
+        "dark_blue": "dark_blue.xml",
+        "dark_cyan": "dark_cyan.xml",
+        "dark_lightgreen": "dark_lightgreen.xml",
+        "dark_medical": "dark_medical.xml",
+        "dark_pink": "dark_pink.xml",
+        "dark_purple": "dark_purple.xml",
+        "dark_red": "dark_red.xml",
+        "dark_teal": "dark_teal.xml",
+        "dark_yellow": "dark_yellow.xml",
+        "light_amber": "light_amber.xml",
+        "light_blue_500": "light_blue_500.xml",
+        "light_blue": "light_blue.xml",
+        "light_cyan_500": "light_cyan_500.xml",
+        "light_cyan": "light_cyan.xml",
+        "light_lightgreen_500": "light_lightgreen_500.xml",
+        "light_lightgreen": "light_lightgreen.xml",
+        "light_orange": "light_orange.xml",
+        "light_pink_500": "light_pink_500.xml",
+        "light_pink": "light_pink.xml",
+        "light_purple_500": "light_purple_500.xml",
+        "light_purple": "light_purple.xml",
+        "light_red_500": "light_red_500.xml",
+        "light_red": "light_red.xml",
+        "light_teal_500": "light_teal_500.xml",
+        "light_teal": "light_teal.xml",
+        "light_yellow": "light_yellow.xml",
+    },
+
+
+
 
     # Lookup table for tab bar construction
     # TODO -> Requires use of exec() for .addAction() and .triggered.connect()

@@ -36,6 +36,7 @@ from time import time, sleep
 
 from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.datapool import DataPool
+from helmholtz_cage_toolkit.cyclics_window import HHCPlot
 
 class CommandWindow(QWidget):
     def __init__(self, config, datapool):
@@ -51,15 +52,7 @@ class CommandWindow(QWidget):
             "./assets/icons/check_00aa00.svg",
         )
 
-        self.checks_icons = (
-            QSvgWidget("./assets/icons/x_ff0000.svg"),
-            QSvgWidget("./assets/icons/wave_ffd200.svg"),
-            QSvgWidget("./assets/icons/check_00ff00.svg"),
-            # QIcon("./assets/icons/x_bb0000.svg"),
-            # QIcon("./assets/icons/wave_ffd200.svg"),
-            # QIcon("./assets/icons/check_00aa00.svg"),
-        )
-
+        # TODO Migrate to datapool
         self.checks = {
             "connection_up":
                 {"text": ["Unconnected to device",
@@ -85,6 +78,18 @@ class CommandWindow(QWidget):
                           "dummy1 tick"],
                  "value": 2,
                  },
+            "dummy_check2":
+                {"text": ["dummy2 x",
+                          "dummy2 ~",
+                          "dummy2 tick"],
+                 "value": 1,
+                 },
+            "dummy_check3":
+                {"text": ["dummy3 x",
+                          "dummy3 ~",
+                          "dummy3 tick"],
+                 "value": 0,
+                 },
         }
 
 
@@ -102,7 +107,14 @@ class CommandWindow(QWidget):
             )
             layout_left.addWidget(groupbox)
 
+
         layout_right = QVBoxLayout()
+
+        self.group_manual_input = GroupManualInput(self.datapool)
+        layout_right.addWidget(self.group_manual_input)
+
+        self.group_manual_input.do_update_biv_labels()
+
         dummy_widget = QLabel("DUMMY WIDGET")
         dummy_widget.setMinimumWidth(720)
         layout_right.addWidget(dummy_widget)
@@ -326,6 +338,9 @@ class CommandWindow(QWidget):
 
         return group_play_controls
 
+
+
+
     def do_update_check_widgets(self):
         i = 0
         for key, check_item in self.checks.items():
@@ -340,6 +355,7 @@ class CommandWindow(QWidget):
                 self.checks_widgets[i][1].setEnabled(True)
             elif check_item["value"] != 0 and self.checks_widgets[i][1].isEnabled():
                 self.checks_widgets[i][1].setEnabled(False)
+
             # self.layout_play_checks.replaceWidget(
             #     self.layout_play_checks.itemAtPosition(i, 0),
             #     self.checks_icons[check_item["value"]])
@@ -427,3 +443,130 @@ class CommandWindow(QWidget):
         self.button_start_playback.setIcon(
             QIcon("./assets/icons/feather/play.svg"))
         self.button_start_playback.setText("PLAY")
+
+
+
+
+
+class GroupManualInput(QGroupBox):
+    def __init__(self, datapool):
+        super().__init__("Manual input")
+
+        self.datapool = datapool
+
+        self.setStyleSheet(self.datapool.config["stylesheet_groupbox_smallmargins"])
+
+        layout0 = QGridLayout()
+        layout0.setHorizontalSpacing(8)
+
+        self.biv_labels = []  # Bc, Br, Bo, Bm, Bd, Vc, Ic, Im, Id
+
+        styles = ["QLabel {color: #ffaaaa;}", "QLabel {color: #aaffaa;}",
+                  "QLabel {color: #aaaaff;}", "QLabel {}"]
+
+        for i, var in enumerate(
+                ["Bc", "Br", "Bo", "Bm", "Bd", "Vc", "Ic", "Im", "Id"]):
+            varlist = []
+            for j in range(4):
+                if i >= 5 and j == 3:
+                    label = QLabel("")  # Empty summed voltage and current entries
+                else:
+                    label = QLabel("<{}_{}>".format(var, ("x", "y", "z", "T")[j]))
+                    # label.setMaximumWidth(84)
+                    label.setAlignment(Qt.AlignRight)
+                    label.setStyleSheet(styles[j])  # Add colour if needed
+                varlist.append(label)
+            self.biv_labels.append(varlist)
+
+        header_text = ["Bc", "Br", "Bo", "Bm", "Bd", "Vc", "Ic", "Im", "Id"]
+        header_units = ["\u03bcT"]*5 + ["V"] + ["mA"]*3
+        header_labels = []
+        for i in range(len(header_text)):
+            label = QLabel("{}\n[{}]".format(header_text[i], header_units[i]))
+            label.setAlignment(Qt.AlignCenter)
+            label.setMinimumWidth(64)
+            header_labels.append(label)
+
+        self.combo_input = QComboBox()
+        self.combo_input.setMinimumWidth(96)
+        self.combo_input.addItems(["Bc [\u03bcT]", "Bc [nT]", "Ic [mA]"])
+
+        self.le_inputs = [QLineEdit("0.0"), QLineEdit("0.0"), QLineEdit("0.0")]
+        for i, le in enumerate(self.le_inputs):
+            le.setMaxLength(9)
+            le.setPlaceholderText(("x value", "y value", "z value")[i])
+            le.setAlignment(Qt.AlignCenter)
+
+        self.button_submit = QPushButton("Submit")
+
+        # ==== Putting widgets into layout
+
+        # Input column:
+        layout0.addWidget(self.combo_input, 0, 0)
+        for j in range(3):
+            layout0.addWidget(self.le_inputs[j], j+1, 0)
+        layout0.addWidget(self.button_submit, 4, 0)
+
+        # Header labels
+        for i in range(9):
+            layout0.addWidget(header_labels[i], 0, i+1)
+        # Value labels
+        for i in range(9):
+            for j in range(4):
+                layout0.addWidget(self.biv_labels[i][j], j+1, i+1)
+
+        self.setLayout(layout0)
+
+    def do_update_biv_labels(self):
+        print("[DEBUG] GroupManualInput.do_update_biv_labels()")
+        # Mapping biv_labels: Bc, Br, Bo, Bm, Bd, Vc, Ic, Im, Id
+        # Bo = Bc-Br
+        # Bd = Bo-Bm
+        # Id = Ic-Im
+
+        # DUMMIES
+        self.Bc = [50., 50., 50.]
+        self.Br = [-5., 2.5, -45.]
+        self.Bm = [70., 70., 70.]
+        self.Vc = [60.0, 60.0, 60.0]
+        self.Ic = [1200., 1200., 1200.]
+        self.Im = [1400., 1400., 1400.]
+
+        t0 = time()  # [TIMING]
+
+        # Calculating values (~5 us)
+        bc, br, bm = self.Bc, self.Br, self.Bm
+        vc, ic, im = self.Vc, self.Ic, self.Im
+        Bc = [bc[0], bc[1], bc[2],
+              (bc[0]**2 + bc[1]**2 + bc[2]**2)**(1/2)]
+        Br = [br[0], br[1], br[2],
+              (br[0]**2 + br[1]**2 + br[2]**2)**(1/2)]
+        Bm = [bm[0], bm[1], bm[2],
+              (bm[0]**2 + bm[1]**2 + bm[2]**2)**(1/2)]
+
+        Bo = [Bc[0]-Br[0], Bc[1]-Br[1], Bc[2]-Br[2],
+              ((Bc[0]-Br[0])**2 + (Bc[1]-Br[1])**2 + (Bc[2]-Br[2])**2)**(1/2)]
+        Bd = [Bo[0]-Bm[0], Bo[1]-Bm[1], Bo[2]-Bm[2],
+              ((Bo[0]-Bm[0])**2 + (Bo[1]-Bm[1])**2 + (Bo[2]-Bm[2])**2)**(1/2)]
+
+        Vc = [vc[0], vc[1], vc[2], 0]
+        Ic = [ic[0], ic[1], ic[2], 0]
+        Im = [im[0], im[1], im[2], 0]
+        Id = [Ic[0]-Im[0], Ic[1]-Im[1], Ic[2]-Im[2], 0]
+
+        t1 = time()  # [TIMING]
+
+        # Mapping values to labels:
+        for i, p in enumerate((Bc, Br, Bo, Bm, Bd, Vc, Ic, Im, Id)):
+            for j in range(4):
+                if i >= 5 and j == 3:
+                    # skip summed entries for voltage and current
+                    pass
+                else:
+                    self.biv_labels[i][j].setText("{:.3f}".format(p[j]))
+
+        t2 = time() # [TIMING]
+        print("update_biv_labels calc:", round((t1-t0)*1E6), "us")  # [TIMING]
+        print("update_biv_labels updt:", round((t2-t1)*1E6), "us")  # [TIMING]
+
+

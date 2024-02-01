@@ -18,8 +18,13 @@ from qt_material import apply_stylesheet
 if __name__ == "__main__":
 
     app = QApplication(sys.argv)
-    if config["enable_skin"]:
-        apply_stylesheet(app, theme="dark_amber.xml")
+
+    if config["enable_theme"]:
+        theme_file = config["available_themes"][config["theme"]]
+        apply_stylesheet(app, theme=theme_file)
+
     window = MainWindow(config)
     window.show()
     app.exec()
+
+
