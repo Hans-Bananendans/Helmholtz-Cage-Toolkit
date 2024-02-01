@@ -6,7 +6,7 @@ config = {
     # ==== General settings ====
     "verbosity": 1,
     "use_dummies": True,
-    "default_windowsize": (1280, 720),
+    "default_windowsize": (1280, 780),
 
     # ==== TCP connection settings ====
     "server_address": "127.0.0.1",

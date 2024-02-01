@@ -54,7 +54,7 @@ class DataPool:
 
         # Orbital parameters
         # TODO: Fix these presets Replace
-        self.orbit = Orbit(Earth(), 100E3, 0.2, 60, 120, 0, 0)
+        self.orbit = Orbit(Earth(), 100E3, 0.25, 60, 120, 0, 0)
         self.orbit_subs = 256
         self.orbit_spacing = "isochronal"
         self.i_satpos = 0

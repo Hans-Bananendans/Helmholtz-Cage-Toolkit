@@ -36,7 +36,7 @@ from time import time, sleep
 
 from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.datapool import DataPool
-from helmholtz_cage_toolkit.cyclics_window import HHCPlot
+from helmholtz_cage_toolkit.hhcplot import HHCPlot, HHCPlotArrow
 
 class CommandWindow(QWidget):
     def __init__(self, config, datapool):
@@ -118,6 +118,62 @@ class CommandWindow(QWidget):
         dummy_widget = QLabel("DUMMY WIDGET")
         dummy_widget.setMinimumWidth(720)
         layout_right.addWidget(dummy_widget)
+
+        layout_hhcplots = QGridLayout()
+
+        self.hhcplot_yz = HHCPlotCommandWindow(datapool, direction="YZ")
+        self.hhcplot_xy = HHCPlotCommandWindow(datapool, direction="mXY")
+
+        layout_hhcplots.addWidget(self.hhcplot_yz, 0, 0)
+        layout_hhcplots.addWidget(self.hhcplot_xy, 0, 1)
+
+        layout_right.addLayout(layout_hhcplots)
+
+        breset = [[0., ]*3, ]*2
+
+        self.hhcplot_yz.update_arrows(breset)
+        self.hhcplot_xy.update_arrows(breset)
+
+        # btests = [[[10_000, 90_000, 10_000, ], [-10_000, -90_000, -10_000, ], ],
+        #           [[20_000, 80_000, 20_000, ], [-20_000, -80_000, -20_000, ], ],
+        #           [[30_000, 70_000, 30_000, ], [-30_000, -70_000, -30_000, ], ],
+        #           [[40_000, 60_000, 40_000, ], [-40_000, -60_000, -40_000, ], ],
+        #           [[40_000, 60_000, 40_000, ], [     0.,      0.,      0., ], ],
+        #           [[40_000, 60_000, 40_000, ], [     0.,      0.,      0., ], ],
+        #           [[40_000, 60_000, 40_000, ], [     0.,      0.,      0., ], ], ]
+
+        # btests = [[[10_000, 90_000, 10_000, ], [10_000, 90_000, 10_000, ], ],
+        #           [[20_000, 80_000, 20_000, ], [20_000, 80_000, 20_000, ], ],
+        #           [[30_000, 70_000, 30_000, ], [30_000, 70_000, 30_000, ], ],
+        #           [[40_000, 60_000, 40_000, ], [40_000, 60_000, 40_000, ], ],
+        #           [[40_000, 60_000, 40_000, ], [40_000, 60_000, 40_000, ], ],
+        #           [[40_000, 60_000, 40_000, ], [40_000, 60_000, 40_000, ], ],
+        #           [[40_000, 60_000, 40_000, ], [40_000, 60_000, 40_000, ], ], ]
+
+        # for btest in btests:
+        #     self.hhcplot_yz.update_arrows_unoptimized(btest)
+        #     self.hhcplot_xy.update_arrows_unoptimized(btest)
+        #
+        # breset = [[0., ]*3, ]*2
+        #
+        # self.hhcplot_yz.update_arrows(breset)
+        # self.hhcplot_xy.update_arrows(breset)
+
+        # for btest in btests:
+        #     self.hhcplot_yz.update_arrows(btest)
+        #     self.hhcplot_xy.update_arrows(btest)
+        #
+        #
+        # schedtest = [[0, 1, 2, 3, 4, ],
+        #              [5, 5, 5, 5, 5, ],
+        #              [0., 1., 2., 3., 4., ],
+        #              [50_000,  50_000, -50_000, -50_000,      0.],
+        #              [50_000, -50_000, -50_000,  50_000,      0.],
+        #              [     0, -10_000, -20_000, -30_000, -40_000], ]
+        #
+        #
+        # self.hhcplot_yz.plot_ghosts(schedtest)
+        # self.hhcplot_xy.plot_ghosts(schedtest)
 
 
         layout0 = QHBoxLayout()
@@ -339,6 +395,14 @@ class CommandWindow(QWidget):
         return group_play_controls
 
 
+    def make_layout_bm_display(self):
+
+        layout_bm_display = QHBoxLayout
+
+        label_bmx = QLabel("-100.0000")
+        label_bmx.setAlignment(Qt.AlignCenter)
+        label_bmx.setStyleSheet
+
 
 
     def do_update_check_widgets(self):
@@ -351,9 +415,9 @@ class CommandWindow(QWidget):
             # Update QLabel:
             self.checks_widgets[i][1].setText(
                 check_item["text"][check_item["value"]])
-            if check_item["value"] == 0 and not self.checks_widgets[i][1].isEnabled():
+            if check_item["value"] != 2 and not self.checks_widgets[i][1].isEnabled():
                 self.checks_widgets[i][1].setEnabled(True)
-            elif check_item["value"] != 0 and self.checks_widgets[i][1].isEnabled():
+            elif check_item["value"] == 2 and self.checks_widgets[i][1].isEnabled():
                 self.checks_widgets[i][1].setEnabled(False)
 
             # self.layout_play_checks.replaceWidget(
@@ -445,6 +509,23 @@ class CommandWindow(QWidget):
         self.button_start_playback.setText("PLAY")
 
 
+
+class HHCPlotCommandWindow(HHCPlot):
+    def __init__(self, datapool, **kwargs):
+        super().__init__(datapool, **kwargs)
+
+    def create_arrows(self):
+        arrows = []
+
+        arrow_Bm = HHCPlotArrow(color=self.datapool.config["plotcolor_Bm"],
+                                enable_tip=False)
+        arrows.append(arrow_Bm)
+
+        arrow_Br = HHCPlotArrow(color=self.datapool.config["plotcolor_Br"],
+                                enable_tip=False)
+        arrows.append(arrow_Br)
+
+        return arrows
 
 
 

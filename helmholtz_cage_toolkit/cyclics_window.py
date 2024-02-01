@@ -723,7 +723,7 @@ class EnvelopePlot(pg.GraphicsLayoutWidget):
         # TODO: Predelay and postdelay were unexposed in GUI as of 27-01-2024
         #  as its limited value was not worth the substantial complication of
         #  the code implementation. Delete the following commented code after
-        #  some QA testing.
+        #  QA testing.
         # # Detect predelay and postdelay, for more accurate staggered plots
         # # Detection algorithms are not guaranteed to catch predelays
         # predelay = False
