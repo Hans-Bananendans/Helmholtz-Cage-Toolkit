@@ -58,6 +58,11 @@ config = {
     "visualizer_bscale": 100_000,
     "visualizer_updaterate": 30,
 
+    "plotcolor_Bo": "#00ffff",  # cyan
+    "plotcolor_Bm": "#ffbf00",  # amber
+    "plotcolor_Br": "#40ff00",  # lime
+    "plotcolor_Bc": "#ff00ff",  # magenta
+    
 
     # ==== LCD box styling ====
     "lcd_maxdigits": 8,

@@ -17,9 +17,6 @@ parent
 
 """
 
-import os
-from time import time, sleep
-
 from helmholtz_cage_toolkit import *
 
 from helmholtz_cage_toolkit.schedule_player import SchedulePlayer
