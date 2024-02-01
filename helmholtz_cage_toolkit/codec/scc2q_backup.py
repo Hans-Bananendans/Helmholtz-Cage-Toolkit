@@ -196,7 +196,7 @@ def encode_xpacket(cmd: str, *args):  # Q Compatible
         raise TypeError(
             f"encode_xpacket() received {n_args - n_correct_type} argument(s) of incorrect type! (must be str, int, float, or bool)")
 
-    xpacket_unencoded = "x{:@>31}{:0>8}".format(cmd, n_args)
+    xpacket_unencoded = "x{:@>23}{:0>8}".format(cmd, n_args)
 
     for arg in args:
         if type(arg) == float:
@@ -221,23 +221,23 @@ def encode_xpacket(cmd: str, *args):  # Q Compatible
 
 def decode_xpacket(x_packet):  # Q Compatible
     """ Decodes a c_packet, which has the following anatomy:
-    x (1 B)    cmd (32 B)    n_args(8 B)    type_id , arg (1+23 B each)
+    x (1 B)    cmd (24 B)    args (24 B each)
 
     Unoptimized as of 15-01-2024. ~5000-10000 ns/decode (FX-8350)
     """
 
     xpacket_decoded = x_packet.decode().rstrip(_pad)
 
-    # print(xpacket_decoded[1:32])  # TODO: Remove debug comments once done testing
-    # print(xpacket_decoded[32:40])
-    cmd_name = xpacket_decoded[1:32].strip("@")
-    n_args = int(xpacket_decoded[32:40])
+    # print(xpacket_decoded[1:24])  # TODO: Remove debug comments once done testing
+    # print(xpacket_decoded[24:32])
+    cmd_name = xpacket_decoded[1:24].strip("@")
+    n_args = int(xpacket_decoded[24:32])
 
     # print("cmd_name:", cmd_name, "n_args:", n_args)
 
     args = []
     for i_seg in range(n_args):
-        seg = xpacket_decoded[40 + 24 * i_seg:40 + 24 * (i_seg + 1)]
+        seg = xpacket_decoded[32 + 24 * i_seg:32 + 24 * (i_seg + 1)]
         # print("[DEBUG]", i_seg, seg, end="  ->  ")
 
         if seg[0] == "f":

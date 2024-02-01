@@ -2,6 +2,7 @@ import os
 
 from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.orbit_visualizer import Orbit, Earth
+import helmholtz_cage_toolkit.client_functions as cf
 # from file_handling import load_file, save_file, NewFileDialog
 
 class DataPool:
@@ -30,7 +31,13 @@ class DataPool:
 
 
         self.socket_tstart = None
+        self.socket = None
+        self.ds = None
 
+
+        # Server options
+        self.serveropt_loopback = False
+        self.serveropt_use_Bdummy = True
 
         # Devices
         self.interface_board = None
@@ -91,6 +98,18 @@ class DataPool:
 
         # TODO: Add UI elements from Orbital Generator
 
+    def serveropts_toggle_loopback(self):
+        print("[DEBUG] serveropts_toggle_loopback():", end=" ")
+        if not self.serveropt_loopback:
+            cf.set_serveropt_loopback(self.socket, True, datastream=self.ds)
+            self.serveropt_loopback = True
+            print("LOOPBACK ON")
+            self.status_bar.showMessage("Toggled loopback ON")
+        else:
+            cf.set_serveropt_loopback(self.socket, False, datastream=self.ds)
+            self.serveropt_loopback = False
+            print("LOOPBACK OFF")
+            self.status_bar.showMessage("Toggled loopback OFF")
 
     def set_adc_channels(self, adc_channels):
         self.adc_channels = adc_channels

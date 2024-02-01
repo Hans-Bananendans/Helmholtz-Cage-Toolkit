@@ -6,7 +6,7 @@ config = {
     # ==== General settings ====
     "verbosity": 1,
     "use_dummies": True,
-    "default_windowsize": (1280, 780),
+    "default_windowsize": (1280, 760),
 
     # ==== TCP connection settings ====
     "server_address": "127.0.0.1",
@@ -320,6 +320,88 @@ config = {
                 color: #ffffff;
                 font-family: mono;
                 font-size: 20px;
+            }
+        ''',
+
+    "stylesheet_label_bmx_large":
+        ''' 
+            QLabel {
+                background-color: #0a0a0a;
+                color: #ff0000;
+                font-family: mono;
+                font-size: 36px;
+            }
+        ''',
+    "stylesheet_label_bmx_small":
+        ''' 
+            QLabel {
+                background-color: #0a0a0a;
+                color: #ff0000;
+                font-family: mono;
+                font-size: 18px;
+            }
+        ''',
+    "stylesheet_label_bmy_large":
+        ''' 
+            QLabel {
+                background-color: #0a0a0a;
+                color: #00ff00;
+                font-family: mono;
+                font-size: 36px;
+            }
+        ''',
+    "stylesheet_label_bmy_small":
+        ''' 
+            QLabel {
+                background-color: #0a0a0a;
+                color: #00ff00;
+                font-family: mono;
+                font-size: 18px;
+            }
+        ''',
+    "stylesheet_label_bmz_large":
+        ''' 
+            QLabel {
+                background-color: #0a0a0a;
+                color: #004bff;
+                font-family: mono;
+                font-size: 36px;
+            }
+        ''',
+    "stylesheet_label_bmz_small":
+        ''' 
+            QLabel {
+                background-color: #0a0a0a;
+                color: #004bff;
+                font-family: mono;
+                font-size: 18px;
+            }
+        ''',
+    "stylesheet_label_bm_large":
+        ''' 
+            QLabel {
+                background-color: #0a0a0a;
+                color: #ffffff;
+                font-family: mono;
+                font-size: 36px;
+            }
+        ''',
+    "stylesheet_label_bm_small":
+        ''' 
+            QLabel {
+                background-color: #0a0a0a;
+                color: #ffffff;
+                font-family: mono;
+                font-size: 18px;
+            }
+        ''',
+    "stylesheet_label_bmheader_small":
+        ''' 
+            QLabel {
+                background-color: #0a0a0a;
+                color: #999999;
+                font-family: mono;
+                font-size: 18px;
             }
         ''',
 

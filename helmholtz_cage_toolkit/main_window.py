@@ -172,6 +172,16 @@ class MainWindow(QMainWindow):
         act_dump_config.setCheckable(False)
         menu_tools.addAction(act_dump_config)
 
+        act_toggle_loopback = QAction(
+            QIcon("./assets/icons/feather/repeat.svg"),
+            "Toggle loopback", self)
+        act_toggle_loopback.setStatusTip("Toggle server option 'loopback'.")
+        act_toggle_loopback.triggered.connect(self.datapool.serveropts_toggle_loopback)
+        act_toggle_loopback.setCheckable(True)
+        menu_tools.addAction(act_toggle_loopback)
+
+
+
         # act_screenshot = QAction(
         #     QIcon(QPixmap(":camera")),
         #     "Take a &Screenshot", self)

@@ -61,6 +61,8 @@ class ConnectionWindow(QWidget):
         # QDataStream instance should suffice.
         self.ds = QDataStream(self.socket)
 
+        self.datapool.socket = self.socket
+        self.datapool.ds = self.ds
 
         # ==== CONNECTBOX
         layout_connectbox1 = QHBoxLayout()

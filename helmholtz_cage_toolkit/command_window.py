@@ -47,47 +47,53 @@ class CommandWindow(QWidget):
 
 
         self.checks_icon_paths = (
-            "./assets/icons/x_bb0000.svg",
-            "./assets/icons/wave_ffd200.svg",
             "./assets/icons/check_00aa00.svg",
+            "./assets/icons/wave_ffd200.svg",
+            "./assets/icons/x_bb0000.svg",
+            "./assets/icons/x_bb0000.svg",
+            "./assets/icons/x_bb0000.svg",
+            "./assets/icons/x_bb0000.svg",
+            "./assets/icons/x_bb0000.svg",
+            "./assets/icons/x_bb0000.svg",
+            "./assets/icons/x_bb0000.svg",
         )
 
         # TODO Migrate to datapool
         self.checks = {
             "connection_up":
-                {"text": ["Unconnected to device",
+                {"text": ["Connected to device",
                           "<unimplemented>",
-                          "Connected to device"],
-                 "value": 0,
+                          "Unconnected to device"],
+                 "value": 2,
                  },
             "schedule_ready":
-                {"text": ["No schedule ready on device",
+                {"text": ["Schedule ready on device",
                           "<unimplemented>",
-                          "Schedule ready on device"],
-                 "value": 0,
+                          "No schedule ready on device"],
+                 "value": 2,
                  },
             "recording":
-                {"text": ["No recording output selected!",
+                {"text": ["Ready to record data",
                           "Recording not on/armed",
-                          "Ready to record data"],
+                          "No recording output selected!"],
                  "value": 1,
                  },
             "dummy_check1":
-                {"text": ["dummy1 x",
+                {"text": ["dummy1 tick",
                           "dummy1 ~",
-                          "dummy1 tick"],
+                          "dummy1 x"],
                  "value": 2,
                  },
             "dummy_check2":
-                {"text": ["dummy2 x",
+                {"text": ["dummy2 tick",
                           "dummy2 ~",
-                          "dummy2 tick"],
+                          "dummy2 x"],
                  "value": 1,
                  },
             "dummy_check3":
-                {"text": ["dummy3 x",
+                {"text": ["dummy3 tick",
                           "dummy3 ~",
-                          "dummy3 tick"],
+                          "dummy3 x"],
                  "value": 0,
                  },
         }
@@ -115,9 +121,14 @@ class CommandWindow(QWidget):
 
         self.group_manual_input.do_update_biv_labels()
 
-        dummy_widget = QLabel("DUMMY WIDGET")
-        dummy_widget.setMinimumWidth(720)
-        layout_right.addWidget(dummy_widget)
+        layout_bm_display = self.make_layout_bm_display()
+
+        layout_right.addLayout(layout_bm_display)
+
+        self.do_update_bm_display()
+        # dummy_widget.setMinimumWidth(720)
+
+
 
         layout_hhcplots = QGridLayout()
 
@@ -188,7 +199,7 @@ class CommandWindow(QWidget):
 
         self.button_panic_reset = QPushButton(
             # QIcon("./assets/icons/feather/x-octagon.svg"), "RESET")
-            QIcon("./assets/icons/feather/x-circle.svg"), "RESET")
+            QIcon("./assets/icons/feather/x-circle.svg"), "TOTAL RESET")
         self.button_panic_reset.setIconSize(QSize(24, 24))
         self.button_panic_reset.setStyleSheet("""
         QPushButton {font-size: 24px;}
@@ -234,6 +245,9 @@ class CommandWindow(QWidget):
 
         self.button_set_br = QPushButton("Set")
         layout_offset_buttons.addWidget(self.button_set_br)
+
+        self.button_reset_br = QPushButton("Reset")
+        layout_offset_buttons.addWidget(self.button_reset_br)
 
         self.button_br_from_bm = QPushButton(QIcon(
             "./assets/icons/feather/corner-left-up.svg"), "Take current B_M")
@@ -394,16 +408,82 @@ class CommandWindow(QWidget):
 
         return group_play_controls
 
-
     def make_layout_bm_display(self):
 
-        layout_bm_display = QHBoxLayout
+        layout_bm_display = QGridLayout()
+        layout_bm_display.setHorizontalSpacing(0)
 
-        label_bmx = QLabel("-100.0000")
-        label_bmx.setAlignment(Qt.AlignCenter)
-        label_bmx.setStyleSheet
+        label_bm_header = QLabel("Bm\n\u03bcT")
+        label_bm_header.setStyleSheet(self.datapool.config["stylesheet_label_bmheader_small"])
+        label_bm_header.setMaximumWidth(32)
+        layout_bm_display.addWidget(label_bm_header, 0, 0)
+
+        label_bmx_large = QLabel("-9999")
+        label_bmx_large.setStyleSheet(self.datapool.config["stylesheet_label_bmx_large"])
+        # label_bmx_large.setAlignment(Qt.AlignRight)
+
+        label_bmx_small = QLabel(".999")
+        label_bmx_small.setStyleSheet(self.datapool.config["stylesheet_label_bmx_small"])
+        label_bmx_small.setAlignment(Qt.AlignLeft)
+
+        label_bmy_large = QLabel("-9999")
+        label_bmy_large.setStyleSheet(self.datapool.config["stylesheet_label_bmy_large"])
+        # label_bmy_large.setAlignment(Qt.AlignRight)
+
+        label_bmy_small = QLabel(".999")
+        label_bmy_small.setStyleSheet(self.datapool.config["stylesheet_label_bmy_small"])
+        # label_bmy_small.setAlignment(Qt.AlignLeft)
+
+        label_bmz_large = QLabel("-9999")
+        label_bmz_large.setStyleSheet(self.datapool.config["stylesheet_label_bmz_large"])
+        # label_bmz_large.setAlignment(Qt.AlignRight)
+
+        label_bmz_small = QLabel(".999")
+        label_bmz_small.setStyleSheet(self.datapool.config["stylesheet_label_bmz_small"])
+        # label_bmz_small.setAlignment(Qt.AlignLeft)
+
+        label_bm_large = QLabel("-9999")
+        label_bm_large.setStyleSheet(self.datapool.config["stylesheet_label_bm_large"])
+        # label_bm_large.setAlignment(Qt.AlignRight)
+
+        label_bm_small = QLabel(".999")
+        label_bm_small.setStyleSheet(self.datapool.config["stylesheet_label_bm_small"])
+        # label_bm_small.setAlignment(Qt.AlignLeft)
+
+        self.labels_bm_display = []
+
+        for i, label in enumerate((label_bmx_large, label_bmx_small,
+                                   label_bmy_large, label_bmy_small,
+                                   label_bmz_large, label_bmz_small,
+                                   label_bm_large, label_bm_small,)):
+
+            if divmod(i, 2)[1] == 1:
+                label.setAlignment(Qt.AlignLeft)
+                label.setMaximumWidth(48)
+            else:
+                label.setAlignment(Qt.AlignRight)
+                label.setMinimumWidth(108)
+
+            self.labels_bm_display.append(label)
+
+            layout_bm_display.addWidget(label, 0, i+1)
+
+        return layout_bm_display
 
 
+    def do_update_bm_display(self):
+        self.Bm = [-12345.678, -1.0, -98.765]
+
+        Bm_abs = (self.Bm[0]**2 + self.Bm[1]**2 + self.Bm[2]**2)**(1/2)
+
+        for i, bval in enumerate((self.Bm[0], self.Bm[1], self.Bm[2], Bm_abs)):
+            # Pretty quick way (1.3 us per set) to convert a float into two
+            # string segments, one with up to 5 characters above the decimal
+            # separator, and the other part with the decimal separator and up
+            # to three decimal values. It
+            left_text, right_text = str(float(bval)).split(".")
+            self.labels_bm_display[2*i].setText(left_text[-6:])
+            self.labels_bm_display[2*i+1].setText(("."+right_text+"000")[:4])
 
     def do_update_check_widgets(self):
         i = 0
@@ -415,9 +495,9 @@ class CommandWindow(QWidget):
             # Update QLabel:
             self.checks_widgets[i][1].setText(
                 check_item["text"][check_item["value"]])
-            if check_item["value"] != 2 and not self.checks_widgets[i][1].isEnabled():
+            if check_item["value"] != 0 and not self.checks_widgets[i][1].isEnabled():
                 self.checks_widgets[i][1].setEnabled(True)
-            elif check_item["value"] == 2 and self.checks_widgets[i][1].isEnabled():
+            elif check_item["value"] == 0 and self.checks_widgets[i][1].isEnabled():
                 self.checks_widgets[i][1].setEnabled(False)
 
             # self.layout_play_checks.replaceWidget(

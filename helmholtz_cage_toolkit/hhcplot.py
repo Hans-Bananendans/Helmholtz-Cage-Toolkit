@@ -161,7 +161,7 @@ class HHCPlot(pg.GraphicsLayoutWidget):
             QGraphicsLineItem(QLineF(-1, -1, -1+ts, -1)),
             QGraphicsLineItem(QLineF(-1, -1, -1-ts/3, -1-ts/5))
         )
-        for i, c in enumerate(("#F00F", "#0F0F", "#22FF")):
+        for i, c in enumerate(("#F00F", "#0F0F", "#04FF")):
             tripod[i].setPen(pg.mkPen(c))
             self.plot_obj.addItem(tripod[i])
 
@@ -173,7 +173,7 @@ class HHCPlot(pg.GraphicsLayoutWidget):
             QGraphicsRectItem(QRectF(-0.90, -0.90, 2 * 0.90, 2 * 0.90)),
             QGraphicsRectItem(QRectF(-0.95, -0.95, 2 * 0.95, 2 * 0.95)),
         )
-        for i, c in enumerate(("#F008", "#F008", "#0F08", "#0F08", "#22F8", "#22F8")):
+        for i, c in enumerate(("#F008", "#F008", "#0F08", "#0F08", "#04F8", "#04F8")):
             coils[i].setPen(pg.mkPen(c))
             self.plot_obj.addItem(coils[i])
 
@@ -203,7 +203,7 @@ class HHCPlot(pg.GraphicsLayoutWidget):
             QGraphicsLineItem(QLineF(-1, -1, -1, -1+ts)),
             QGraphicsLineItem(QLineF(-1, -1, -1-ts/3, -1-ts/5))
         )
-        for i, c in enumerate(("#F00F", "#0F0F", "#22FF")):
+        for i, c in enumerate(("#F00F", "#0F0F", "#04FF")):
             tripod[i].setPen(pg.mkPen(c))
             self.plot_obj.addItem(tripod[i])
 
@@ -215,7 +215,7 @@ class HHCPlot(pg.GraphicsLayoutWidget):
             QGraphicsRectItem(QRectF(-0.90, -0.90, 2 * 0.90, 2 * 0.90)),
             QGraphicsRectItem(QRectF(-0.95, -0.95, 2 * 0.95, 2 * 0.95)),
         )
-        for i, c in enumerate(("#F008", "#F008", "#0F08", "#0F08", "#22F8", "#22F8")):
+        for i, c in enumerate(("#F008", "#F008", "#0F08", "#0F08", "#04F8", "#04F8")):
             coils[i].setPen(pg.mkPen(c))
             self.plot_obj.addItem(coils[i])
 
@@ -242,7 +242,7 @@ class HHCPlot(pg.GraphicsLayoutWidget):
             QGraphicsLineItem(QLineF(-1, -1, -1, -1+ts)),
             QGraphicsLineItem(QLineF(-1, -1, -1-ts/3, -1-ts/5))
         )
-        for i, c in enumerate(("#0F0F", "#22FF", "#F00F")):
+        for i, c in enumerate(("#0F0F", "#04FF", "#F00F")):
             tripod[i].setPen(pg.mkPen(c))
             self.plot_obj.addItem(tripod[i])
 
@@ -254,7 +254,7 @@ class HHCPlot(pg.GraphicsLayoutWidget):
             QGraphicsRectItem(QRectF(-0.95, -0.80, 2 * 0.95, 0.05)),
             QGraphicsRectItem(QRectF(-0.95,  0.75, 2 * 0.95, 0.05)),
         )
-        for i, c in enumerate(("#F008", "#F008", "#0F08", "#0F08", "#22F8", "#22F8")):
+        for i, c in enumerate(("#F008", "#F008", "#0F08", "#0F08", "#04F8", "#04F8")):
             coils[i].setPen(pg.mkPen(c))
             self.plot_obj.addItem(coils[i])
 

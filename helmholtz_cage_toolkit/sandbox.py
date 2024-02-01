@@ -4,40 +4,82 @@ from time import time
 from timeit import timeit
 
 
+N = 12345.67890
 
-self_Bc = [50., 50., 50.]
-self_Br = [-5., 2.5, -45.]
-self_Bm = [70., 70., 70.]
-self_Vc = [60.0, 60.0, 60.0]
-self_Ic = [1200., 1200., 1200.]
-self_Im = [1400., 1400., 1400.]
+NN = [
+    12345.67890,
+    -12345.67890,
+    1.0,
+    2,
+    0.0,
+    0.1543,
+]
 
-def f1(self_Bc, self_Br, self_Bm, self_Vc, self_Ic, self_Im):
-    Bc = [self_Bc[0], self_Bc[1], self_Bc[2],
-          (self_Bc[0] ** 2 + self_Bc[1] ** 2 + self_Bc[2] ** 2) ** (1 / 2)]
-    Br = [self_Br[0], self_Br[1], self_Br[2],
-          (self_Br[0] ** 2 + self_Br[1] ** 2 + self_Br[2] ** 2) ** (1 / 2)]
-    Bm = [self_Bm[0], self_Bm[1], self_Bm[2],
-          (self_Bm[0] ** 2 + self_Bm[1] ** 2 + self_Bm[2] ** 2) ** (1 / 2)]
 
-    Bo = [Bc[0] - Br[0], Bc[1] - Br[1], Bc[2] - Br[2],
-          ((Bc[0] - Br[0]) ** 2 + (Bc[1] - Br[1]) ** 2 + (Bc[2] - Br[2]) ** 2) ** (1 / 2)]
-    Bd = [Bo[0] - Bm[0], Bo[1] - Bm[1], Bo[2] - Bm[2],
-          ((Bo[0] - Bm[0]) ** 2 + (Bo[1] - Bm[1]) ** 2 + (Bo[2] - Bm[2]) ** 2) ** (1 / 2)]
 
-    Vc = [self_Vc[0], self_Vc[1], self_Vc[2], self_Vc[0] + self_Vc[1] + self_Vc[2]]
-    Ic = [self_Ic[0], self_Ic[1], self_Ic[2], self_Ic[0] + self_Ic[1] + self_Ic[2]]
-    Im = [self_Im[0], self_Im[1], self_Im[2], self_Im[0] + self_Im[1] + self_Im[2]]
-    Id = [Ic[0] - Im[0], Ic[1] - Im[1], Ic[2] - Im[2], Ic[3] - Im[3]]
+def f1(N):
+    if N >= 0:
+        l, s = divmod(float(N), 1)
+        return str(int(l)), str(s)[1:5]
+    else:
+        l, s = divmod(float(N), -1)
+        return str(int(l)), str(s)[2:6]
 
-    return Bc, Br, Bo, Bm, Bd, Vc, Ic, Im, Id
+def f2(N):
+    l, s = str(float(N)).split(".")
+    return l[-6:], ("."+s+"000")[:4]
 
-n = int(1E6)
+
+for num in NN:
+    print(f1(num), f2(num))
+
+
+
+n = int(1E4)
 tmult = int(1E6)
 
 print(f"f1 (n={'{:1.0E}'.format(n)}):",
-      round(timeit('f1(self_Bc, self_Br, self_Bm, self_Vc, self_Ic, self_Im)',
+      round(timeit('f1(N)',
                    globals=globals(), number=n)*tmult/n, 3), "us")
+print(f"f2 (n={'{:1.0E}'.format(n)}):",
+      round(timeit('f2(N)',
+                   globals=globals(), number=n)*tmult/n, 3), "us")
+
+
+
+# self_Bc = [50., 50., 50.]
+# self_Br = [-5., 2.5, -45.]
+# self_Bm = [70., 70., 70.]
+# self_Vc = [60.0, 60.0, 60.0]
+# self_Ic = [1200., 1200., 1200.]
+# self_Im = [1400., 1400., 1400.]
+#
+# def f1(self_Bc, self_Br, self_Bm, self_Vc, self_Ic, self_Im):
+#     Bc = [self_Bc[0], self_Bc[1], self_Bc[2],
+#           (self_Bc[0] ** 2 + self_Bc[1] ** 2 + self_Bc[2] ** 2) ** (1 / 2)]
+#     Br = [self_Br[0], self_Br[1], self_Br[2],
+#           (self_Br[0] ** 2 + self_Br[1] ** 2 + self_Br[2] ** 2) ** (1 / 2)]
+#     Bm = [self_Bm[0], self_Bm[1], self_Bm[2],
+#           (self_Bm[0] ** 2 + self_Bm[1] ** 2 + self_Bm[2] ** 2) ** (1 / 2)]
+#
+#     Bo = [Bc[0] - Br[0], Bc[1] - Br[1], Bc[2] - Br[2],
+#           ((Bc[0] - Br[0]) ** 2 + (Bc[1] - Br[1]) ** 2 + (Bc[2] - Br[2]) ** 2) ** (1 / 2)]
+#     Bd = [Bo[0] - Bm[0], Bo[1] - Bm[1], Bo[2] - Bm[2],
+#           ((Bo[0] - Bm[0]) ** 2 + (Bo[1] - Bm[1]) ** 2 + (Bo[2] - Bm[2]) ** 2) ** (1 / 2)]
+#
+#     Vc = [self_Vc[0], self_Vc[1], self_Vc[2], self_Vc[0] + self_Vc[1] + self_Vc[2]]
+#     Ic = [self_Ic[0], self_Ic[1], self_Ic[2], self_Ic[0] + self_Ic[1] + self_Ic[2]]
+#     Im = [self_Im[0], self_Im[1], self_Im[2], self_Im[0] + self_Im[1] + self_Im[2]]
+#     Id = [Ic[0] - Im[0], Ic[1] - Im[1], Ic[2] - Im[2], Ic[3] - Im[3]]
+#
+#     return Bc, Br, Bo, Bm, Bd, Vc, Ic, Im, Id
+#
+# n = int(1E6)
+# tmult = int(1E6)
+#
+# print(f"f1 (n={'{:1.0E}'.format(n)}):",
+#       round(timeit('f1(self_Bc, self_Br, self_Bm, self_Vc, self_Ic, self_Im)',
+#                    globals=globals(), number=n)*tmult/n, 3), "us")
 
 
 

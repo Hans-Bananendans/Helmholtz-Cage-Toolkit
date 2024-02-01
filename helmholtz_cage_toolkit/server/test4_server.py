@@ -10,28 +10,42 @@ import helmholtz_cage_toolkit.codec.scc2q as scc
 
 
 # Dummy functions
-def instruct_DACs(Bc):  # TODO: Dummy - Implement actual functionality
+def instruct_DACs(datapool, Bc):  # TODO: Dummy - Implement actual functionality
     """Dummy for writing values to DAC"""
     print(f"[DEBUG] Called instruct_DACs({Bc})!")
+
     Ic = [B/200. for B in Bc]
     Vc = [0., 0., 0.]
+
+    if datapool.serveropt_loopback:
+        datapool.Bdummy = Bc
+
     for i, B in enumerate(Bc):
         if abs(B) <= 0.1:
             Vc[i] = 0.0
         else:
             Vc[i] = 60.0
 
+
+
     # Return control_vals
     return [Bc, Ic, Vc]
 
 
-def sample_ADCs():  # TODO: DUMMY - Implement actual functionality
+def sample_ADCs(datapool):  # TODO: DUMMY - Implement actual functionality
     """Dummy for reading values from ADC. Outputs a Bm sample"""
     # print(f"[DEBUG] Called sample_ADCs()!")
 
-    t = time()
-    # Generate 3 dummy values of [-50,000 , +50,000] nT
-    bx, by, bz = (random(3) * 100_000 - 50_000).round(1)
+    if datapool.serveropt_use_Bdummy:
+        bx, by, bz = datapool.Bdummy
+        t = time()
+    else:
+        # TODO --- REAL IMPLEMENTATION HERE ---
+        bx, by, bz = 0., 0., 0.
+        t = time()
+
+    # # Generate 3 dummy values of [-50,000 , +50,000] nT
+    # bx, by, bz = (random(3) * 100_000 - 50_000).round(1)
     return [t, bx, by, bz]
 
 
@@ -51,7 +65,7 @@ def threaded_write_Bm(datapool):
     while not datapool.kill_write_Bm:    # Break loop when set to True
         if not datapool.pause_write_Bm:  # Pause loop when set to True
             t0 = time()
-            datapool.write_Bm(sample_ADCs())
+            datapool.write_Bm(sample_ADCs(datapool))
             sleep(max(0., datapool.write_Bm_period - (time() - t0)))
         else:
             sleep(datapool.write_Bm_period)
@@ -122,13 +136,13 @@ def threaded_apply_Bc(datapool):
                 if datapool.t_current >= datapool.t_next:
                     if datapool.step_current == datapool.steps - 2:
                         datapool.step_current += 1
-                        instruct_DACs(datapool.schedule[datapool.step_current][3:6])
+                        instruct_DACs(datapool, datapool.schedule[datapool.step_current][3:6])
                         print(f"[DEBUG] Current step: {datapool.step_current}/{datapool.steps} (+{round(datapool.t_current, 3)} s)")
                         print(f"[DEBUG] Reached end of schedule -> STOPPING")
                         confirm = datapool.play_stop()
                     else:
                         datapool.step_current += 1
-                        instruct_DACs(datapool.schedule[datapool.step_current][3:6])
+                        instruct_DACs(datapool, datapool.schedule[datapool.step_current][3:6])
                         datapool.t_next = datapool.schedule[datapool.step_current+1][2]
                         print(f"[DEBUG] Current step: {datapool.step_current}/{datapool.steps} (+{round(datapool.t_current, 3)} s)")
 
@@ -148,14 +162,14 @@ def threaded_apply_Bc(datapool):
                 if Bc_read == Bc_prev:
                     sleep(max(0., datapool.apply_Bc_period - (time() - t0)))
                 else:
-                    control_vals = instruct_DACs(Bc_read)
+                    control_vals = instruct_DACs(datapool, Bc_read)
                     datapool.write_control_vals(control_vals)
                     Bc_prev = Bc_read
             else:
                 sleep(datapool.apply_Bc_period)
 
     # When loop is broken, set power supply values to zero.
-    instruct_DACs([0., 0., 0.])
+    instruct_DACs(datapool, [0., 0., 0.])
     print(f"Closing apply_Bc thread")
 
 
@@ -177,6 +191,9 @@ class DataPool:
         self.apply_Bc_period = 0.1      # Implemented non-thread-safe
         self.write_Bm_period = 0.1      # Implemented non-thread-safe
 
+        self.serveropt_loopback = False # Loopback functionality
+        self.serveropt_use_Bdummy = True  # Makes Bdummy applied to Bm readout
+
         # Data values
         self.Bm = [0., 0., 0., 0.]
         self.Bc = [0., 0., 0.]          # Control vector Bc to be applied [nT]
@@ -184,6 +201,8 @@ class DataPool:
             [0., 0., 0.],               # Bc_applied [nT]
             [0., 0., 0.],               # Ic_applied [A]
             [0., 0., 0.]]               # Vc_applied [V]
+
+        self.Bdummy = [0., 0., 0.]      # Dummy B used by dummy read_ADC function, only for testing
 
         # Play controls
         self.play_mode = False          # If False, manual control is enabled, if True,
@@ -200,7 +219,7 @@ class DataPool:
     def activate_play_mode(self):
         print("[DEBUG] activate_play_mode()")
         self.play_mode = True
-        instruct_DACs([0., 0., 0.])
+        instruct_DACs(datapool, [0., 0., 0.])
         self.steps = len(self.schedule)
         self.play_status = "stop"
         self.t_play = 0.0
@@ -214,7 +233,7 @@ class DataPool:
 
     def deactivate_play_mode(self):
         print("[DEBUG] deactivate_play_mode()")
-        instruct_DACs([0., 0., 0.])
+        instruct_DACs(datapool, [0., 0., 0.])
         self.play_mode = False
         self.play_status = "stop"
         # self.tstart_play = 0.0
@@ -232,7 +251,7 @@ class DataPool:
     def play_stop(self):
         print("[DEBUG] play_stop()")
         self.play_status = "stop"
-        instruct_DACs([0., 0., 0.])  # This essentially causes the last schedule point to be ignored
+        instruct_DACs(datapool, [0., 0., 0.])  # This essentially causes the last schedule point to be ignored
         self.t_current = 0.0
         self.step_current = -1
         self.t_next = self.schedule[self.step_current+1][2]
@@ -648,6 +667,41 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             confirm = self.server.datapool.set_write_Bm_period(args[0])
             packet_out = scc.encode_mpacket(str(confirm))
 
+        elif fname == "set_serveropt_loopback":
+            if args[0] == 1:
+                self.server.datapool.serveropt_loopback = True
+                packet_out = scc.encode_mpacket("1")
+                print("[DEBUG] set_serveropt_loopback() TRUE")
+            else:
+                self.server.datapool.serveropt_loopback = False
+                packet_out = scc.encode_mpacket("0")
+                print("[DEBUG] set_serveropt_loopback() FALSE")
+
+        elif fname == "get_serveropt_loopback":
+            packet_out = scc.encode_mpacket(
+                str(int(self.server.datapool.serveropt_loopback)))
+
+        elif fname == "set_serveropt_use_Bdummy":
+            if args[0] == 1:
+                self.server.datapool.serveropt_use_Bdummy = True
+                packet_out = scc.encode_mpacket("1")
+            else:
+                self.server.datapool.serveropt_use_Bdummy = False
+                packet_out = scc.encode_mpacket("0")
+
+        elif fname == "get_serveropt_use_Bdummy":
+            packet_out = scc.encode_mpacket(
+                str(int(self.server.datapool.serveropt_use_Bdummy)))
+
+        elif fname == "get_Bdummy":
+            packet_out = scc.encode_mpacket("{},{},{}".format(
+                *self.server.datapool.Bdummy))
+
+        elif fname == "set_Bdummy":
+            print("[DEBUG] set_Bdummy(): ({}, {}, {})".format(args[0], args[1], args[2]))
+            self.server.datapool.Bdummy = [args[0], args[1], args[2]]
+            packet_out = scc.encode_mpacket("1")
+
 
         else:
             raise ValueError(f"Function name '{fname}' not recognised!")
@@ -737,7 +791,7 @@ if __name__ == "__main__":
 
     # For safety: set power supplies to zero, separately from apply_Bc_thread
     print(f"Resetting Bc just in case")
-    instruct_DACs([0., 0., 0.])
+    instruct_DACs(datapool, [0., 0., 0.])
 
     # Server termination
     total_uptime = server.uptime()
