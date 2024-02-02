@@ -90,7 +90,7 @@ def encode_bpacket(Bm):  # Q Compatible
         str(Bm[1])[:20],
         str(Bm[2])[:20],
         str(Bm[3])[:20],
-        _pad*186).encode()
+        _pad*187).encode()
 
 
 
@@ -196,7 +196,7 @@ def encode_xpacket(cmd: str, *args):  # Q Compatible
         raise TypeError(
             f"encode_xpacket() received {n_args - n_correct_type} argument(s) of incorrect type! (must be str, int, float, or bool)")
 
-    xpacket_unencoded = "x{:@>31}{:0>8}".format(cmd, n_args)
+    xpacket_unencoded = "x{:@>32}{:0>8}".format(cmd, n_args)
 
     for arg in args:
         if type(arg) == float:
@@ -230,14 +230,14 @@ def decode_xpacket(x_packet):  # Q Compatible
 
     # print(xpacket_decoded[1:32])  # TODO: Remove debug comments once done testing
     # print(xpacket_decoded[32:40])
-    cmd_name = xpacket_decoded[1:32].strip("@")
-    n_args = int(xpacket_decoded[32:40])
+    cmd_name = xpacket_decoded[1:33].strip("@")
+    n_args = int(xpacket_decoded[33:41])
 
     # print("cmd_name:", cmd_name, "n_args:", n_args)
 
     args = []
     for i_seg in range(n_args):
-        seg = xpacket_decoded[40 + 24 * i_seg:40 + 24 * (i_seg + 1)]
+        seg = xpacket_decoded[41 + 24 * i_seg:41 + 24 * (i_seg + 1)]
         # print("[DEBUG]", i_seg, seg, end="  ->  ")
 
         if seg[0] == "f":
