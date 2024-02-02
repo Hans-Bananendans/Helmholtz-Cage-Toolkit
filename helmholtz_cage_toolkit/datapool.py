@@ -36,13 +36,16 @@ class DataPool:
         self.socket = None
         self.ds = None
 
+        self.socket_connected = False
+
 
         # Server options
         self.serveropt_loopback = False
         self.serveropt_use_Bdummy = True
+        self.serveropt_Bdummy_mode = "constant" # "disabled", "constant", "feedback", "mutate"
 
         # Command
-        self.operation_mode = "manual"
+        self.command_mode = "manual"
 
         # Data buffers
         self.tm = 0.                    # UNIX time of most recent Bm, Im measurement
@@ -146,7 +149,7 @@ class DataPool:
     #
     #     self.command_window.do_update_bm_display()
 
-    def do_get_Bm(self):
+    def do_get_Bm(self):  # TODO Add Ic measurement
         """Requests the value of Bm from the server, and stores it to self.tm
         and self.Bm
 
@@ -165,20 +168,47 @@ class DataPool:
         prevents do_get_Bm from shitting the bed when the aforementioned edge
         case occurs.
         """
-        t0 = time()
-        try:
-            self.tm, *self.Bm = cf.get_Bm(self.socket, self.ds)
-        except: # noqa
-            self.tm, *self.Bm = [0.]*4
-        t1 = time()
-        print("[TIMING] do_get_Bm():", int(1E6*(t1-t0)), "\u03bcs")
+        # t0 = time()
+        # try:
+        #     self.tm, *self.Bm = cf.get_Bm(self.socket, self.ds)
+        # except: # noqa
+        #     self.tm, *self.Bm = [0.]*4
+        # t1 = time()
+        # print("[TIMING] do_get_Bm():", int(1E6*(t1-t0)), "\u03bcs")
 
-        self.command_window.do_update_bm_display()
+
+        t0 = time()  # [TIMING]
+        if self.socket_connected:
+            t1 = time()
+            self.tm, *self.Bm = cf.get_Bm(self.socket, self.ds)
+
+        else:
+            t1 = time()
+            self.tm, *self.Bm = [0.]*4
+
+        t2 = time()  # [TIMING]
+
+
+        def randomwalkB():
+            Btest = []
+            m = 0.2
+            f = 10_000
+            Bm_mutated = self.Bm
+            for i in range(3):
+                b = self.Bm[i]
+                # print(b, b/f, 1/2-b/f, -1/2-b/f)
+                Bm_mutated[i] += (m*(random()-0.5) - 1/(1/2-b/f+0.1) - 1/(-1/2-b/f-0.1))*f
+            Btest.append(Bm_mutated)
+            for i in range(3):
+                Btest.append([0.]*3)
+            return Btest
 
         def randomBtest():
             Btest = []
-            for i in range(4):
+            for i in range(2):
                 Btest.append(list((random(3) * 100_000 - 50_000).round(1)))
+            for i in range(2):
+                Btest.append([0.]*3)
             return Btest
 
         # Btest = [
@@ -187,12 +217,17 @@ class DataPool:
         #     [-40_000, -50_000,       0],
         #     [-80_000, -20_000, -10_000],
         # ]
-        Btest = randomBtest()
+        Btest = randomwalkB()
+
+        t3 = time()  # [TIMING]
+        self.command_window.do_update_bm_display()
 
         self.command_window.hhcplot_xy.update_arrows(Btest)
         self.command_window.hhcplot_yz.update_arrows(Btest)
-        # self.command_window.hhcplot_yz.update_arrow(0, self.Bm)
-        # self.command_window.hhcplot_xy.update_arrow(0, self.Bm)
+
+        t4 = time()  # [TIMING]
+        # print("[TIMING] do_get_Bm():",
+        #       int(1E6*(t1-t0)), int(1E6*(t2-t1)), int(1E6*(t3-t2)), int(1E6*(t4-t3)), "\u03bcs")
 
 
 

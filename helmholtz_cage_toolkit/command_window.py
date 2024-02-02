@@ -50,13 +50,13 @@ class CommandWindow(QWidget):
         # ==== LEFT LAYOUT
         layout_left = QVBoxLayout()
 
-        group_mode_controls = self.make_group_mode_controls()
-        group_offset_controls = self.make_group_offset_controls()
-        group_record_controls = self.make_group_record_controls()
-        group_play_controls = self.make_group_play_controls()
+        self.group_mode_controls = self.make_group_mode_controls()
+        self.group_offset_controls = self.make_group_offset_controls()
+        self.group_record_controls = self.make_group_record_controls()
+        self.group_play_controls = self.make_group_play_controls()
 
-        for groupbox in (group_mode_controls, group_offset_controls,
-                         group_record_controls, group_play_controls):
+        for groupbox in (self.group_mode_controls, self.group_offset_controls,
+                         self.group_record_controls, self.group_play_controls):
             groupbox.setStyleSheet(
                 self.datapool.config["stylesheet_groupbox_smallmargins"]
             )
@@ -188,6 +188,19 @@ class CommandWindow(QWidget):
         layout0.addLayout(layout_right)
 
         self.setLayout(layout0)
+
+        self.groups_to_enable_on_connect = (
+            self.group_mode_controls,
+            self.group_offset_controls,
+            self.group_record_controls,
+            self.group_play_controls,
+            self.group_manual_input
+        )
+
+        # Set disabled until connected
+        self.do_on_disconnected()
+
+        self.do_activate_manual_mode()  # Default start in manual mode
 
         # ==== TIMERS
 
@@ -529,6 +542,28 @@ class CommandWindow(QWidget):
         print("[DEBUG] run_checks()")
 
 
+    def do_activate_play_mode(self):
+        print("[DEBUG] do_activate_play_mode()")
+        if self.datapool.socket_connected:
+            cf.activate_play_mode(self.datapool.socket, self.datapool.ds)
+            self.datapool.command_mode = "play"
+
+
+    def do_activate_manual_mode(self):
+        print("[DEBUG] do_activate_manual_mode()")
+        if self.datapool.socket_connected:
+            cf.deactivate_play_mode(self.datapool.socket, self.datapool.ds)
+            self.datapool.command_mode = "manual"
+
+
+    def do_on_connected(self):
+        for group in self.groups_to_enable_on_connect:
+            group.setEnabled(True)
+
+    def do_on_disconnected(self):
+        for group in self.groups_to_enable_on_connect:
+            group.setEnabled(False)
+
     def do_set_target(self):
         # TODO IMPLEMENT
         print("[DEBUG] do_set_target()")
@@ -689,19 +724,19 @@ class GroupManualInput(QGroupBox):
         # Bd = Bo-Bm
         # Id = Ic-Im
 
-        # DUMMIES
-        self.Bc = [50., 50., 50.]
-        self.Br = [-5., 2.5, -45.]
-        self.Bm = [70., 70., 70.]
-        self.Vc = [60.0, 60.0, 60.0]
-        self.Ic = [1200., 1200., 1200.]
-        self.Im = [1400., 1400., 1400.]
+        # # DUMMIES
+        # self.Bc = [50., 50., 50.]
+        # self.Br = [-5., 2.5, -45.]
+        # self.Bm = [70., 70., 70.]
+        # self.Vc = [60.0, 60.0, 60.0]
+        # self.Ic = [1200., 1200., 1200.]
+        # self.Im = [1400., 1400., 1400.]
 
         t0 = time()  # [TIMING]
 
         # Calculating values (~5 us)
-        bc, br, bm = self.Bc, self.Br, self.Bm
-        vc, ic, im = self.Vc, self.Ic, self.Im
+        bc, br, bm = self.datapool.Bc, self.datapool.Br, self.datapool.Bm
+        vc, ic, im = self.datapool.Vc, self.datapool.Ic, self.datapool.Im
         Bc = [bc[0], bc[1], bc[2],
               (bc[0]**2 + bc[1]**2 + bc[2]**2)**(1/2)]
         Br = [br[0], br[1], br[2],

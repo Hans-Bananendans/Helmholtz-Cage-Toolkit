@@ -361,6 +361,7 @@ class ConnectionWindow(QWidget):
     # @Slot()
     def on_connected(self):
         # print("[DEBUG] SIGNAL: socket.connected")
+        self.datapool.socket_connected = True
 
         # Set connection status to connected.
         self.label_status.setText("ONLINE")
@@ -400,13 +401,14 @@ class ConnectionWindow(QWidget):
         self.do_ping_avg()
 
         self.datapool.enable_Bm_acquisition()
+        self.datapool.command_window.do_on_connected()
 
     # @Slot()
     def on_disconnected(self):
         # print("[DEBUG] SIGNAL: socket.disconnected")
+        self.datapool.socket_connected = False
 
         self.datapool.disable_Bm_acquisition()
-
 
         self.label_status.setText("OFFLINE")
         self.label_status.setStyleSheet("""QLabel {color: #ff0000;}""")
@@ -421,9 +423,13 @@ class ConnectionWindow(QWidget):
         for widget in self.widgets_offline_only:
             widget.setEnabled(True)
 
+        self.datapool.command_window.do_on_disconnected()
+
         self.timer_update_time_labels.stop()
         self.timer_correct_time.stop()
         self.timer_update_general_labels.stop()
+
+
 
 
 

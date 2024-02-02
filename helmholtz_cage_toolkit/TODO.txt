@@ -1,0 +1,73 @@
+ ==== SERVER-SIDE ====
+Implement new Bdummy serveropt: serveropt_Bm_sim: "disabled", "constant",
+    "feedback", "mutate"
+After implementing Bm_sim opts, rewrite example_script_client2.py
+Remove Bdummy infrastructure, replace Bdummy with Bm_sim
+Incorporate Im in b-packet or rather:
+Retire b-packet for now, and make a 1/20/16x3/12x3/12x12 = 249 byte d-packet
+    for storing packet_id / unix time / Bm / Im / Vc / Ic / Vvc / Vcc
+    Reasoning: One packet is going to be full anyway, may as well slam as much
+    into it, especially since overhead of sockets seems to be dominant, rather
+    than the actual transfer. Also, timing will be more consistent for all params.
+After testing and benchmarking coded -> SCC3
+Incorporate rejection vector
+Reset Bc on disconnect of client
+Better name and versioning
+Sort functions in handle() alphabetically
+
+
+ ==== CLIENT-SIDE ====
+Enable_on_connect shortcut: make one object that items can add themselves after
+creation, so you have one object to call, and just have to ensure the item is
+in there when program starts.
+
+Implement infrastructure for Bm_sim:
+    QActionGroup for all items
+    Test it
+Implications of bpacket -> dpacket, change related functions
+Overview of all timers + timing events + conditions + locations
+In CommandWindow, connect UI elements:
+    Manual input controlling Bc
+    Manual input values display from d-packet
+    Offset controls + set Bd, think about how to present (vector TO reject or REJECTED VECTOR?)
+    Checks + play becoming available
+    Reset button
+    Manual+schedule buttons
+    Recording controls
+    Envelope graph for schedule
+Disable play controls section in manual mode
+Flip-over for manual input (disconnected state)
+Flip-overs for Bm_display and graphs
+Think of checks and hook all the condis in:
+    - Connected to server (duh)
+    - Verified server schedule with GUI schedule (uncertified when schedule
+        changes)
+    - Data is coming in from HHC
+    - Recording armed
+
+HHCPlot -> Antialiasing possible?
+HHCPlot -> Generalize plotting functions for different directions
+HHCPlot -> Make direction of plots specifyable in config
+Apply all-new HHCPlot class to CyclicsWindow
+How to record incoming data?
+
+Gather generation parameters for Orbital Generator
+Build generator function as separate tool
+Build code example
+Input Groupwidget
+Play control widget
+Orbital representation plot with play controls
+HHCPlot for OrbitalWindow
+Test OrbitalWindow schedules with spacecraft in circular orbit with
+    "inertial fixture" i.e. rotating reversely to its orbit, and benchmark
+    IGRF data at a few points for verification section in thesis.
+Placeholder picture for "Webcam feed"
+Retire old ControlWindow
+
+
+ ==== OVERVIEW OF TIMERS ====
+Housekeeping: Periodic exchange of schedule data with server
+Housekeeping: One-off connect-on-boot
+Housekeeping: One-off post-play reset
+Getting of d-packets from server 1-100 S/s.
+During play mode: schedule synchs (probably 1 to a few S/s)

@@ -22,9 +22,9 @@ config = {
 
 
     # ==== Data acquisition ====
-    "Bm_polling_rate": 1,   # [S/s] How frequently Bm is polled
+    "Bm_polling_rate": 30,   # [S/s] How frequently Bm is polled
 
-    "enable_arrow_tips": True,  # Whether to plot vectors with tips (substantial overhead)
+    "enable_arrow_tips": False,  # Whether to plot vectors with tips (substantial overhead)
 
     # ==== ADC settings ====
     "adc_pollrate": 30,  # TODO STALE
