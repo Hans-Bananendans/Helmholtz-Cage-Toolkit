@@ -97,7 +97,12 @@ class HHCPlotArrow:
 
 
 class HHCPlot(pg.GraphicsLayoutWidget):
-    def __init__(self, datapool, direction="YZ", size=(360, 360)):
+    def __init__(self,
+                 datapool,
+                 arrows: [HHCPlotArrow],
+                 direction="YZ",
+                 size=(360, 360)
+                 ):
         super().__init__()
 
         self.datapool = datapool
@@ -126,7 +131,7 @@ class HHCPlot(pg.GraphicsLayoutWidget):
             raise ValueError("'direction' must be 'XY', 'mXY', or 'YZ'!")
 
 
-        self.arrows = self.create_arrows()
+        self.arrows = tuple(arrows)
         for arrow in self.arrows:
             for plot_element in arrow.plot_elements:
                 self.plot_obj.addItem(plot_element)
@@ -143,14 +148,14 @@ class HHCPlot(pg.GraphicsLayoutWidget):
         # self.plot_obj.addItem(self.arrow_tail)
         # self.plot_obj.addItem(self.arrow_tip)
 
-    def create_arrows(self):
-        # Intended to be overloaded
-        arrows = []
-
-        # arrow_Bm = HHCPlotArrow(color=self.datapool.config["plotcolor_Bm"])
-        # arrows.append(arrow_Bm)
-
-        return arrows
+    # def create_arrows(self):
+    #     # Intended to be overloaded
+    #     arrows = []
+    #
+    #     # arrow_Bm = HHCPlotArrow(color=self.datapool.config["plotcolor_Bm"])
+    #     # arrows.append(arrow_Bm)
+    #
+    #     return arrows
 
 
     def plot_hhc_elements_mxy(self):
@@ -376,3 +381,38 @@ class HHCPlot(pg.GraphicsLayoutWidget):
 
         # print("[TIMING] update_arrows()      :", [round(1E6*t) for t in tt], "\u03bcs")  # [TIMING]
 
+    def update_arrow(self, i_arrow, b):
+        """
+        Implementation of update_arrows that updates only a single arrow, which
+        requires the user specifying the index of the arrow in self.arrows
+
+        Optimizations: Ensures that:
+         - If for arrow i in self.arrows, given bvals[i] did not change
+            compared to the previous value (tracked by self.bvals_prev[i], it
+            will skip the plotting of that arrow.
+            Effect: ~14 us -> ~1 us for non-changing arrows
+
+        """
+
+        print(f"[DEBUG] update_arrow({i_arrow}, {b})")
+        if len(b) != 3:
+            raise AssertionError(
+                "Given `b` longer ({}) than it should be (3)".format(len(b))
+            )
+
+        arrow = self.arrows[i_arrow]
+
+        print(f"[DEBUG] Updating arrow {i_arrow}: {arrow}")
+
+        # Skip if value did not change:
+        if b == self.bvals_prev[i_arrow]:
+            pass
+        else:
+            if self.direction == "YZ":
+                arrow.update(b[1], b[2], self.bscale)
+            elif self.direction == "XY":
+                arrow.update(b[0], b[1], self.bscale)
+            elif self.direction == "mXY":
+                arrow.update(b[1], -b[0], self.bscale)
+
+        self.bvals_prev[i_arrow] = b

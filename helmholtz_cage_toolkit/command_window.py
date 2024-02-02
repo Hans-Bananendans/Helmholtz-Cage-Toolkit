@@ -44,61 +44,10 @@ class CommandWindow(QWidget):
 
         self.datapool = datapool
 
+        self.datapool.command_window = self
 
 
-        self.checks_icon_paths = (
-            "./assets/icons/check_00aa00.svg",
-            "./assets/icons/wave_ffd200.svg",
-            "./assets/icons/x_bb0000.svg",
-            "./assets/icons/x_bb0000.svg",
-            "./assets/icons/x_bb0000.svg",
-            "./assets/icons/x_bb0000.svg",
-            "./assets/icons/x_bb0000.svg",
-            "./assets/icons/x_bb0000.svg",
-            "./assets/icons/x_bb0000.svg",
-        )
-
-        # TODO Migrate to datapool
-        self.checks = {
-            "connection_up":
-                {"text": ["Connected to device",
-                          "<unimplemented>",
-                          "Unconnected to device"],
-                 "value": 2,
-                 },
-            "schedule_ready":
-                {"text": ["Schedule ready on device",
-                          "<unimplemented>",
-                          "No schedule ready on device"],
-                 "value": 2,
-                 },
-            "recording":
-                {"text": ["Ready to record data",
-                          "Recording not on/armed",
-                          "No recording output selected!"],
-                 "value": 1,
-                 },
-            "dummy_check1":
-                {"text": ["dummy1 tick",
-                          "dummy1 ~",
-                          "dummy1 x"],
-                 "value": 2,
-                 },
-            "dummy_check2":
-                {"text": ["dummy2 tick",
-                          "dummy2 ~",
-                          "dummy2 x"],
-                 "value": 1,
-                 },
-            "dummy_check3":
-                {"text": ["dummy3 tick",
-                          "dummy3 ~",
-                          "dummy3 x"],
-                 "value": 0,
-                 },
-        }
-
-
+        # ==== LEFT LAYOUT
         layout_left = QVBoxLayout()
 
         group_mode_controls = self.make_group_mode_controls()
@@ -114,33 +63,79 @@ class CommandWindow(QWidget):
             layout_left.addWidget(groupbox)
 
 
+        # ==== RIGHT LAYOUT
         layout_right = QVBoxLayout()
 
+        self.stacker_right = QStackedWidget()
+
+        # Construct Manual Input groupbox
         self.group_manual_input = GroupManualInput(self.datapool)
-        layout_right.addWidget(self.group_manual_input)
-
+        # Update the labels once to flush init values
         self.group_manual_input.do_update_biv_labels()
+        # Add to stacked widget
+        self.stacker_right.addWidget(self.group_manual_input)
 
+        # Add envelope plot to stacker widget
+        dummy_widget = QLabel("DUMMY ENVELOPE PLOT")
+        self.stacker_right.addWidget(dummy_widget)
+
+        # Add stacker to the parent layout
+        layout_right.addWidget(self.stacker_right)
+
+
+        # Construct large Bm number display bar layout
         layout_bm_display = self.make_layout_bm_display()
+        # Update once to flush init values
+        self.do_update_bm_display()
 
+        # Add to parent layout
         layout_right.addLayout(layout_bm_display)
 
-        self.do_update_bm_display()
-        # dummy_widget.setMinimumWidth(720)
 
-
-
+        # Create a grid layout for the HHCPlots
         layout_hhcplots = QGridLayout()
 
-        self.hhcplot_yz = HHCPlotCommandWindow(datapool, direction="YZ")
-        self.hhcplot_xy = HHCPlotCommandWindow(datapool, direction="mXY")
+        # Constructing two instances of HHCPlots. First look in config to see
+        # if arrow tips should be plotted (disabled gives better performance)
+        et = self.datapool.config["enable_arrow_tips"]
+
+        # Create four instances of HHCPlotArrow to give to the constructor of
+        # HHCPlot. The order of the array arrows_yz will also dictate in which
+        # order the arrows will be plotted and referenced once connected to a
+        # HHCPlot instance.
+        arrows_yz = []
+        for item in ("Bm", "Bc", "Br", "Bo"):
+            arrows_yz.append(HHCPlotArrow(
+                color=self.datapool.config[f"plotcolor_{item}"], enable_tip=et,
+            ))
+
+        # Construct HHCPlot instance for YZ plot
+        self.hhcplot_yz = HHCPlot( datapool, arrows_yz, direction="YZ")
+
+        # Same idea but now for -XY plot
+        arrows_xy = []
+        for item in ("Bm", "Bc", "Br", "Bo"):
+            arrows_xy.append(HHCPlotArrow(
+                color=self.datapool.config[f"plotcolor_{item}"], enable_tip=et,
+            ))
+        self.hhcplot_xy = HHCPlot(datapool, arrows_xy, direction="mXY")
+
+
+        print("hhcplot_yz instance: ", self.hhcplot_yz)
+        for i, arrow in enumerate(self.hhcplot_yz.arrows):
+            print(f"arrow_yz_{i}: {arrow}")
+
+        print("hhcplot_xy instance: ", self.hhcplot_xy)
+        for i, arrow in enumerate(self.hhcplot_xy.arrows):
+            print(f"arrow_xy_{i}: {arrow}")
 
         layout_hhcplots.addWidget(self.hhcplot_yz, 0, 0)
         layout_hhcplots.addWidget(self.hhcplot_xy, 0, 1)
-
+        # Add to parent layout
         layout_right.addLayout(layout_hhcplots)
 
-        breset = [[0., ]*3, ]*2
+        # Debug operations # TODO CLEAN UP
+        breset = [[0., ]*3, ]*4
 
         self.hhcplot_yz.update_arrows(breset)
         self.hhcplot_xy.update_arrows(breset)
@@ -187,11 +182,15 @@ class CommandWindow(QWidget):
         # self.hhcplot_xy.plot_ghosts(schedtest)
 
 
+        # ==== Bottom layout
         layout0 = QHBoxLayout()
         layout0.addLayout(layout_left)
         layout0.addLayout(layout_right)
 
         self.setLayout(layout0)
+
+        # ==== TIMERS
+
 
 
     def make_group_mode_controls(self):
@@ -320,18 +319,30 @@ class CommandWindow(QWidget):
 
     def make_group_play_controls(self):
 
-        self.stacker_play_controls = QStackedWidget()
+        self.checks_icon_paths = (
+            "./assets/icons/check_00aa00.svg",
+            "./assets/icons/wave_ffd200.svg",
+            "./assets/icons/x_bb0000.svg",
+            "./assets/icons/x_bb0000.svg",
+            "./assets/icons/x_bb0000.svg",
+            "./assets/icons/x_bb0000.svg",
+            "./assets/icons/x_bb0000.svg",
+            "./assets/icons/x_bb0000.svg",
+            "./assets/icons/x_bb0000.svg",
+        )
 
+
+        self.stacker_play_controls = QStackedWidget()
 
         self.layout_play_checks = QGridLayout()
 
         # It's tricky to manipulate widgets by referring to them in their
-        # layout, as this returns QWidgetItems, rather than the actual item.
-        # So instead, gather widgets in a nested list stored in the class
-        # instance, for easier reference.
+        # layout, as this returns QWidgetItems, rather than the actual widget
+        # instance. So instead, gather widgets in a nested list stored in the
+        # class instance, for easier reference.
         self.checks_widgets = []
 
-        for i in range(len(self.checks)):
+        for i in range(len(self.datapool.checks)):
             # Nest new widget pair list into whole list
             self.checks_widgets.append([
                 QSvgWidget("./assets/icons/feather/frown.svg"),
@@ -345,7 +356,7 @@ class CommandWindow(QWidget):
             self.layout_play_checks.addWidget(self.checks_widgets[i][0], i, 0)
             self.layout_play_checks.addWidget(self.checks_widgets[i][1], i, 1)
 
-        # Then propagate it again according to values in self.checks:
+        # Then propagate it again according to values in self.datapool.checks:
         self.do_update_check_widgets()
 
         widget_play_checks = QWidget()
@@ -472,11 +483,13 @@ class CommandWindow(QWidget):
 
 
     def do_update_bm_display(self):
-        self.Bm = [-12345.678, -1.0, -98.765]
+        # Bm = [-12345.678, -1.0, -98.765]  TODO REMOVE
+        Bm = self.datapool.Bm
+        Bm = [Bm[0]/1000, Bm[1]/1000, Bm[2]/1000]  # Convert to uT
 
-        Bm_abs = (self.Bm[0]**2 + self.Bm[1]**2 + self.Bm[2]**2)**(1/2)
+        Bm_abs = (Bm[0]**2 + Bm[1]**2 + Bm[2]**2)**(1/2)
 
-        for i, bval in enumerate((self.Bm[0], self.Bm[1], self.Bm[2], Bm_abs)):
+        for i, bval in enumerate((Bm[0], Bm[1], Bm[2], Bm_abs)):
             # Pretty quick way (1.3 us per set) to convert a float into two
             # string segments, one with up to 5 characters above the decimal
             # separator, and the other part with the decimal separator and up
@@ -487,7 +500,7 @@ class CommandWindow(QWidget):
 
     def do_update_check_widgets(self):
         i = 0
-        for key, check_item in self.checks.items():
+        for key, check_item in self.datapool.checks.items():
             # Update "icon" QSvgWidget:
             self.checks_widgets[i][0].load(
                 self.checks_icon_paths[check_item["value"]])
@@ -500,23 +513,6 @@ class CommandWindow(QWidget):
             elif check_item["value"] == 0 and self.checks_widgets[i][1].isEnabled():
                 self.checks_widgets[i][1].setEnabled(False)
 
-            # self.layout_play_checks.replaceWidget(
-            #     self.layout_play_checks.itemAtPosition(i, 0),
-            #     self.checks_icons[check_item["value"]])
-
-            # self.layout_play_checks.itemAt(i).load(
-            #     self.checks_icon_paths[check_item["value"]])
-
-            # self.layout_play_checks.itemAtPosition(i, 0).load(
-            #     self.checks_icon_paths[check_item["value"]])
-
-
-            # label_icon = self.layout_play_checks.itemAtPosition(i, 0)
-            # label_icon.setIcon(self.checks_icons[check_item["value"]])
-
-            # Update text of related QLabel
-            # label_text = self.layout_play_checks.itemAtPosition(i, 1)
-            # label_text.setText(check_item["text"][check_item["value"]])
             i += 1
 
     def do_update_play_stats_labels(self):
@@ -590,22 +586,30 @@ class CommandWindow(QWidget):
 
 
 
-class HHCPlotCommandWindow(HHCPlot):
-    def __init__(self, datapool, **kwargs):
-        super().__init__(datapool, **kwargs)
-
-    def create_arrows(self):
-        arrows = []
-
-        arrow_Bm = HHCPlotArrow(color=self.datapool.config["plotcolor_Bm"],
-                                enable_tip=False)
-        arrows.append(arrow_Bm)
-
-        arrow_Br = HHCPlotArrow(color=self.datapool.config["plotcolor_Br"],
-                                enable_tip=False)
-        arrows.append(arrow_Br)
-
-        return arrows
+# class HHCPlotCommandWindow(HHCPlot):
+#     def __init__(self, datapool, **kwargs):
+#         super().__init__(datapool, **kwargs)
+#
+#     def create_arrows(self):
+#         arrows = []
+#
+#         arrow_Bm = HHCPlotArrow(color=self.datapool.config["plotcolor_Bm"],
+#                                 enable_tip=True)
+#         arrows.append(arrow_Bm)
+#
+#         arrow_Bc = HHCPlotArrow(color=self.datapool.config["plotcolor_Bc"],
+#                                 enable_tip=True)
+#         arrows.append(arrow_Bc)
+#
+#         arrow_Br = HHCPlotArrow(color=self.datapool.config["plotcolor_Br"],
+#                                 enable_tip=True)
+#         arrows.append(arrow_Br)
+#
+#         arrow_Bo = HHCPlotArrow(color=self.datapool.config["plotcolor_Bo"],
+#                                 enable_tip=True)
+#         arrows.append(arrow_Bo)
+#
+#         return arrows
 
 
 

@@ -399,9 +399,14 @@ class ConnectionWindow(QWidget):
 
         self.do_ping_avg()
 
+        self.datapool.enable_Bm_acquisition()
+
     # @Slot()
     def on_disconnected(self):
         # print("[DEBUG] SIGNAL: socket.disconnected")
+
+        self.datapool.disable_Bm_acquisition()
+
 
         self.label_status.setText("OFFLINE")
         self.label_status.setStyleSheet("""QLabel {color: #ff0000;}""")
@@ -419,6 +424,8 @@ class ConnectionWindow(QWidget):
         self.timer_update_time_labels.stop()
         self.timer_correct_time.stop()
         self.timer_update_general_labels.stop()
+
+
 
     def on_socketerror(self, socketerror: QAbstractSocket.SocketError):
         # print("[DEBUG] SIGNAL: socket.errorOccurred")
@@ -500,7 +507,7 @@ class ConnectionWindow(QWidget):
 
         hhc_play_status = cf.get_play_status(self.socket, self.ds)
         if hhc_play_status != self.hhc_play_status:
-                self.label_hhcstatus.setText(hhc_play_status)
+            self.label_hhcstatus.setText(hhc_play_status)
         self.hhc_play_status = hhc_play_status
 
         hhc_schedule_info = cf.get_schedule_info(self.socket, self.ds)

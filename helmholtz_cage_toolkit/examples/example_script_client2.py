@@ -87,7 +87,7 @@ if __name__ == "__main__":
         sleep(3)
 
 
-        cleanup = True # Set to False to keep changes after script ends.
+        cleanup = False # Set to False to keep changes after script ends.
 
         if cleanup:
             cf.set_Bdummy(s, [0., 0., 0.], ds)

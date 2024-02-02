@@ -4,46 +4,54 @@ from time import time
 from timeit import timeit
 
 
-N = 12345.67890
 
-NN = [
-    12345.67890,
-    -12345.67890,
-    1.0,
-    2,
-    0.0,
-    0.1543,
-]
+from codec.scc2q import encode_bpacket
 
 
+Bm = [time(), 111.11111, 222.22222, 333.33333]
 
-def f1(N):
-    if N >= 0:
-        l, s = divmod(float(N), 1)
-        return str(int(l)), str(s)[1:5]
-    else:
-        l, s = divmod(float(N), -1)
-        return str(int(l)), str(s)[2:6]
+print(encode_bpacket(Bm))
 
-def f2(N):
-    l, s = str(float(N)).split(".")
-    return l[-6:], ("."+s+"000")[:4]
-
-
-for num in NN:
-    print(f1(num), f2(num))
-
-
-
-n = int(1E4)
-tmult = int(1E6)
-
-print(f"f1 (n={'{:1.0E}'.format(n)}):",
-      round(timeit('f1(N)',
-                   globals=globals(), number=n)*tmult/n, 3), "us")
-print(f"f2 (n={'{:1.0E}'.format(n)}):",
-      round(timeit('f2(N)',
-                   globals=globals(), number=n)*tmult/n, 3), "us")
+# N = 12345.67890
+#
+# NN = [
+#     12345.67890,
+#     -12345.67890,
+#     1.0,
+#     2,
+#     0.0,
+#     0.1543,
+# ]
+#
+#
+#
+# def f1(N):
+#     if N >= 0:
+#         l, s = divmod(float(N), 1)
+#         return str(int(l)), str(s)[1:5]
+#     else:
+#         l, s = divmod(float(N), -1)
+#         return str(int(l)), str(s)[2:6]
+#
+# def f2(N):
+#     l, s = str(float(N)).split(".")
+#     return l[-6:], ("."+s+"000")[:4]
+#
+#
+# for num in NN:
+#     print(f1(num), f2(num))
+#
+#
+#
+# n = int(1E4)
+# tmult = int(1E6)
+#
+# print(f"f1 (n={'{:1.0E}'.format(n)}):",
+#       round(timeit('f1(N)',
+#                    globals=globals(), number=n)*tmult/n, 3), "us")
+# print(f"f2 (n={'{:1.0E}'.format(n)}):",
+#       round(timeit('f2(N)',
+#                    globals=globals(), number=n)*tmult/n, 3), "us")
 
 
 

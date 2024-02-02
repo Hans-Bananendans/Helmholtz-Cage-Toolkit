@@ -439,6 +439,13 @@ def get_Bm(socket,
             datastream=datastream
         )
     )
+    # packet_in = send_and_receive(
+    #     scc.encode_bpacket([0.]*4),
+    #     socket,
+    #     datastream=datastream
+    # )
+    # print(packet_in)
+    # Bm = scc.decode_bpacket(packet_in)
 
     if timing:
         tend = time()

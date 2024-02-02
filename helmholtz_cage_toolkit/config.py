@@ -18,38 +18,43 @@ config = {
     "connect_on_startup_delay": 3000,
     "label_update_period": 2000,
     "time_correction_period": 60000,
-    "pings_per_test": 64,
+    "pings_per_test": 8,
 
+
+    # ==== Data acquisition ====
+    "Bm_polling_rate": 1,   # [S/s] How frequently Bm is polled
+
+    "enable_arrow_tips": True,  # Whether to plot vectors with tips (substantial overhead)
 
     # ==== ADC settings ====
-    "adc_pollrate": 30,
+    "adc_pollrate": 30,  # TODO STALE
 
 
     # ==== DAC settings ====
-    "vmax_dac": 5.0,  # VDC
+    "vmax_dac": 5.0,  # VDC  # TODO STALE
 
 
     # ==== Power supply settings ====
-    "vmax_supply": 60.0,  # VDC
-    "imax_supply": 5.0,  # A
+    "vmax_supply": 60.0,  # VDC  # TODO STALE
+    "imax_supply": 5.0,  # A  # TODO STALE
 
 
     # ==== Hardware and cable routing ====
-    "adc_channel_bx": 0,
-    "adc_channel_by": 1,
-    "adc_channel_bz": 2,
+    "adc_channel_bx": 0,  # TODO STALE
+    "adc_channel_by": 1,  # TODO STALE
+    "adc_channel_bz": 2,  # TODO STALE
 
-    "dac_supply1_act": 0,
-    "dac_supply1_cc": 2,
-    "dac_supply1_vc": 4,
+    "dac_supply1_act": 0,  # TODO STALE
+    "dac_supply1_cc": 2,  # TODO STALE
+    "dac_supply1_vc": 4,  # TODO STALE
 
-    "dac_supply2_act": 1,
-    "dac_supply2_cc": 3,
-    "dac_supply2_vc": 5,
+    "dac_supply2_act": 1,  # TODO STALE
+    "dac_supply2_cc": 3,  # TODO STALE
+    "dac_supply2_vc": 5,  # TODO STALE
 
-    "dac_supply3_act": 8,
-    "dac_supply3_cc": 10,
-    "dac_supply3_vc": 12,
+    "dac_supply3_act": 8,  # TODO STALE
+    "dac_supply3_cc": 10,  # TODO STALE
+    "dac_supply3_vc": 12,  # TODO STALE
 
 
     # ==== Plotwindow settings ====

@@ -1,4 +1,5 @@
 import os
+from time import time
 
 from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.orbit_visualizer import Orbit, Earth
@@ -17,6 +18,7 @@ class DataPool:
         self.status_bar = None
         self.tab_bar = None
         self.tabcontainer = None
+        self.command_window = None
 
         self.bscale = self.config["visualizer_bscale"]
         self.cyclics_visualizer = None
@@ -39,18 +41,37 @@ class DataPool:
         self.serveropt_loopback = False
         self.serveropt_use_Bdummy = True
 
-        # Devices
+        # Command
+        self.operation_mode = "manual"
+
+        # Data buffers
+        self.tm = 0.                    # UNIX time of most recent Bm, Im measurement
+        self.Bm = [0., 0., 0.]          # B vector measured by hardware
+        self.Bc = [0., 0., 0.]          # B vector as commanded by user
+        self.Br = [0., 0., 0.]          # B vector to reject
+
+        self.Ic = [0., 0., 0.]          # Coil current commanded by user (calculated by server)
+        self.Im = [0., 0., 0.]          # Coil current as measured by hardware
+
+        self.Vc = [0., 0., 0.]          # Power supply voltage as commanded by user
+
+        self.Vcc = [0., 0., 0.]         # Supply Current Control Voltage [0, 2] VDC
+        self.Vvc = [0., 0., 0.]         # Supply Voltage Control Voltage [0, 2] VDC
+
+
+
+        # Devices TODO DEPRECATED
         self.interface_board = None
         self.supplies = [None, None, None]
         self.magnetometer = None
 
-        # Measurement
+        # Measurement TODO DEPRECATED
         self.adc_pollrate = self.config["adc_pollrate"]
         # TODO: Revert to 0. 0. 0.
         self.B_m = array([0., 1., 0.])   # B measured by magnetometer
         self.tBm = 0.0                      # Unix acquisition time of latest measurement
 
-        # Command
+        # Command TODO DEPRECATED
         self.B_c = array([0., 0., 0.])   # Commanded (=desired) magnetic field
         self.I_c = array([0., 0., 0.])   # Voltage for voltage control
         self.V_cc = array([0., 0., 0.])  # Voltage for voltage control
@@ -65,6 +86,121 @@ class DataPool:
         self.orbit_subs = 256
         self.orbit_spacing = "isochronal"
         self.i_satpos = 0
+
+        self.checks = {
+            "connection_up":
+                {"text": ["Connected to device",
+                          "<unimplemented>",
+                          "Unconnected to device"],
+                 "value": 2,
+                 },
+            "schedule_ready":
+                {"text": ["Schedule ready on device",
+                          "<unimplemented>",
+                          "No schedule ready on device"],
+                 "value": 2,
+                 },
+            "recording":
+                {"text": ["Ready to record data",
+                          "Recording not on/armed",
+                          "No recording output selected!"],
+                 "value": 1,
+                 },
+            "dummy_check1":
+                {"text": ["dummy1 tick",
+                          "dummy1 ~",
+                          "dummy1 x"],
+                 "value": 2,
+                 },
+            "dummy_check2":
+                {"text": ["dummy2 tick",
+                          "dummy2 ~",
+                          "dummy2 x"],
+                 "value": 1,
+                 },
+            "dummy_check3":
+                {"text": ["dummy3 tick",
+                          "dummy3 ~",
+                          "dummy3 x"],
+                 "value": 0,
+                 },
+        }
+
+
+        # ==== TIMERS
+        self.timer_get_Bm = QTimer()
+        self.timer_get_Bm.timeout.connect(self.do_get_Bm)
+
+
+
+    # def do_get_Bm(self):
+    #     t0 = time()
+    #     if self.socket.state() != QAbstractSocket.ConnectedState:
+    #         t1 = time()
+    #         self.tm, *self.Bm = [0.]*4
+    #     else:
+    #         t1 = time()
+    #         self.tm, *self.Bm = cf.get_Bm(self.socket, self.ds)
+    #     t2 = time()
+    #     print("[TIMING] do_get_Bm():", int(1E6*(t1-t0)), int(1E6*(t2-t1)), "\u03bcs")
+    #
+    #     self.command_window.do_update_bm_display()
+
+    def do_get_Bm(self):
+        """Requests the value of Bm from the server, and stores it to self.tm
+        and self.Bm
+
+        Upon disconnecting from the server, the socket.disconnected signal
+        should disable the timer periodically running this function. However,
+        there exists an edge case where the socket connection is already down,
+        but this function still fires once, as the timer has not been shut off
+        yet.
+
+        For this reason, this function used to first check for the socket state
+        by testing
+            self.socket.state() == QAbstractSocket.ConnectedState
+
+        This however introduced a ~15 us overhead. It is now implemented using
+        a try and blank except, which is not generally good practice, but it
+        prevents do_get_Bm from shitting the bed when the aforementioned edge
+        case occurs.
+        """
+        t0 = time()
+        try:
+            self.tm, *self.Bm = cf.get_Bm(self.socket, self.ds)
+        except: # noqa
+            self.tm, *self.Bm = [0.]*4
+        t1 = time()
+        print("[TIMING] do_get_Bm():", int(1E6*(t1-t0)), "\u03bcs")
+
+        self.command_window.do_update_bm_display()
+
+        def randomBtest():
+            Btest = []
+            for i in range(4):
+                Btest.append(list((random(3) * 100_000 - 50_000).round(1)))
+            return Btest
+
+        # Btest = [
+        #     [ 40_000,  50_000,       0],
+        #     [ 80_000,  20_000,  10_000],
+        #     [-40_000, -50_000,       0],
+        #     [-80_000, -20_000, -10_000],
+        # ]
+        Btest = randomBtest()
+
+        self.command_window.hhcplot_xy.update_arrows(Btest)
+        self.command_window.hhcplot_yz.update_arrows(Btest)
+        # self.command_window.hhcplot_yz.update_arrow(0, self.Bm)
+        # self.command_window.hhcplot_xy.update_arrow(0, self.Bm)
+
+
+
+    def enable_Bm_acquisition(self):
+        self.timer_get_Bm.start(int(1000/self.config["Bm_polling_rate"]))
+
+    def disable_Bm_acquisition(self):
+        self.timer_get_Bm.stop()
 
     def get_config(self):
         return self.config
@@ -149,5 +285,3 @@ class DataPool:
         """Prints string to console when verbosity is above a certain level"""
         if verbosity_level <= self.config["verbosity"]:
             print(string)
-
-
