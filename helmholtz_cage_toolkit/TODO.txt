@@ -1,14 +1,9 @@
  ==== SERVER-SIDE ====
 
-After implementing Bm_sim opts, rewrite example_script_client2.py
+After implementing Bm_sim opts, rewrite
+    example_script_client.py
+    example_script_client2.py
 
-Incorporate Im in b-packet or rather:
-Retire b-packet for now, and make a 1/20/16x3/12x3/12x12 = 249 byte d-packet
-    for storing packet_id / unix time / Bm / Im / Vc / Ic / Vvc / Vcc
-    Reasoning: One packet is going to be full anyway, may as well slam as much
-    into it, especially since overhead of sockets seems to be dominant, rather
-    than the actual transfer. Also, timing will be more consistent for all params.
-After testing and benchmarking coded -> SCC3
 Incorporate rejection vector
 Reset Bc on disconnect of client
 Better name and versioning
@@ -23,11 +18,11 @@ in there when program starts.
 Implement infrastructure for Bm_sim:
     QActionGroup for all items
     Test it
-Implications of bpacket -> dpacket, change related functions
+Implications of bpacket -> tpacket, change related functions
 Overview of all timers + timing events + conditions + locations
 In CommandWindow, connect UI elements:
     Manual input controlling Bc
-    Manual input values display from d-packet
+    Manual input values display from t-packet
     Offset controls + set Bd, think about how to present (vector TO reject or REJECTED VECTOR?)
     Checks + play becoming available
     Reset button
@@ -68,5 +63,5 @@ Retire old ControlWindow
 Housekeeping: Periodic exchange of schedule data with server
 Housekeeping: One-off connect-on-boot
 Housekeeping: One-off post-play reset
-Getting of d-packets from server 1-100 S/s.
+Getting of t-packets from server 1-100 S/s.
 During play mode: schedule synchs (probably 1 to a few S/s)
