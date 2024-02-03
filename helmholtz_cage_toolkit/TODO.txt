@@ -1,8 +1,7 @@
  ==== SERVER-SIDE ====
-Implement new Bdummy serveropt: serveropt_Bm_sim: "disabled", "constant",
-    "feedback", "mutate"
+
 After implementing Bm_sim opts, rewrite example_script_client2.py
-Remove Bdummy infrastructure, replace Bdummy with Bm_sim
+
 Incorporate Im in b-packet or rather:
 Retire b-packet for now, and make a 1/20/16x3/12x3/12x12 = 249 byte d-packet
     for storing packet_id / unix time / Bm / Im / Vc / Ic / Vvc / Vcc

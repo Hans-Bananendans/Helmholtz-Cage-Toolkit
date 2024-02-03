@@ -1,5 +1,5 @@
 """
-Simple Command Codec - iteration 2 (SCC2) - Qt compatible edition
+Simple Command Codec - iteration 3 (SCC3)
 
 Code implementation to facilitate command and message serialization
 over a point-to-point TCP/IP connection.
@@ -19,10 +19,21 @@ Control packet      c_packet    Packet meant to control the power supplies to
                                 proportional to a magnetic field strength.
                                 Packet contains 3 signed <float> values in nT
 
+Telemetry packet    t_packet    Packet containing telemetry in the form of many
+                                measured parameters. Mainly used to get as much
+                                useful data from the server to a client in a
+                                single package. Contains a 20 B UNIX timestamp,
+                                and tri-axial values of Bm, Im, Ic, Vc, Vvc,
+                                and Vcc. Bm values are 16 bytes, the others all
+                                12 byte.
+
 B-sample packet     b_packet    Packet containing a single measurement of the
                                 triaxial magnetometer. Contains a 20 B UNIX
-                                timestamp and 16 B signed float value in nT
-                                for each axis.
+                                timestamp and 16 B signed float value in nT for
+                                each axis. Preferred over t_packet if only Bm
+                                data is needed and speed is critical:
+                                Encoding + decoding b_packet:   5.55 us
+                                Encoding + decoding t_packet:  18.75 us
 
 Execution packet    x_packet    Packets meant for sending commands, taking
                                 a <str> command name, and then any number of
@@ -58,7 +69,7 @@ _pad = "#"          # Packet padding character (cannot be @)
 # _xps = "@"          # (now hardcoded!) Internal separator used for x-packets
 
 
-def packet_type(packet):  # Q Compatible (no change)
+def packet_type(packet):
     """ Returns the first character of the packet, which is the type
     identifier.
 
@@ -79,18 +90,63 @@ def packet_type(packet):  # Q Compatible (no change)
     return packet[0:1].decode()
 
 
-def encode_bpacket(Bm):  # Q Compatible
+
+def encode_tpacket(tm, Bm, Im, Ic, Vc, Vvc, Vcc):
+    """ Encodes a b_packet, which has the following anatomy:
+    b (1 B)    UNIX_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
+
+    Optimization: ~13250 ns/encode
+    """
+    output = [tm, ]
+    for par in (Bm, Im, Ic, Vc, Vvc, Vcc):
+        output += [par[0], par[1], par[2]]
+    return ("t{:0<20}"+"{:0<16}"*3+"{:0<12}"*15+"#"*7).format(*output).encode()
+
+
+
+
+def decode_tpacket(t_packet):
+    """ Decodes a b_packet, which has the following anatomy:
+    t (1 B)    UNIX_time (20 B)    Bm (3x16 B)    Im (3x12 B)    Ic (3x12 B)
+            Vc (3x12 B)    Vvc (3x12 B)    Vcc (3x12 B)
+    Optimization: ~5500 ns/decode (FX-8350)
+    """
+    t_decoded = t_packet.decode()
+    return float(t_decoded[1:21]), [        # tm
+           float(t_decoded[21:37]),         # \
+           float(t_decoded[37:53]),         # Bm
+           float(t_decoded[53:69]), ], [    # /
+           float(t_decoded[69:81]),         # \
+           float(t_decoded[81:93]),         # Im
+           float(t_decoded[93:105]), ], [   # /
+           float(t_decoded[105:117]),       # \
+           float(t_decoded[117:129]),       # Ic
+           float(t_decoded[129:141]), ], [  # /
+           float(t_decoded[141:153]),       # \
+           float(t_decoded[153:165]),       # Vc
+           float(t_decoded[165:177]), ], [  # /
+           float(t_decoded[177:189]),       # \
+           float(t_decoded[189:201]),       # Vvc
+           float(t_decoded[201:213]), ], [  # /
+           float(t_decoded[213:225]),       # \
+           float(t_decoded[225:237]),       # Vcc
+           float(t_decoded[237:249]), ]     # /
+
+
+
+
+def encode_bpacket(tm, Bm):  # Q Compatible
     """ Encodes a b_packet, which has the following anatomy:
     b (1 B)    UNIX_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
 
     Optimization: ~3800 ns/encode
     """
     return "b{:0<20}{:0<16}{:0<16}{:0<16}{}".format(
-        str(Bm[0])[:20],
-        str(Bm[1])[:20],
-        str(Bm[2])[:20],
-        str(Bm[3])[:20],
-        _pad*186).encode()
+        str(tm)[:20],
+        str(Bm[0])[:16],
+        str(Bm[1])[:16],
+        str(Bm[2])[:16],
+        _pad*187).encode()
 
 
 
@@ -179,7 +235,7 @@ def decode_epacket(e_packet):  # Q Compatible
 
 def encode_xpacket(cmd: str, *args):  # Q Compatible
     """ Encodes an x_packet, which has the following anatomy:
-    x (1 B)    cmd (32 B)    n_args(8 B)    type_id , arg (1+23 B each)
+    x (1 B)    cmd (32 B)    n_args(6 B)    type_id , arg (1+23 B each)
 
     The tail of an x_packet consists of n_args segments. Each starts with
     an arg_type_id ('s', 'i', 'f', 'b' for string, integer, float, and
@@ -196,7 +252,7 @@ def encode_xpacket(cmd: str, *args):  # Q Compatible
         raise TypeError(
             f"encode_xpacket() received {n_args - n_correct_type} argument(s) of incorrect type! (must be str, int, float, or bool)")
 
-    xpacket_unencoded = "x{:@>23}{:0>8}".format(cmd, n_args)
+    xpacket_unencoded = "x{:@>32}{:0>6}".format(cmd, n_args)
 
     for arg in args:
         if type(arg) == float:
@@ -221,23 +277,23 @@ def encode_xpacket(cmd: str, *args):  # Q Compatible
 
 def decode_xpacket(x_packet):  # Q Compatible
     """ Decodes a c_packet, which has the following anatomy:
-    x (1 B)    cmd (24 B)    args (24 B each)
+    x (1 B)    cmd (32 B)    n_args(6 B)    type_id , arg (1+23 B each)
 
     Unoptimized as of 15-01-2024. ~5000-10000 ns/decode (FX-8350)
     """
 
     xpacket_decoded = x_packet.decode().rstrip(_pad)
 
-    # print(xpacket_decoded[1:24])  # TODO: Remove debug comments once done testing
-    # print(xpacket_decoded[24:32])
-    cmd_name = xpacket_decoded[1:24].strip("@")
-    n_args = int(xpacket_decoded[24:32])
+    # print(xpacket_decoded[1:32])  # TODO: Remove debug comments once done testing
+    # print(xpacket_decoded[32:40])
+    cmd_name = xpacket_decoded[1:33].strip("@")
+    n_args = int(xpacket_decoded[33:39])
 
     # print("cmd_name:", cmd_name, "n_args:", n_args)
 
     args = []
     for i_seg in range(n_args):
-        seg = xpacket_decoded[32 + 24 * i_seg:32 + 24 * (i_seg + 1)]
+        seg = xpacket_decoded[39 + 24 * i_seg:39 + 24 * (i_seg + 1)]
         # print("[DEBUG]", i_seg, seg, end="  ->  ")
 
         if seg[0] == "f":
@@ -255,6 +311,7 @@ def decode_xpacket(x_packet):  # Q Compatible
         # print(f"{args[i_seg]} ({type(args[i_seg])})")
 
     return cmd_name, args
+
 
 
 # Obsolete
