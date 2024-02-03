@@ -17,7 +17,9 @@ def instruct_DACs(datapool, Bc):  # TODO: Dummy - Implement actual functionality
     Ic = [B/200. for B in Bc]
     Vc = [0., 0., 0.]
 
-    if datapool.serveropt_loopback:
+    if datapool.serveropt_Bm_sim == "feedback":
+        print("[DEBUG] Feedback changed Bm_dummy to {}, {}, {} \u03bcT]".format(
+            int(Bc[0]/1000), int(Bc[1]/1000), int(Bc[2]/1000)))
         datapool.Bdummy = Bc
 
     for i, B in enumerate(Bc):
@@ -32,24 +34,57 @@ def instruct_DACs(datapool, Bc):  # TODO: Dummy - Implement actual functionality
     return [Bc, Ic, Vc]
 
 
-def sample_ADCs(datapool):  # TODO: DUMMY - Implement actual functionality
+def sample_ADC_for_Bm(datapool):  # TODO STALE
     """Dummy for reading values from ADC. Outputs a Bm sample"""
     # print(f"[DEBUG] Called sample_ADCs()!")
 
-    if datapool.serveropt_use_Bdummy:
-        bx, by, bz = datapool.Bdummy
+    # D
+    if datapool.serveropt_Bm_sim in ("constant", "mutate", "feedback"):
+        bx, by, bz = datapool.Bm_sim
         t = time()
+
+        def f_mutate(bx, by, bz):
+            # TODO IMPLEMENT
+            return bx, by, bz
+
+        if datapool.serveropt_Bm_sim == "mutate":
+            bx, by, bz = f_mutate(bx, by, bz)
+
     else:
         # TODO --- REAL IMPLEMENTATION HERE ---
         bx, by, bz = 0., 0., 0.
         t = time()
 
-    # # Generate 3 dummy values of [-50,000 , +50,000] nT
-    # bx, by, bz = (random(3) * 100_000 - 50_000).round(1)
     return [t, bx, by, bz]
 
+def sample_ADC_tmBmIm(datapool):  # TODO: DUMMY - Implement actual functionality
+    """Dummy for reading values from ADC. Outputs a tm, Bm, Imsample"""
+    # print(f"[DEBUG] Called sample_ADC_tmBmIm()!")
 
-def threaded_write_Bm(datapool):
+    # Decide behaviour based on serveropt_Bm_sim
+    if datapool.serveropt_Bm_sim in ("constant", "mutate", "feedback"):
+        bx, by, bz = datapool.Bm_sim
+        tm = time()
+
+        def f_mutate(bx, by, bz):
+            # TODO IMPLEMENT
+            return bx, by, bz
+
+        if datapool.serveropt_Bm_sim == "mutate":
+            bx, by, bz = f_mutate(bx, by, bz)
+
+    else:
+        # TODO --- REAL IMPLEMENTATION HERE ---
+        bx, by, bz = 0., 0., 0.
+        tm = time()
+
+    # TODO - Dummy values for Im
+    ix, iy, iz = -1., -1., -1.
+
+    return tm, [bx, by, bz], [ix, iy, iz]
+
+
+def threaded_write_Bm(datapool):  # TODO STALE
     """The thread running this function periodically samples a Bm value
      from the ADC, and thread-safely writes it to the datapool.
 
@@ -59,13 +94,37 @@ def threaded_write_Bm(datapool):
     adjusted. This would however be desirable. To fix this, the way this
     thread is initiated in the server thread should be changed.
     """
-    print(f"Started write_Bm thread with period {datapool.write_Bm_period}")
+    print(f"Started write_tmBmIm thread with period {datapool.write_Bm_period}")
     datapool.kill_write_Bm = False
 
     while not datapool.kill_write_Bm:    # Break loop when set to True
         if not datapool.pause_write_Bm:  # Pause loop when set to True
             t0 = time()
-            datapool.write_Bm(sample_ADCs(datapool))
+            datapool.write_Bm(sample_ADC_for_Bm(datapool))
+            sleep(max(0., datapool.write_Bm_period - (time() - t0)))
+        else:
+            sleep(datapool.write_Bm_period)
+
+
+    print(f"Closing write_Bm thread")
+
+def threaded_write_tmBmIm(datapool):
+    """The thread running this function periodically samples a Bm value
+     from the ADC, and thread-safely writes it to the datapool.
+
+    To gracefully kill this thread, set datapool.kill_write_Bm to True
+
+    TODO: Currently, this thread cannot be stopped, restarted, or its period
+    adjusted. This would however be desirable. To fix this, the way this
+    thread is initiated in the server thread should be changed.
+    """
+    print(f"Started write_tmBmIm thread with period {datapool.write_Bm_period}")
+    datapool.kill_write_tmBmIm = False
+
+    while not datapool.kill_write_tmBmIm:    # Break loop when set to True
+        if not datapool.pause_write_tmBmIm:  # Pause loop when set to True
+            t0 = time()
+            datapool.write_tmBmIm(*sample_ADC_tmBmIm(datapool))
             sleep(max(0., datapool.write_Bm_period - (time() - t0)))
         else:
             sleep(datapool.write_Bm_period)
@@ -177,8 +236,9 @@ def threaded_apply_Bc(datapool):
 class DataPool:
     def __init__(self):
         # Thread controls
-        self._lock_Bm = Lock()
         self._lock_Bc = Lock()
+        self._lock_Bm = Lock()  # TODO STALE
+        self._lock_tmBmIm = Lock()
         self._lock_control_vals = Lock()
         self._lock_schedule = Lock()
 
@@ -189,12 +249,15 @@ class DataPool:
         self.kill_apply_Bc = False      # Implemented non-thread-safe
 
         self.apply_Bc_period = 0.1      # Implemented non-thread-safe
-        self.write_Bm_period = 0.1      # Implemented non-thread-safe
+        self.write_Bm_period = 0.1      # Implemented non-thread-safe TODO STALE
+        self.apply_tmBmIm_period = 0.1  # Implemented non-thread-safe
 
-        self.serveropt_loopback = False # Loopback functionality
-        self.serveropt_use_Bdummy = True  # Makes Bdummy applied to Bm readout
+        self.serveropt_Bm_sim = "disabled"  # Simulated Bm functionality: "disabled", "constant", "feedback", "mutate"
+        self.serveropt_loopback = False # Loopback functionality    # TODO STALE
+        self.serveropt_use_Bdummy = True  # Makes Bdummy applied to Bm readout # TODO STALE
 
         # Data values
+        self.tm = 0.                    # Time at which Bm, Im were taken
         self.Bm = [0., 0., 0., 0.]
         self.Bc = [0., 0., 0.]          # Control vector Bc to be applied [nT]
         self.control_vals = [           # Control values actually applied to the power supplies
@@ -202,7 +265,18 @@ class DataPool:
             [0., 0., 0.],               # Ic_applied [A]
             [0., 0., 0.]]               # Vc_applied [V]
 
-        self.Bdummy = [0., 0., 0.]      # Dummy B used by dummy read_ADC function, only for testing
+        self.Br = [0., 0., 0.]
+        self.Bm_sim = [0., 0., 0.]      # Injection point for spoofing Bm measurements
+        self.Bdummy = [0., 0., 0.]      # TODO STALE
+
+        self.Ic = [-1., -1., -1.]       # TODO DUMMY VALUES FOR NOW
+        self.Im = [0., 0., 0.]
+
+        self.Vc = [0., 0., 0.]
+
+        self.Vvc = [0., 0., 0.]
+        self.Vcc = [0., 0., 0.]
+
 
         # Play controls
         self.play_mode = False          # If False, manual control is enabled, if True,
@@ -380,7 +454,7 @@ class DataPool:
         return 1
 
 
-    def write_Bm(self, Bm):
+    def write_Bm(self, Bm):  # TODO STALE
         """Thread-safely write Bm to the datapool
 
         The lock prevents other threads from accessing self.Bm whilst it is
@@ -394,6 +468,23 @@ class DataPool:
         self._lock_Bm.release()
 
 
+    def write_tmBmIm(self, tm, Bm, Im):
+        """Thread-safely write tm, Bm, and Im to the datapool.
+
+        The lock prevents other threads from accessing self.Bm and self.Im
+        whilst they is being updated. Useful to prevent hard-to-debug race
+        condition bugs.
+        """
+        self._lock_tmBmIm.acquire(timeout=0.001)
+        try:
+            self.tm = tm
+            self.Bm = Bm
+            self.Im = Im
+        except:  # noqa
+            print("[WARNING] DataPool.write_tmBmIm(): Unable to write correctly!")
+        self._lock_tmBmIm.release()
+
+
     def read_Bm(self):
         """Thread-safely reads the current Bm field from the datapool
 
@@ -402,11 +493,12 @@ class DataPool:
         """
         self._lock_Bm.acquire(timeout=0.001)
         try:
+            tm = self.tm
             Bm = self.Bm
         except:  # noqa
             print("[WARNING] DataPool.read_Bm(): Unable to read self.Bm!")
         self._lock_Bm.release()
-        return Bm
+        return tm, Bm
 
 
     def write_Bc(self, Bc):  # TODO: DUMMY - Implement actual functionality
@@ -438,7 +530,7 @@ class DataPool:
         return Bc
 
 
-    def write_control_vals(self, control_vals):
+    def write_control_vals(self, control_vals):  # TODO STALE
         """Thread-safely write the control_vals to the datapool
         """
         self._lock_control_vals.acquire(timeout=0.001)
@@ -449,7 +541,7 @@ class DataPool:
         self._lock_control_vals.release()
 
 
-    def read_control_vals(self):
+    def read_control_vals(self):  # TODO STALE
         """Thread-safely reads the applied control_vals from the datapool.
         """
         self._lock_control_vals.acquire(timeout=0.001)
@@ -520,9 +612,9 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 # print("[DEBUG] Detected e-package")
                 packet_out = scc.encode_epacket(scc.decode_epacket(packet_in))
 
-            elif type_id == "b":
+            elif type_id == "b":  # STALE
                 # print("[DEBUG] Detected b-package")
-                packet_out = scc.encode_bpacket(self.server.datapool.read_Bm())
+                packet_out = scc.encode_bpacket(*self.server.datapool.read_Bm())
                 # print(packet_out)
 
             elif type_id == "c":
@@ -652,22 +744,25 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             packet_out = scc.encode_mpacket(f"{step},{steps},{ctime}")
 
         elif fname == "get_apply_Bc_period":
-            period = self.server.datapool.get_apply_Bc_period()
-            packet_out = scc.encode_mpacket(str(period))
+            # period = self.server.datapool.get_apply_Bc_period()
+            # packet_out = scc.encode_mpacket(str(period))
+            packet_out = scc.encode_mpacket(
+                str(self.server.datapool.apply_Bc_period)
+            )
 
-        elif fname == "get_write_Bm_period":
+        elif fname == "set_apply_Bc_period":
+            self.server.datapool.apply_Bc_period = args[0]
+            packet_out = scc.encode_mpacket("1") # confirm
+
+        elif fname == "get_write_Bm_period":  # TODO STALE
             period = self.server.datapool.get_write_Bm_period()
             packet_out = scc.encode_mpacket(str(period))
 
-        elif fname == "set_apply_Bc_period":
-            confirm = self.server.datapool.set_apply_Bc_period(args[0])
-            packet_out = scc.encode_mpacket(str(confirm))
-
-        elif fname == "set_write_Bm_period":
+        elif fname == "set_write_Bm_period":  # TODO STALE
             confirm = self.server.datapool.set_write_Bm_period(args[0])
             packet_out = scc.encode_mpacket(str(confirm))
 
-        elif fname == "set_serveropt_loopback":
+        elif fname == "set_serveropt_loopback":  # TODO STALE
             if args[0] == 1:
                 self.server.datapool.serveropt_loopback = True
                 packet_out = scc.encode_mpacket("1")
@@ -677,11 +772,11 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 packet_out = scc.encode_mpacket("0")
                 print("[DEBUG] set_serveropt_loopback() FALSE")
 
-        elif fname == "get_serveropt_loopback":
+        elif fname == "get_serveropt_loopback":  # TODO STALE
             packet_out = scc.encode_mpacket(
                 str(int(self.server.datapool.serveropt_loopback)))
 
-        elif fname == "set_serveropt_use_Bdummy":
+        elif fname == "set_serveropt_use_Bdummy":  # TODO STALE
             if args[0] == 1:
                 self.server.datapool.serveropt_use_Bdummy = True
                 packet_out = scc.encode_mpacket("1")
@@ -689,18 +784,53 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 self.server.datapool.serveropt_use_Bdummy = False
                 packet_out = scc.encode_mpacket("0")
 
-        elif fname == "get_serveropt_use_Bdummy":
+        elif fname == "get_serveropt_use_Bdummy":  # TODO STALE
             packet_out = scc.encode_mpacket(
                 str(int(self.server.datapool.serveropt_use_Bdummy)))
 
-        elif fname == "get_Bdummy":
+        elif fname == "get_Bdummy":  # TODO STALE
             packet_out = scc.encode_mpacket("{},{},{}".format(
                 *self.server.datapool.Bdummy))
 
-        elif fname == "set_Bdummy":
+        elif fname == "set_Bdummy":  # TODO STALE
             print("[DEBUG] set_Bdummy(): ({}, {}, {})".format(args[0], args[1], args[2]))
             self.server.datapool.Bdummy = [args[0], args[1], args[2]]
             packet_out = scc.encode_mpacket("1")
+
+        elif fname == "get_serveropt_Bm_sim":
+            packet_out = scc.encode_mpacket(
+                str(int(self.server.datapool.serveropt_Bm_sim)))
+
+        elif fname == "set_serveropt_Bm_sim":
+            self.server.datapool.serveropt_Bm_sim = args[0]
+            packet_out = scc.encode_mpacket("1")
+
+        elif fname == "get_Bm_sim":
+            packet_out = scc.encode_mpacket("{},{},{}".format(
+                *self.server.datapool.Bm_sim))
+
+        elif fname == "set_Bm_sim":
+            print("[DEBUG] set_Bm_sim(): ({}, {}, {})".format(args[0], args[1], args[2]))
+            self.server.datapool.Bm_sim = [args[0], args[1], args[2]]
+            packet_out = scc.encode_mpacket("1")
+
+        elif fname == "get_Br":
+            packet_out = scc.encode_mpacket("{},{},{}".format(
+                *self.server.datapool.Br))
+
+        elif fname == "set_Br":
+            print("[DEBUG] set_Br(): ({}, {}, {})".format(args[0], args[1], args[2]))
+            self.server.datapool.Br = [args[0], args[1], args[2]]
+            packet_out = scc.encode_mpacket("1")
+
+        elif fname == "get_apply_tmBmIm_period":
+            packet_out = scc.encode_mpacket(
+                str(self.server.datapool.apply_tmBmIm_period)
+            )
+
+        elif fname == "set_apply_tmBmIm_period":
+            self.server.datapool.apply_tmBmIm_period = args[0]
+            packet_out = scc.encode_mpacket("1") # confirm
 
 
         else:
@@ -740,15 +870,25 @@ if __name__ == "__main__":
     # Start server thread
     server_thread.start()
 
+    # # Set up thread for continuously polling magnetic field data from ADC, and
+    # # writing it to datapool.Bm
+    # datapool.write_Bm_period = 0.1
+    # thread_write_Bm = Thread(
+    #     name="Measure tmBmIm Thread",
+    #     target=threaded_write_tmBmIm,
+    #     args=(datapool,),
+    #     daemon=True)
+    # thread_write_Bm.start()
+
     # Set up thread for continuously polling magnetic field data from ADC, and
     # writing it to datapool.Bm
-    datapool.write_Bm_period = 0.1
-    thread_write_Bm = Thread(
-        name="Measure Bm Thread",
-        target=threaded_write_Bm,
+    datapool.write_tmBmIm_period = 0.1
+    thread_write_tmBmIm = Thread(
+        name="Measure tmBmIm Thread",
+        target=threaded_write_tmBmIm,
         args=(datapool,),
         daemon=True)
-    thread_write_Bm.start()
+    thread_write_tmBmIm.start()
 
     # Set up thread that finds when a change in datapool.Bc occurs, and when
     # it occurs, that it gets applied to the power supplies.

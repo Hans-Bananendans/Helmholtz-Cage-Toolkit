@@ -414,7 +414,7 @@ def reset_Bc(socket,
 
 
 # ==== FIELD MEASUREMENT
-def get_Bm(socket,
+def get_Bm(socket,  # TODO STALE - Succeeded by d-packet implementation
            datastream: QDataStream = None,
            timing=False):
     """Requests and returns the most recent Bm value from the server.
@@ -434,13 +434,13 @@ def get_Bm(socket,
 
     Bm = scc.decode_bpacket(
         send_and_receive(
-            scc.encode_bpacket([0.]*4),
+            scc.encode_bpacket(0., [0.]*3),
             socket,
             datastream=datastream
         )
     )
     # packet_in = send_and_receive(
-    #     scc.encode_bpacket([0.]*4),
+    #     scc.encode_bpacket(0., [0.]*3),
     #     socket,
     #     datastream=datastream
     # )
@@ -992,7 +992,7 @@ def set_apply_Bc_period(
     return int(confirm)
 
 
-def get_write_Bm_period(
+def get_write_Bm_period( # TODO STALE
     socket,
     datastream: QDataStream = None):
     """Getter of field measurement thread looping period [s].
@@ -1009,7 +1009,7 @@ def get_write_Bm_period(
     )
     return float(period_string)
 
-def set_write_Bm_period(
+def set_write_Bm_period( # TODO STALE
     socket,
     period: float,
     datastream: QDataStream = None):
@@ -1028,24 +1028,35 @@ def set_write_Bm_period(
     return int(confirm)
 
 
-def set_Bdummy(
+def get_write_tmBmIm_period(
     socket,
-    Bdummy,
     datastream: QDataStream = None):
-    """Setter of Bdummy
+    """Getter of field measurement thread looping period [s].
 
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    if len(Bdummy) != 3:
-        raise AssertionError(f"Bdummy given is not length 3 but length {len(Bdummy)}!")
+    period_string = scc.decode_mpacket(
+        send_and_receive(
+            scc.encode_xpacket("get_write_tmBmIm_period"),
+            socket,
+            datastream=datastream
+        )
+    )
+    return float(period_string)
 
+def set_write_tmBmIm_period( # TODO STALE
+    socket,
+    period: float,
+    datastream: QDataStream = None):
+    """Setter of field measurement thread looping period [s].
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
     confirm = scc.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("set_Bdummy",
-                               float(Bdummy[0]),
-                               float(Bdummy[1]),
-                               float(Bdummy[2])),
+            scc.encode_xpacket("set_write_tmBmIm_period", period),
             socket,
             datastream=datastream
         )
@@ -1053,93 +1064,126 @@ def set_Bdummy(
     return int(confirm)
 
 
-def get_Bdummy(socket,
-               datastream: QDataStream = None):
-    """Getter of Bdummy
+def set_Bm_sim(
+    socket,
+    Bm_sim,
+    datastream: QDataStream = None):
+    """Setter of Bm_sim
 
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    Bdummy = scc.decode_mpacket(
+    if len(Bm_sim) != 3:
+        raise AssertionError(f"Bm_sim given is not length 3 but length {len(Bm_sim)}!")
+
+    confirm = scc.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("get_Bdummy"),
+            scc.encode_xpacket("set_Bm_sim",
+                               float(Bm_sim[0]),
+                               float(Bm_sim[1]),
+                               float(Bm_sim[2])),
+            socket,
+            datastream=datastream
+        )
+    )
+    return int(confirm)
+
+
+def get_Bm_sim(socket,
+               datastream: QDataStream = None):
+    """Getter of Bm_sim
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+    Bm_sim = scc.decode_mpacket(
+        send_and_receive(
+            scc.encode_xpacket("get_Bm_sim"),
             socket,
             datastream=datastream
         )
     ).split(",")
 
-    return [float(Bdummy[0]), float(Bdummy[1]), float(Bdummy[2])]
+    return [float(Bm_sim[0]), float(Bm_sim[1]), float(Bm_sim[2])]
 
 
-def get_serveropt_use_Bdummy(
+def get_serveropt_Bm_sim(
     socket,
     datastream: QDataStream = None):
-    """Getter of serveropt_use_Bdummy.
+    """Getter of serveropt_Bm_sim.
 
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    serveropt_use_Bdummy = scc.decode_mpacket(
+    serveropt_Bm_sim = scc.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("get_serveropt_use_Bdummy"),
+            scc.encode_xpacket("get_serveropt_Bm_sim"),
             socket,
             datastream=datastream
         )
     )
-    return bool(int(serveropt_use_Bdummy))
+    return serveropt_Bm_sim
 
-def set_serveropt_use_Bdummy(
+def set_serveropt_Bm_sim(
     socket,
-    serveropt_use_Bdummy: bool,
+    serveropt_Bm_sim: bool,
     datastream: QDataStream = None):
-    """Setter of serveropt_use_Bdummy
-
-    If implementing this function with QTcpSocket, you can specify a re-usable
-    QDataStream object to substantially increase performance.
-    """
-    confirm = scc.decode_mpacket(
-        send_and_receive(
-            scc.encode_xpacket("set_serveropt_use_Bdummy", serveropt_use_Bdummy),
-            socket,
-            datastream=datastream
-        )
-    )
-    return int(confirm)
-
-def get_serveropt_loopback(
-    socket,
-    datastream: QDataStream = None):
-    """Getter of serveropt_loopback.
-
-    If implementing this function with QTcpSocket, you can specify a re-usable
-    QDataStream object to substantially increase performance.
-    """
-    serveropt_loopback = scc.decode_mpacket(
-        send_and_receive(
-            scc.encode_xpacket("get_serveropt_loopback"),
-            socket,
-            datastream=datastream
-        )
-    )
-    return bool(int(serveropt_loopback))
-
-def set_serveropt_loopback(
-    socket,
-    serveropt_loopback: bool,
-    datastream: QDataStream = None):
-    """Setter of serveropt_loopback
+    """Setter of serveropt_Bm_sim
 
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
     confirm = scc.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("set_serveropt_loopback", serveropt_loopback),
+            scc.encode_xpacket("set_serveropt_Bm_sim", serveropt_Bm_sim),
             socket,
             datastream=datastream
         )
     )
     return int(confirm)
+
+
+def set_Br(
+    socket,
+    Br,
+    datastream: QDataStream = None):
+    """Setter of Br
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+    if len(Br) != 3:
+        raise AssertionError(f"Br given is not length 3 but length {len(Br)}!")
+
+    confirm = scc.decode_mpacket(
+        send_and_receive(
+            scc.encode_xpacket("set_Br",
+                               float(Br[0]),
+                               float(Br[1]),
+                               float(Br[2])),
+            socket,
+            datastream=datastream
+        )
+    )
+    return int(confirm)
+
+
+def get_Br(socket,
+           datastream: QDataStream = None):
+    """Getter of Br
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+    Br = scc.decode_mpacket(
+        send_and_receive(
+            scc.encode_xpacket("get_Br"),
+            socket,
+            datastream=datastream
+        )
+    ).split(",")
+
+    return [float(Br[0]), float(Br[1]), float(Br[2])]
 
 # def get_apply_Bc_period(socket):
 #     socket.sendall(SCC.encode_xpacket("get_apply_Bc_period"))

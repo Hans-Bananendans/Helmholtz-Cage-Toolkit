@@ -79,17 +79,17 @@ def packet_type(packet):  # Q Compatible (no change)
     return packet[0:1].decode()
 
 
-def encode_bpacket(Bm):  # Q Compatible
+def encode_bpacket(tm, Bm):  # Q Compatible
     """ Encodes a b_packet, which has the following anatomy:
     b (1 B)    UNIX_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
 
     Optimization: ~3800 ns/encode
     """
     return "b{:0<20}{:0<16}{:0<16}{:0<16}{}".format(
+        str(tm)[:20],
         str(Bm[0])[:20],
         str(Bm[1])[:20],
         str(Bm[2])[:20],
-        str(Bm[3])[:20],
         _pad*187).encode()
 
 
