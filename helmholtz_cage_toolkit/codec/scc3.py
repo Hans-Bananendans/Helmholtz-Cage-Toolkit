@@ -4,7 +4,16 @@ Simple Command Codec - iteration 3 (SCC3)
 Code implementation to facilitate command and message serialization
 over a point-to-point TCP/IP connection.
 
-SSC2 comes with six packet types:
+Author: Johan Monster
+
+
+SSC3 comes with seven packet types. Two of these, the m_packet and x_packet are
+best suited for general-purpose, non-time-critical applications. The other
+packets are more specialized and designed with a specific purpose in mind, such
+as reduction of overhead.
+
+
+Packet types in SSC3:
 
 Message packet      m_packet    Packets meant for sending long <str> messages
 
@@ -34,6 +43,14 @@ B-sample packet     b_packet    Packet containing a single measurement of the
                                 data is needed and speed is critical:
                                 Encoding + decoding b_packet:   5.55 us
                                 Encoding + decoding t_packet:  18.75 us
+
+                                Full in-the-loop test on 03-02-2024:
+                                1E5 b-packets exchanged + processed: 57.6 us/p
+                                1E5 t-packets exchanged + processed: 81.1 us/p
+                                Conclusion: the additional encoding, decoding,
+                                and server-side processing of t-packets result
+                                in an absolute average overhead of 23.5 us per
+                                package compared to b-packets.
 
 Execution packet    x_packet    Packets meant for sending commands, taking
                                 a <str> command name, and then any number of
@@ -92,8 +109,9 @@ def packet_type(packet):
 
 
 def encode_tpacket(tm, Bm, Im, Ic, Vc, Vvc, Vcc):
-    """ Encodes a b_packet, which has the following anatomy:
-    b (1 B)    UNIX_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
+    """ Encodes a t_packet, which has the following anatomy:
+    b (1 B)    UNIX_time (20 B)    Bm (3x16 B)    Im (3x12 B)    Ic (3x12 B)
+               Vc (3x12 B)         Vvc (3x12 B)   Vcc (3x12 B)   padding (7 B)
 
     Optimization: ~13250 ns/encode
     """
@@ -106,31 +124,40 @@ def encode_tpacket(tm, Bm, Im, Ic, Vc, Vvc, Vcc):
 
 
 def decode_tpacket(t_packet):
-    """ Decodes a b_packet, which has the following anatomy:
-    t (1 B)    UNIX_time (20 B)    Bm (3x16 B)    Im (3x12 B)    Ic (3x12 B)
-            Vc (3x12 B)    Vvc (3x12 B)    Vcc (3x12 B)
+    """ Decodes a t_packet, which has the following anatomy:
+    b (1 B)    UNIX_time (20 B)    Bm (3x16 B)    Im (3x12 B)    Ic (3x12 B)
+               Vc (3x12 B)         Vvc (3x12 B)   Vcc (3x12 B)   padding (7 B)
+
     Optimization: ~5500 ns/decode (FX-8350)
     """
     t_decoded = t_packet.decode()
-    return float(t_decoded[1:21]), [        # tm
-           float(t_decoded[21:37]),         # \
-           float(t_decoded[37:53]),         # Bm
-           float(t_decoded[53:69]), ], [    # /
-           float(t_decoded[69:81]),         # \
-           float(t_decoded[81:93]),         # Im
-           float(t_decoded[93:105]), ], [   # /
-           float(t_decoded[105:117]),       # \
-           float(t_decoded[117:129]),       # Ic
-           float(t_decoded[129:141]), ], [  # /
-           float(t_decoded[141:153]),       # \
-           float(t_decoded[153:165]),       # Vc
-           float(t_decoded[165:177]), ], [  # /
-           float(t_decoded[177:189]),       # \
-           float(t_decoded[189:201]),       # Vvc
-           float(t_decoded[201:213]), ], [  # /
-           float(t_decoded[213:225]),       # \
-           float(t_decoded[225:237]),       # Vcc
-           float(t_decoded[237:249]), ]     # /
+    return float(t_decoded[1:21]), \
+        [
+            float(t_decoded[21:37]),        # \
+            float(t_decoded[37:53]),        # Bm
+            float(t_decoded[53:69]),        # /
+        ], [
+            float(t_decoded[69:81]),        # \
+            float(t_decoded[81:93]),        # Im
+            float(t_decoded[93:105]),       # /
+        ], [
+            float(t_decoded[105:117]),      # \
+            float(t_decoded[117:129]),      # Ic
+            float(t_decoded[129:141]),      # /
+        ], [
+            float(t_decoded[141:153]),      # \
+            float(t_decoded[153:165]),      # Vc
+            float(t_decoded[165:177]),      # /
+        ], [
+            float(t_decoded[177:189]),       # \
+            float(t_decoded[189:201]),       # Vvc
+            float(t_decoded[201:213]),       # /
+        ], [
+            float(t_decoded[213:225]),       # \
+            float(t_decoded[225:237]),       # Vcc
+            float(t_decoded[237:249]),       # /
+        ]
+
 
 
 

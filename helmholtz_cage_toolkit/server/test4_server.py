@@ -237,20 +237,22 @@ class DataPool:
     def __init__(self):
         # Thread controls
         self._lock_Bc = Lock()
-        self._lock_Bm = Lock()  # TODO STALE
+        self._lock_Bm = Lock()
         self._lock_tmBmIm = Lock()
         self._lock_control_vals = Lock()
         self._lock_schedule = Lock()
 
-        self.pause_write_Bm = False     # Implemented non-thread-safe
         self.pause_apply_Bc = False     # Implemented non-thread-safe
+        self.pause_write_Bm = False     # Implemented non-thread-safe TODO STALE
+        self.pause_write_tmBmIm = False     # Implemented non-thread-safe
 
-        self.kill_write_Bm = False      # Implemented non-thread-safe
         self.kill_apply_Bc = False      # Implemented non-thread-safe
+        self.kill_write_Bm = False      # Implemented non-thread-safe TODO STALE
+        self.kill_write_tmBmIm = False      # Implemented non-thread-safe
 
         self.apply_Bc_period = 0.1      # Implemented non-thread-safe
         self.write_Bm_period = 0.1      # Implemented non-thread-safe TODO STALE
-        self.apply_tmBmIm_period = 0.1  # Implemented non-thread-safe
+        self.write_tmBmIm_period = 0.1  # Implemented non-thread-safe
 
         self.serveropt_Bm_sim = "disabled"  # Simulated Bm functionality: "disabled", "constant", "feedback", "mutate"
         self.serveropt_loopback = False # Loopback functionality    # TODO STALE
@@ -258,7 +260,7 @@ class DataPool:
 
         # Data values
         self.tm = 0.                    # Time at which Bm, Im were taken
-        self.Bm = [0., 0., 0., 0.]
+        self.Bm = [0., 0., 0.]
         self.Bc = [0., 0., 0.]          # Control vector Bc to be applied [nT]
         self.control_vals = [           # Control values actually applied to the power supplies
             [0., 0., 0.],               # Bc_applied [nT]
@@ -335,17 +337,17 @@ class DataPool:
     def get_current_time_step(self):
         return self.step_current, self.steps, self.t_current
 
-    def get_apply_Bc_period(self):
+    def get_apply_Bc_period(self):  # TODO STALE
         return datapool.apply_Bc_period  # Implemented non-thread-safe
 
-    def get_write_Bm_period(self):
+    def get_write_Bm_period(self):  # TODO STALE
         return datapool.write_Bm_period  # Implemented non-thread-safe
 
-    def set_apply_Bc_period(self, period):
+    def set_apply_Bc_period(self, period):  # TODO STALE
         datapool.apply_Bc_period = period  # Implemented non-thread-safe
         return 1
 
-    def set_write_Bm_period(self, period):
+    def set_write_Bm_period(self, period):  # TODO STALE
         datapool.write_Bm_period = period  # Implemented non-thread-safe
         return 1
 
@@ -484,6 +486,25 @@ class DataPool:
             print("[WARNING] DataPool.write_tmBmIm(): Unable to write correctly!")
         self._lock_tmBmIm.release()
 
+    def read_telemetry(self):
+        """Thread-safely reads the current Bm field from the datapool
+
+        The lock prevents other threads from updating self.Bm whilst it is
+        being read. Useful to prevent hard-to-debug race condition bugs.
+        """
+        self._lock_tmBmIm.acquire(timeout=0.001)
+        try:
+            tm = self.tm
+            Bm = self.Bm
+            Im = self.Im
+            Ic = self.Ic
+            Vc = self.Vc
+            Vvc = self.Vvc
+            Vcc = self.Vcc
+        except:  # noqa
+            print("[WARNING] DataPool.read_telemetry(): Unable to read correctly!")
+        self._lock_tmBmIm.release()
+        return tm, Bm, Im, Ic, Vc, Vvc, Vcc
 
     def read_Bm(self):
         """Thread-safely reads the current Bm field from the datapool
@@ -612,9 +633,16 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 # print("[DEBUG] Detected e-package")
                 packet_out = scc.encode_epacket(scc.decode_epacket(packet_in))
 
-            elif type_id == "b":  # STALE
+            elif type_id == "b":
                 # print("[DEBUG] Detected b-package")
                 packet_out = scc.encode_bpacket(*self.server.datapool.read_Bm())
+                # print(packet_out)
+
+            elif type_id == "t":
+                # print("[DEBUG] Detected t-package")
+                packet_out = scc.encode_tpacket(
+                    *self.server.datapool.read_telemetry()
+                )
                 # print(packet_out)
 
             elif type_id == "c":
@@ -823,15 +851,19 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             self.server.datapool.Br = [args[0], args[1], args[2]]
             packet_out = scc.encode_mpacket("1")
 
-        elif fname == "get_apply_tmBmIm_period":
+        elif fname == "get_write_tmBmIm_period":
             packet_out = scc.encode_mpacket(
-                str(self.server.datapool.apply_tmBmIm_period)
+                str(self.server.datapool.write_tmBmIm_period)
             )
 
-        elif fname == "set_apply_tmBmIm_period":
-            self.server.datapool.apply_tmBmIm_period = args[0]
+        elif fname == "set_write_tmBmIm_period":
+            self.server.datapool.write_tmBmIm_period = args[0]
             packet_out = scc.encode_mpacket("1") # confirm
 
+        elif fname == "get_telemetry":
+            packet_out = scc.encode_tpacket(
+                *self.server.datapool.read_telemetry()
+            )
 
         else:
             raise ValueError(f"Function name '{fname}' not recognised!")
@@ -919,11 +951,13 @@ if __name__ == "__main__":
     # Gracefully terminate control threads
     print("Shutting down - finishing threads.")
     datapool.kill_apply_Bc = True
-    datapool.kill_write_Bm = True
+    # datapool.kill_write_Bm = True  # TODO STALE
+    datapool.kill_write_tmBmIm = True
 
     ttest = time()
-    thread_write_Bm.join(timeout=1.0)
-    print(f"Shut down measure_Bm_thread in {round((time()-ttest)*1E3, 3)} ms")
+    # thread_write_Bm.join(timeout=1.0)
+    thread_write_tmBmIm.join(timeout=1.0)
+    print(f"Shut down measure_tmBmIm_thread in {round((time()-ttest)*1E3, 3)} ms")
 
     ttest = time()
     thread_apply_Bc.join(timeout=1.0)

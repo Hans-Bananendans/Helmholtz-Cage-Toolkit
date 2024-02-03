@@ -3,7 +3,7 @@ from socket import socket
 from hashlib import blake2b
 
 from helmholtz_cage_toolkit import *
-import helmholtz_cage_toolkit.codec.scc2q as scc
+import helmholtz_cage_toolkit.codec.scc3 as scc
 
 
 def send_and_receive(packet,
@@ -452,6 +452,39 @@ def get_Bm(socket,  # TODO STALE - Succeeded by d-packet implementation
         print(f"Called get_Bm(). Executed in {int((tend-tstart)*1E6)} us")
 
     return Bm
+
+
+def get_telemetry(socket,
+                  datastream: QDataStream = None):
+    """Requests and returns a t-packet with telemetry from the server.
+
+    TODO UPDATE DESCRIPTION
+
+    Telemetry can also be requested using:
+        tm, Bm, Im, Ic, Vc, Vvc, Vcc = scc.decode_tpacket(
+        send_and_receive(
+            scc.encode_xpacket("get_telemetry"),
+            socket,
+            datastream=datastream
+        )
+    )
+    however, this implementation is a few microseconds slower, likely due to
+    the fact that x-packets take a few microseconds longer to encode than
+    t-packets (13.5 us vs 15.7 us).
+
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+
+    tm, Bm, Im, Ic, Vc, Vvc, Vcc = scc.decode_tpacket(
+        send_and_receive(
+            scc.encode_tpacket(0., *[[0.]*3]*6),
+            socket,
+            datastream=datastream
+        )
+    )
+    return tm, Bm, Im, Ic, Vc, Vvc, Vcc
 
 
 # ==== SCHEDULE ====
@@ -1126,13 +1159,17 @@ def get_serveropt_Bm_sim(
 
 def set_serveropt_Bm_sim(
     socket,
-    serveropt_Bm_sim: bool,
+    serveropt_Bm_sim: str,
     datastream: QDataStream = None):
     """Setter of serveropt_Bm_sim
 
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
+    allowed_opts = ("disabled", "constant", "feedback", "mutate")
+    if serveropt_Bm_sim not in allowed_opts:
+        raise AssertionError(f"Invalid opt for serveropt_Bm_sim. Must be: {allowed_opts}")
+
     confirm = scc.decode_mpacket(
         send_and_receive(
             scc.encode_xpacket("set_serveropt_Bm_sim", serveropt_Bm_sim),

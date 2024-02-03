@@ -7,7 +7,7 @@ from timeit import timeit
 tmult = int(1E6)    # 1E3 / 1E6 / 1E9 for ms / us / ns respectively
 N = int(1E5)        # Generic number of tests
 
-
+print("Running tests with N={:.0E}...".format(N))
 
 # Packet encoding / decoding =================================================
 import helmholtz_cage_toolkit.codec.scc3 as scc   # Import codec
