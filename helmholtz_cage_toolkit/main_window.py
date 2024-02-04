@@ -181,28 +181,36 @@ class MainWindow(QMainWindow):
         act_bm_sim_disabled = QAction("Bm_sim - disabled", self)
         act_bm_sim_disabled.setActionGroup(actgroup_Bm_sim)
         act_bm_sim_disabled.setStatusTip("Set serveropt 'Bm_sim' to 'disabled'.")
-        act_bm_sim_disabled.triggered.connect(self.datapool.serveropts_toggle_loopback) # TODO
+        act_bm_sim_disabled.triggered.connect(
+            lambda: self.datapool.set_serveropts_Bm_sim("disabled")
+        )
         act_bm_sim_disabled.setCheckable(True)
         menu_tools.addAction(act_bm_sim_disabled)
 
         act_bm_sim_constant = QAction("Bm_sim - constant", self)
         act_bm_sim_constant.setActionGroup(actgroup_Bm_sim)
         act_bm_sim_constant.setStatusTip("Set serveropt 'Bm_sim' to 'constant'.")
-        act_bm_sim_constant.triggered.connect(self.datapool.serveropts_toggle_loopback) # TODO
+        act_bm_sim_constant.triggered.connect(
+            lambda: self.datapool.set_serveropts_Bm_sim("constant")
+        )
         act_bm_sim_constant.setCheckable(True)
         menu_tools.addAction(act_bm_sim_constant)
 
         act_bm_sim_mutate = QAction("Bm_sim - mutate", self)
         act_bm_sim_mutate.setActionGroup(actgroup_Bm_sim)
         act_bm_sim_mutate.setStatusTip("Set serveropt 'Bm_sim' to 'mutate'.")
-        act_bm_sim_mutate.triggered.connect(self.datapool.serveropts_toggle_loopback) # TODO
+        act_bm_sim_mutate.triggered.connect(
+            lambda: self.datapool.set_serveropts_Bm_sim("mutate")
+        )
         act_bm_sim_mutate.setCheckable(True)
         menu_tools.addAction(act_bm_sim_mutate)
 
         act_bm_sim_feedback = QAction("Bm_sim - feedback", self)
         act_bm_sim_feedback.setActionGroup(actgroup_Bm_sim)
         act_bm_sim_feedback.setStatusTip("Set serveropt 'Bm_sim' to 'feedback'.")
-        act_bm_sim_feedback.triggered.connect(self.datapool.serveropts_toggle_loopback) # TODO
+        act_bm_sim_feedback.triggered.connect(
+            lambda: self.datapool.set_serveropts_Bm_sim("feedback")
+        )
         act_bm_sim_feedback.setCheckable(True)
         menu_tools.addAction(act_bm_sim_feedback)
 
@@ -210,14 +218,14 @@ class MainWindow(QMainWindow):
 
         menu_tools.addSeparator()
 
-        # TODO DELETE
-        act_toggle_loopback = QAction(
-            QIcon("./assets/icons/feather/repeat.svg"),
-            "Toggle loopback", self)
-        act_toggle_loopback.setStatusTip("Toggle server option 'loopback'.")
-        act_toggle_loopback.triggered.connect(self.datapool.serveropts_toggle_loopback)
-        act_toggle_loopback.setCheckable(True)
-        menu_tools.addAction(act_toggle_loopback)
+        # # TODO DELETE
+        # act_toggle_loopback = QAction(
+        #     QIcon("./assets/icons/feather/repeat.svg"),
+        #     "Toggle loopback", self)
+        # act_toggle_loopback.setStatusTip("Toggle server option 'loopback'.")
+        # act_toggle_loopback.triggered.connect(self.datapool.serveropts_toggle_loopback)
+        # act_toggle_loopback.setCheckable(True)
+        # menu_tools.addAction(act_toggle_loopback)
 
 
         # act_screenshot = QAction(

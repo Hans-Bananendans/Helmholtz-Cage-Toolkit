@@ -18,7 +18,7 @@ def instruct_DACs(datapool, Bc):  # TODO: Dummy - Implement actual functionality
     Vc = [0., 0., 0.]
 
     if datapool.serveropt_Bm_sim == "feedback":
-        print("[DEBUG] Feedback changed Bm_dummy to {}, {}, {} \u03bcT]".format(
+        print("[DEBUG] Feedback changed Bm_sim to {}, {}, {} \u03bcT]".format(
             int(Bc[0]/1000), int(Bc[1]/1000), int(Bc[2]/1000)))
         datapool.Bdummy = Bc
 

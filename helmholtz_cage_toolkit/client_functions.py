@@ -1166,9 +1166,12 @@ def set_serveropt_Bm_sim(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
+
     allowed_opts = ("disabled", "constant", "feedback", "mutate")
     if serveropt_Bm_sim not in allowed_opts:
         raise AssertionError(f"Invalid opt for serveropt_Bm_sim. Must be: {allowed_opts}")
+
+    print(f"[DEBUG] get_serveropt_Bm_sim('{serveropt_Bm_sim}')")
 
     confirm = scc.decode_mpacket(
         send_and_receive(

@@ -16,8 +16,7 @@ creation, so you have one object to call, and just have to ensure the item is
 in there when program starts.
 
 Implement infrastructure for Bm_sim:
-    QActionGroup for all items
-    Test it
+
 Implications of bpacket -> tpacket, change related functions
 Overview of all timers + timing events + conditions + locations
 In CommandWindow, connect UI elements:

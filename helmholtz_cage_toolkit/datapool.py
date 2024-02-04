@@ -269,18 +269,27 @@ class DataPool:
 
         # TODO: Add UI elements from Orbital Generator
 
-    def serveropts_toggle_loopback(self):
-        print("[DEBUG] serveropts_toggle_loopback():", end=" ")
-        if not self.serveropt_loopback:
-            cf.set_serveropt_loopback(self.socket, True, datastream=self.ds)
-            self.serveropt_loopback = True
-            print("LOOPBACK ON")
-            self.status_bar.showMessage("Toggled loopback ON")
+    def set_serveropts_Bm_sim(self, mode: str):
+        if self.socket_connected:
+            cf.set_serveropt_Bm_sim(self.socket, mode, self.ds)
+            self.status_bar.showMessage(f"Set serveropt 'Bm_sim' to '{mode}'")
         else:
-            cf.set_serveropt_loopback(self.socket, False, datastream=self.ds)
-            self.serveropt_loopback = False
-            print("LOOPBACK OFF")
-            self.status_bar.showMessage("Toggled loopback OFF")
+            self.status_bar.showMessage(
+                "Could not set serveropt 'Bm_sim': Not connected to server!"
+            )
+
+    # def serveropts_toggle_loopback(self):
+    #     print("[DEBUG] serveropts_toggle_loopback():", end=" ")
+    #     if not self.serveropt_loopback:
+    #         cf.set_serveropt_loopback(self.socket, True, datastream=self.ds)
+    #         self.serveropt_loopback = True
+    #         print("LOOPBACK ON")
+    #         self.status_bar.showMessage("Toggled loopback ON")
+    #     else:
+    #         cf.set_serveropt_loopback(self.socket, False, datastream=self.ds)
+    #         self.serveropt_loopback = False
+    #         print("LOOPBACK OFF")
+    #         self.status_bar.showMessage("Toggled loopback OFF")
 
     def set_adc_channels(self, adc_channels):
         self.adc_channels = adc_channels
