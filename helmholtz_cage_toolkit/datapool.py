@@ -131,8 +131,10 @@ class DataPool:
 
 
         # ==== TIMERS
-        self.timer_get_Bm = QTimer()
-        self.timer_get_Bm.timeout.connect(self.do_get_Bm)
+        self.timer_get_Bm = QTimer()  # TODO STALE
+        # self.timer_get_Bm.timeout.connect(self.do_get_Bm)  # TODO STALE
+        self.timer_get_telemetry = QTimer()
+        self.timer_get_telemetry.timeout.connect(self.do_get_telemetry)
 
 
 
@@ -149,7 +151,14 @@ class DataPool:
     #
     #     self.command_window.do_update_bm_display()
 
-    def do_get_Bm(self):  # TODO Add Ic measurement
+    def do_set_Bc(self, Bc):
+        if self.socket_connected:
+            cf.set_Bc(self.socket, Bc, self.ds)
+
+        self.Bc = Bc
+
+
+    def do_get_Bm(self):  # TODO STALE
         """Requests the value of Bm from the server, and stores it to self.tm
         and self.Bm
 
@@ -230,12 +239,57 @@ class DataPool:
         #       int(1E6*(t1-t0)), int(1E6*(t2-t1)), int(1E6*(t3-t2)), int(1E6*(t4-t3)), "\u03bcs")
 
 
+    def do_get_telemetry(self):
+        """Requests telemetry data from the server, and stores the contents of
+         the received t-packet to the corresponding values in the datapool.
 
-    def enable_Bm_acquisition(self):
-        self.timer_get_Bm.start(int(1000/self.config["Bm_polling_rate"]))
+        Upon disconnecting from the server, the socket.disconnected signal
+        should disable the timer periodically running this function. However,
+        there exists an edge case where the socket connection is already down,
+        but this function still fires once, as the timer has not been shut off
+        yet.
 
-    def disable_Bm_acquisition(self):
-        self.timer_get_Bm.stop()
+        For this reason, this also checks self.socket_connected as a
+        low-overhead (<1 us) method to handle this edge case.
+        """
+        print("[DEBUG] do_get_telemetry()")
+        # t0 = time()
+        # try:
+        #     self.tm, *self.Bm = cf.get_Bm(self.socket, self.ds)
+        # except: # noqa
+        #     self.tm, *self.Bm = [0.]*4
+        # t1 = time()
+        # print("[TIMING] do_get_Bm():", int(1E6*(t1-t0)), "\u03bcs")
+
+
+        # t0 = time()  # [TIMING]
+        if self.socket_connected:
+            # t1 = time()  # [TIMING]
+            self.tm, self.Bm, self.Im, self.Ic, self.Vc, self.Vvc, self.Vcc = \
+                cf.get_telemetry(self.socket, self.ds)
+
+        else:
+            # t1 = time()  # [TIMING]
+            self.tm = -1.
+            [self.Bm, self.Im, self.Ic, self.Vc, self.Vvc, self.Vcc] = [[-1.]*3]*6
+
+        # t2 = time()  # [TIMING]
+
+
+        # print("[TIMING] do_get_Bm():",
+        #       int(1E6*(t1-t0)), int(1E6*(t2-t1)), "\u03bcs")
+
+
+    def enable_timer_get_telemetry(self):
+        self.timer_get_telemetry.start(
+            int(1000 / self.config["telemetry_polling_rate"])
+        )
+
+        # self.timer_get_Bm.start(int(1000/self.config["Bm_polling_rate"]))
+
+    def disable_timer_get_telemetry(self):
+        self.timer_get_telemetry.stop()
+        # self.timer_get_Bm.stop()
 
     def get_config(self):
         return self.config

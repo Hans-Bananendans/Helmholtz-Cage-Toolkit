@@ -47,6 +47,14 @@ class CommandWindow(QWidget):
         self.datapool.command_window = self
 
 
+        # ==== TIMERS
+        self.timer_HHCPlot_refresh = QTimer()
+        self.timer_HHCPlot_refresh.timeout.connect(self.do_refresh_HHCPlots)
+
+        self.timer_values_refresh = QTimer()
+        self.timer_values_refresh.timeout.connect(self.do_refresh_values)
+
+
         # ==== LEFT LAYOUT
         layout_left = QVBoxLayout()
 
@@ -202,7 +210,6 @@ class CommandWindow(QWidget):
 
         self.do_activate_manual_mode()  # Default start in manual mode
 
-        # ==== TIMERS
 
 
 
@@ -494,6 +501,21 @@ class CommandWindow(QWidget):
 
         return layout_bm_display
 
+    def do_refresh_HHCPlots(self):
+        Bm = self.datapool.Bm
+        Bc = self.datapool.Bc
+        Br = self.datapool.Br
+        Bo = [Bc[0]-Br[0], Bc[1]-Br[1], Bc[2]-Br[2]]
+
+        self.hhcplot_xy.update_arrows([Bm, Bc, Br, Bo])
+        self.hhcplot_yz.update_arrows([Bm, Bc, Br, Bo])
+
+
+    def do_refresh_values(self):
+        self.do_update_bm_display()
+        self.group_manual_input.do_update_biv_labels()
+
+
 
     def do_update_bm_display(self):
         # Bm = [-12345.678, -1.0, -98.765]  TODO REMOVE
@@ -560,7 +582,17 @@ class CommandWindow(QWidget):
         for group in self.groups_to_enable_on_connect:
             group.setEnabled(True)
 
+        self.timer_values_refresh.start(
+            int(1000/self.datapool.config["CW_values_refresh_rate"])
+        )
+        self.timer_HHCPlot_refresh.start(
+            int(1000/self.datapool.config["CW_HHCPlots_refresh_rate"])
+        )
+
     def do_on_disconnected(self):
+        self.timer_values_refresh.stop()
+        self.timer_HHCPlot_refresh.stop()
+
         for group in self.groups_to_enable_on_connect:
             group.setEnabled(False)
 
@@ -689,7 +721,7 @@ class GroupManualInput(QGroupBox):
 
         self.combo_input = QComboBox()
         self.combo_input.setMinimumWidth(96)
-        self.combo_input.addItems(["Bc [\u03bcT]", "Bc [nT]", "Ic [mA]"])
+        self.combo_input.addItems(["Bc [\u03bcT]", "Bc [nT]"])
 
         self.le_inputs = [QLineEdit("0.0"), QLineEdit("0.0"), QLineEdit("0.0")]
         for i, le in enumerate(self.le_inputs):
@@ -697,7 +729,8 @@ class GroupManualInput(QGroupBox):
             le.setPlaceholderText(("x value", "y value", "z value")[i])
             le.setAlignment(Qt.AlignCenter)
 
-        self.button_submit = QPushButton("Submit")
+        self.button_submit_Bc = QPushButton("Submit")
+        self.button_submit_Bc.clicked.connect(self.do_submit_Bc)
 
         # ==== Putting widgets into layout
 
@@ -705,7 +738,7 @@ class GroupManualInput(QGroupBox):
         layout0.addWidget(self.combo_input, 0, 0)
         for j in range(3):
             layout0.addWidget(self.le_inputs[j], j+1, 0)
-        layout0.addWidget(self.button_submit, 4, 0)
+        layout0.addWidget(self.button_submit_Bc, 4, 0)
 
         # Header labels
         for i in range(9):
@@ -717,8 +750,24 @@ class GroupManualInput(QGroupBox):
 
         self.setLayout(layout0)
 
+    def do_submit_Bc(self):
+        Bc = [0.]*3
+
+        if self.combo_input.currentIndex == 0:  # Case: unit is uT
+            for i in range(3):
+                Bc[i] = 1000*float(self.le_inputs[i].text())
+                print("[DEBUG] do_submit_Bc(): detected unit: \u03bcT")
+        elif self.combo_input.currentIndex == 1:  # Case: unit is nT
+            for i in range(3):
+                Bc[i] = float(self.le_inputs[i].text())
+                print("[DEBUG] do_submit_Bc(): detected unit: nT")
+
+        self.datapool.do_set_Bc(Bc)
+
+
+
     def do_update_biv_labels(self):
-        print("[DEBUG] GroupManualInput.do_update_biv_labels()")
+        # print("[DEBUG] GroupManualInput.do_update_biv_labels()")
         # Mapping biv_labels: Bc, Br, Bo, Bm, Bd, Vc, Ic, Im, Id
         # Bo = Bc-Br
         # Bd = Bo-Bm
@@ -766,7 +815,7 @@ class GroupManualInput(QGroupBox):
                     self.biv_labels[i][j].setText("{:.3f}".format(p[j]))
 
         t2 = time() # [TIMING]
-        print("update_biv_labels calc:", round((t1-t0)*1E6), "us")  # [TIMING]
-        print("update_biv_labels updt:", round((t2-t1)*1E6), "us")  # [TIMING]
+        # print("update_biv_labels calc:", round((t1-t0)*1E6), "us")  # [TIMING]
+        # print("update_biv_labels updt:", round((t2-t1)*1E6), "us")  # [TIMING]
 
 

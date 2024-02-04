@@ -22,9 +22,13 @@ config = {
 
 
     # ==== Data acquisition ====
-    "Bm_polling_rate": 30,   # [S/s] How frequently Bm is polled
+    "telemetry_polling_rate": 3,   # [S/s] How frequently Bm is polled
+
+    "CW_HHCPlots_refresh_rate": 1,
+    "CW_values_refresh_rate": 1,
 
     "enable_arrow_tips": False,  # Whether to plot vectors with tips (substantial overhead)
+
 
     # ==== ADC settings ====
     "adc_pollrate": 30,  # TODO STALE
