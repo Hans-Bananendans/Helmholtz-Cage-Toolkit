@@ -112,13 +112,14 @@ def encode_tpacket(tm, Bm, Im, Ic, Vc, Vvc, Vcc):
     """ Encodes a t_packet, which has the following anatomy:
     b (1 B)    UNIX_time (20 B)    Bm (3x16 B)    Im (3x12 B)    Ic (3x12 B)
                Vc (3x12 B)         Vvc (3x12 B)   Vcc (3x12 B)   padding (7 B)
-
-    Optimization: ~13250 ns/encode
+    TODO RE-BENCHMARK
+    Optimization: ~~13250~~ ns/encode
     """
-    output = [tm, ]
+    output = [str(tm), ]
     for par in (Bm, Im, Ic, Vc, Vvc, Vcc):
-        output += [par[0], par[1], par[2]]
-    return ("t{:0<20}"+"{:0<16}"*3+"{:0<12}"*15+"#"*7).format(*output).encode()
+        output += [str(par[0]), str(par[1]), str(par[2])]
+    return ("t{:0<20.20}"+"{:0<16.16}"*3+"{:0<12.12}"*15+"#"*7).format(
+        *output).encode()
 
 
 
@@ -166,13 +167,14 @@ def encode_bpacket(tm, Bm):  # Q Compatible
     """ Encodes a b_packet, which has the following anatomy:
     b (1 B)    UNIX_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
 
-    Optimization: ~3800 ns/encode
+    Optimization: ~~3800~~ ns/encode
     """
-    return "b{:0<20}{:0<16}{:0<16}{:0<16}{}".format(
-        str(tm)[:20],
-        str(Bm[0])[:16],
-        str(Bm[1])[:16],
-        str(Bm[2])[:16],
+    # TODO: Re-benchmark
+    return "b{:0<20.20}{:0<16.16}{:0<16.16}{:0<16.16}{}".format(
+        str(tm),
+        str(Bm[0]),
+        str(Bm[1]),
+        str(Bm[2]),
         _pad*187).encode()
 
 
@@ -195,13 +197,13 @@ def decode_bpacket(b_packet):  # Q Compatible (no change)
 def encode_cpacket(Bc):  # Q Compatible
     """ Encodes a c_packet, which has the following anatomy:
     c (1 B)    Bc_X (16 B)    Bc_Y (16 B)    Bc_Z (16 B)
-
-    Optimization: ~3000 ns/encode
+    TODO: Re-benchmark performance
+    Optimization: ~~3000~~ ns/encode
     """
-    return "c{:0<16}{:0<16}{:0<16}{}".format(
-        str(Bc[0])[:16],
-        str(Bc[1])[:16],
-        str(Bc[2])[:16],
+    return "c{:0<16.16}{:0<16.16}{:0<16.16}{}".format(
+        str(Bc[0]),
+        str(Bc[1]),
+        str(Bc[2]),
         _pad*207).encode()
 
 
@@ -225,9 +227,10 @@ def encode_mpacket(msg: str):  # Q Compatible
 
     The allowed length of msg is equal to packet_size-1
 
-    Optimization: ~390 ns/encode
+    TODO RE-BENCHMARK
+    Optimization: ~~390~~ ns/encode
     """
-    return ("m"+msg+_pad*(packet_size-len(msg)-1)).encode()
+    return ("m"+msg[:255]+_pad*(packet_size-len(msg)-1)).encode()
 
 
 def decode_mpacket(m_packet):  # Q Compatible
@@ -246,7 +249,7 @@ def encode_epacket(msg: str):  # Q Compatible
     """ Encodes an e_packet, which has the following anatomy:
     e (1 B)    msg (n B)
     """
-    return ("e"+str(msg)+_pad*(packet_size-len(msg)-1)).encode()
+    return ("e"+msg[:255]+_pad*(packet_size-len(msg)-1)).encode()
 
 
 
@@ -363,16 +366,16 @@ def encode_spacket(
     """ Encodes an s_packet, which has the following anatomy:
     s (1 B)    segment number (32 B)    number of segments (32 B)
         segment_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
-
-    Optimization: ~4400 ns/encode
+    TODO: Re-benchmark performance
+    Optimization: ~~4400~~ ns/encode
     """
-    return "s{:0>32}{:0>32}{:0<20}{:0<16}{:0<16}{:0<16}{}".format(
-        str(i_seg)[:16],
-        str(n_seg)[:16],
-        str(t_seg)[:16],
-        str(Bx_seg)[:16],
-        str(By_seg)[:16],
-        str(Bz_seg)[:16],
+    return "s{:0>32.32}{:0>32.32}{:0<20.20}{:0<16.16}{:0<16.16}{:0<16.16}{}".format(
+        str(i_seg),
+        str(n_seg),
+        str(t_seg),
+        str(Bx_seg),
+        str(By_seg),
+        str(Bz_seg),
         _pad*123).encode()
 
 
