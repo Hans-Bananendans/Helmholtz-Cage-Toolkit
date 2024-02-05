@@ -14,24 +14,27 @@ def instruct_DACs(datapool, Bc):  # TODO: Dummy - Implement actual functionality
     """Dummy for writing values to DAC"""
     print(f"[DEBUG] Called instruct_DACs({Bc})!")
 
-    Ic = [B/200. for B in Bc]
+    Bo = [Bc[0]-datapool.Br[0], Bc[1]-datapool.Br[1], Bc[2]-datapool.Br[2]]
+
+    Ic = [B/200. for B in Bo]
     Vc = [0., 0., 0.]
 
     if datapool.serveropt_Bm_sim == "feedback":
         print("[DEBUG] Feedback changed Bm_sim to {}, {}, {} \u03bcT]".format(
-            int(Bc[0]/1000), int(Bc[1]/1000), int(Bc[2]/1000)))
-        datapool.Bdummy = Bc
+            int(Bo[0]/1000), int(Bo[1]/1000), int(Bo[2]/1000)))
+        datapool.Bm_sim = Bo
 
-    for i, B in enumerate(Bc):
+    for i, B in enumerate(Bo):
         if abs(B) <= 0.1:
             Vc[i] = 0.0
         else:
-            Vc[i] = 60.0
-
-
+            if B < 0:
+                Vc[i] = -60.0
+            else:
+                Vc[i] = 60.0
 
     # Return control_vals
-    return [Bc, Ic, Vc]
+    return Bc, Ic, Vc
 
 
 def sample_ADC_for_Bm(datapool):  # TODO STALE
@@ -182,6 +185,7 @@ def threaded_apply_Bc(datapool):
     datapool.kill_apply_Bc = False
 
     Bc_prev = [0., 0., 0.]
+
     while not datapool.kill_apply_Bc:        # Kill loop when set to True
 
         # ==== PLAY MODE ====
@@ -221,8 +225,10 @@ def threaded_apply_Bc(datapool):
                 if Bc_read == Bc_prev:
                     sleep(max(0., datapool.apply_Bc_period - (time() - t0)))
                 else:
-                    control_vals = instruct_DACs(datapool, Bc_read)
-                    datapool.write_control_vals(control_vals)
+                    # control_vals = instruct_DACs(datapool, Bc_read)
+                    Bc, Ic, Vc = instruct_DACs(datapool, Bc_read)
+                    # datapool.write_control_vals(control_vals)
+                    datapool.write_control_vals(Bc, Ic, Vc)
                     Bc_prev = Bc_read
             else:
                 sleep(datapool.apply_Bc_period)
@@ -237,9 +243,10 @@ class DataPool:
     def __init__(self):
         # Thread controls
         self._lock_Bc = Lock()
+        # self._lock_Bc_tba = Lock()
         self._lock_Bm = Lock()
         self._lock_tmBmIm = Lock()
-        self._lock_control_vals = Lock()
+        self._lock_control_vals = Lock()  # TODO STALE
         self._lock_schedule = Lock()
 
         self.pause_apply_Bc = False     # Implemented non-thread-safe
@@ -259,13 +266,14 @@ class DataPool:
         self.serveropt_use_Bdummy = True  # Makes Bdummy applied to Bm readout # TODO STALE
 
         # Data values
+        # self.Bc_tba = 0.                # Temporary buffer for Bc that is to be applied
         self.tm = 0.                    # Time at which Bm, Im were taken
         self.Bm = [0., 0., 0.]
         self.Bc = [0., 0., 0.]          # Control vector Bc to be applied [nT]
         self.control_vals = [           # Control values actually applied to the power supplies
-            [0., 0., 0.],               # Bc_applied [nT]
-            [0., 0., 0.],               # Ic_applied [A]
-            [0., 0., 0.]]               # Vc_applied [V]
+            [0., 0., 0.],               # Bc_applied [nT]  # TODO STALE
+            [0., 0., 0.],               # Ic_applied [A]  # TODO STALE
+            [0., 0., 0.]]               # Vc_applied [V]  # TODO STALE
 
         self.Br = [0., 0., 0.]
         self.Bm_sim = [0., 0., 0.]      # Injection point for spoofing Bm measurements
@@ -352,11 +360,11 @@ class DataPool:
         return 1
 
     def get_play_mode(self):
-        print("[DEBUG] get_play_mode()")
+        # print("[DEBUG] get_play_mode()")
         return self.play_mode  # Implemented non-thread-safe
 
     def get_play_status(self):
-        print("[DEBUG] get_play_status()")
+        # print("[DEBUG] get_play_status()")
         return self.play_status  # Implemented non-thread-safe
 
     def set_schedule_segment(self, segment: list):
@@ -393,7 +401,7 @@ class DataPool:
         return 1
 
     def get_schedule(self):
-        print("[DEBUG] get_schedule()")
+        # print("[DEBUG] get_schedule()")
 
         self._lock_schedule.acquire(timeout=0.001)
 
@@ -403,7 +411,7 @@ class DataPool:
         return schedule
 
     def get_schedule_info(self):
-        print("[DEBUG] get_schedule_info()")
+        # print("[DEBUG] get_schedule_info()")
 
         self._lock_schedule.acquire(timeout=0.001)
 
@@ -551,12 +559,16 @@ class DataPool:
         return Bc
 
 
-    def write_control_vals(self, control_vals):  # TODO STALE
+    def write_control_vals(self, Bc, Ic, Vc):  # TODO STALE
         """Thread-safely write the control_vals to the datapool
         """
+        print(f"[DEBUG] write_control_vals({Bc}, {Ic}, {Vc})")
         self._lock_control_vals.acquire(timeout=0.001)
         try:
-            self.control_vals = control_vals
+            # self.Bc = Bc
+            self.Ic = Ic
+            self.Vc = Vc
+            # self.control_vals = control_vals
         except:  # noqa
             print("[WARNING] DataPool.write_control_vals(): Unable to write to self.control_vals!")
         self._lock_control_vals.release()
@@ -565,6 +577,7 @@ class DataPool:
     def read_control_vals(self):  # TODO STALE
         """Thread-safely reads the applied control_vals from the datapool.
         """
+        print("[DEBUG] STALE FUNCTION USED: read_control_vals()")
         self._lock_control_vals.acquire(timeout=0.001)
         try:
             control_vals = self.control_vals
@@ -621,7 +634,8 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 break
             type_id = scc.packet_type(packet_in)
             # t1 = time()  # [TIMING]
-            # print("[DEBUG] packet_in:", packet_in)
+
+            print("[DEBUG] packet_in:", packet_in)
 
             if type_id == "m":
                 # print("[DEBUG] Detected m-package")
@@ -650,7 +664,8 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 Bc = scc.decode_cpacket(packet_in)
                 try:
                     self.server.datapool.write_Bc(Bc)
-                    # print("[DEBUG] Bc written to datapool:", Bc, type(Bc))
+                    print("[DEBUG] Bc written to datapool:", Bc, type(Bc))
+                    print("[DEBUG] CHECK datapool.Bc:", self.server.datapool.Bc)
                     packet_out = scc.encode_mpacket("1")
                 except:  # noqa
                     packet_out = scc.encode_mpacket("-1")
@@ -672,7 +687,7 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             else:
                 raise ValueError(f"Encountered uninterpretable type_id '{type_id}' in received packet.")
 
-            # print("[DEBUG] packet_out:", packet_out)
+            print("[DEBUG] packet_out:", packet_out)
 
             # t2 = time()  # [TIMING]
 
@@ -726,7 +741,7 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
 
         # Requests the value of datapool.control_vals and sends them as a
         # csv string
-        elif fname == "get_control_vals":
+        elif fname == "get_control_vals":  # TODO STALE
             control_vals = self.server.datapool.read_control_vals()
             msg = ",".join([str(item) for row in control_vals for item in row])
             packet_out = scc.encode_mpacket(msg)
@@ -831,6 +846,8 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
 
         elif fname == "set_serveropt_Bm_sim":
             self.server.datapool.serveropt_Bm_sim = args[0]
+            # print(f"[DEBUG] set_serveropt_Bm_sim({args[0]})")
+            # print(f"[DEBUG] self.serveropt_Bm_sim: {self.server.datapool.serveropt_Bm_sim}")
             packet_out = scc.encode_mpacket("1")
 
         elif fname == "get_Bm_sim":

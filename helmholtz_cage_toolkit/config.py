@@ -16,18 +16,18 @@ config = {
 
     "connect_on_startup": False,
     "connect_on_startup_delay": 3000,
-    "label_update_period": 2000,
+    "label_update_period": 10000,
     "time_correction_period": 60000,
     "pings_per_test": 8,
 
 
     # ==== Data acquisition ====
-    "telemetry_polling_rate": 3,   # [S/s] How frequently Bm is polled
+    "telemetry_polling_rate": 0.2,   # [S/s] How frequently Bm is polled
 
     "CW_HHCPlots_refresh_rate": 1,
     "CW_values_refresh_rate": 1,
 
-    "enable_arrow_tips": False,  # Whether to plot vectors with tips (substantial overhead)
+    "enable_arrow_tips": True,  # Whether to plot vectors with tips (substantial overhead)
 
 
     # ==== ADC settings ====

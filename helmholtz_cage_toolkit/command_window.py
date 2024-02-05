@@ -32,11 +32,13 @@ CommandWindow - layout0 (HBox)
 """
 
 import os
+from copy import deepcopy
 from time import time, sleep
 
 from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.datapool import DataPool
 from helmholtz_cage_toolkit.hhcplot import HHCPlot, HHCPlotArrow
+import helmholtz_cage_toolkit.client_functions as cf
 
 class CommandWindow(QWidget):
     def __init__(self, config, datapool):
@@ -208,7 +210,7 @@ class CommandWindow(QWidget):
         # Set disabled until connected
         self.do_on_disconnected()
 
-        self.do_activate_manual_mode()  # Default start in manual mode
+        self.do_select_mode("manual")  # Default start in manual mode
 
 
 
@@ -216,20 +218,28 @@ class CommandWindow(QWidget):
     def make_group_mode_controls(self):
         layout_mode_controls = QGridLayout()
 
-        self.button_panic_reset = QPushButton(
+        self.button_total_reset = QPushButton(
             # QIcon("./assets/icons/feather/x-octagon.svg"), "RESET")
             QIcon("./assets/icons/feather/x-circle.svg"), "TOTAL RESET")
-        self.button_panic_reset.setIconSize(QSize(24, 24))
-        self.button_panic_reset.setStyleSheet("""
+        self.button_total_reset.setIconSize(QSize(24, 24))
+        self.button_total_reset.setStyleSheet("""
         QPushButton {font-size: 24px;}
         """)
+        self.button_total_reset.clicked.connect(self.do_total_reset)
 
         self.button_set_manual_mode = QPushButton(
             QIcon("./assets/icons/feather/edit-3.svg"), "Manual")
+        self.button_set_manual_mode.clicked.connect(
+            lambda: self.do_select_mode("manual")
+        )
+
         self.button_set_play_mode = QPushButton(
             QIcon("./assets/icons/feather/film.svg"), "Schedule")
+        self.button_set_play_mode.clicked.connect(
+            lambda: self.do_select_mode("play")
+        )
 
-        layout_mode_controls.addWidget(self.button_panic_reset, 0, 0, 1, 2)
+        layout_mode_controls.addWidget(self.button_total_reset, 0, 0, 1, 2)
         layout_mode_controls.addWidget(self.button_set_manual_mode, 1, 0)
         layout_mode_controls.addWidget(self.button_set_play_mode, 1, 1)
 
@@ -262,14 +272,17 @@ class CommandWindow(QWidget):
 
         layout_offset_buttons = QHBoxLayout()
 
-        self.button_set_br = QPushButton("Set")
-        layout_offset_buttons.addWidget(self.button_set_br)
+        self.button_submit_br = QPushButton("Submit")
+        self.button_submit_br.clicked.connect(self.do_submit_Br)
+        layout_offset_buttons.addWidget(self.button_submit_br)
 
         self.button_reset_br = QPushButton("Reset")
+        self.button_reset_br.clicked.connect(self.do_reset_Br)
         layout_offset_buttons.addWidget(self.button_reset_br)
 
         self.button_br_from_bm = QPushButton(QIcon(
             "./assets/icons/feather/corner-left-up.svg"), "Take current B_M")
+        self.button_br_from_bm.clicked.connect(self.do_Br_from_Bm)
         layout_offset_buttons.addWidget(self.button_br_from_bm)
 
 
@@ -557,6 +570,47 @@ class CommandWindow(QWidget):
         self.label_play_step.setText("0.0")
         self.label_play_time.setText("0.0")
 
+    def do_total_reset(self):
+        # Order of business:
+        # 1. Switch to manual mode (-> call self.do_select_mode("manual", skip_confirm=True)
+        self.do_select_mode("manual", skip_confirm=True)
+
+        # 2. Set Br to 0 by calling self.reset_Br()
+        self.do_reset_Br()
+
+        # 3. Command Bc to 0 by calling self.datapool.do_set_Bc([0., 0., 0.])
+        self.datapool.do_set_Bc([0., 0., 0.])
+
+        # 4. Update fields in manual_input to reflect 0. 0. 0.
+        for le in self.group_manual_input.le_inputs:
+            le.setText("0.")
+
+        # 5. Feedback to terminal
+        print("TOTAL RESET executed successfully.")
+
+
+    def do_submit_Br(self):
+        print("[DEBUG] do_submit_Br()")
+        Br = [0., 0., 0.]
+        for i, le in enumerate((self.le_brx, self.le_bry, self.le_brz)):
+            Br[i] = 1000*float(le.text())
+        self.datapool.do_set_Br(Br)
+
+
+    def do_reset_Br(self):
+        print("[DEBUG] do_reset_Br()")
+        self.datapool.do_set_Br([0., 0., 0.])
+        for le in (self.le_brx, self.le_bry, self.le_brz):
+            le.setText("0.0")
+
+
+    def do_Br_from_Bm(self):
+        print("[DEBUG] do_Br_from_Bm()")
+        Bm = self.datapool.Bm
+        self.datapool.do_set_Br(Bm)
+        for i, le in enumerate((self.le_brx, self.le_bry, self.le_brz)):
+            le.setText(str(round(Bm[i]/1000, 3)))
+
 
     def run_checks(self):
         # TODO: Check conditions and set values of self.checks as
@@ -564,18 +618,42 @@ class CommandWindow(QWidget):
         print("[DEBUG] run_checks()")
 
 
-    def do_activate_play_mode(self):
-        print("[DEBUG] do_activate_play_mode()")
-        if self.datapool.socket_connected:
+    def do_select_mode(self, mode, skip_confirm=False):
+        if mode == "play" and self.datapool.socket_connected:
             cf.activate_play_mode(self.datapool.socket, self.datapool.ds)
             self.datapool.command_mode = "play"
+            self.button_set_play_mode.setEnabled(False)
+            self.button_set_manual_mode.setEnabled(True)
 
+        elif mode == "manual" and self.datapool.socket_connected:
+            # TODO: IF PLAYING, THEN STOP BEFORE SETTING MAYBE WITH CONFIRMATION POPUP
 
-    def do_activate_manual_mode(self):
-        print("[DEBUG] do_activate_manual_mode()")
-        if self.datapool.socket_connected:
             cf.deactivate_play_mode(self.datapool.socket, self.datapool.ds)
             self.datapool.command_mode = "manual"
+            self.button_set_play_mode.setEnabled(True)
+            self.button_set_manual_mode.setEnabled(False)
+
+
+        # Contingency for correct mode but no connection: just skip
+        elif mode in ("manual", "play") and not self.datapool.socket_connected:
+            pass
+
+        else:
+            raise AssertionError(f"Given invalid mode '{mode}'!")
+
+
+    # def do_activate_play_mode(self):
+    #     print("[DEBUG] do_activate_play_mode()")
+    #     if self.datapool.socket_connected:
+    #         cf.activate_play_mode(self.datapool.socket, self.datapool.ds)
+    #         self.datapool.command_mode = "play"
+    #
+    #
+    # def do_activate_manual_mode(self):
+    #     print("[DEBUG] do_activate_manual_mode()")
+    #     if self.datapool.socket_connected:
+    #         cf.deactivate_play_mode(self.datapool.socket, self.datapool.ds)
+    #         self.datapool.command_mode = "manual"
 
 
     def do_on_connected(self):
@@ -753,14 +831,19 @@ class GroupManualInput(QGroupBox):
     def do_submit_Bc(self):
         Bc = [0.]*3
 
-        if self.combo_input.currentIndex == 0:  # Case: unit is uT
+        print("[DEBUG] do_submit_Bc(): combo_input index:", self.combo_input.currentIndex())
+
+
+        if self.combo_input.currentIndex() == 0:  # Case: unit is uT
+            print("[DEBUG] do_submit_Bc(): detected unit: \u03bcT")
             for i in range(3):
                 Bc[i] = 1000*float(self.le_inputs[i].text())
-                print("[DEBUG] do_submit_Bc(): detected unit: \u03bcT")
-        elif self.combo_input.currentIndex == 1:  # Case: unit is nT
+        elif self.combo_input.currentIndex() == 1:  # Case: unit is nT
+            print("[DEBUG] do_submit_Bc(): detected unit: nT")
             for i in range(3):
                 Bc[i] = float(self.le_inputs[i].text())
-                print("[DEBUG] do_submit_Bc(): detected unit: nT")
+
+        print("[DEBUG] do_submit_Bc(): Bc =", Bc)
 
         self.datapool.do_set_Bc(Bc)
 
@@ -781,17 +864,30 @@ class GroupManualInput(QGroupBox):
         # self.Ic = [1200., 1200., 1200.]
         # self.Im = [1400., 1400., 1400.]
 
-        t0 = time()  # [TIMING]
+        # t0 = time()  # [TIMING]
 
         # Calculating values (~5 us)
-        bc, br, bm = self.datapool.Bc, self.datapool.Br, self.datapool.Bm
         vc, ic, im = self.datapool.Vc, self.datapool.Ic, self.datapool.Im
-        Bc = [bc[0], bc[1], bc[2],
-              (bc[0]**2 + bc[1]**2 + bc[2]**2)**(1/2)]
-        Br = [br[0], br[1], br[2],
-              (br[0]**2 + br[1]**2 + br[2]**2)**(1/2)]
-        Bm = [bm[0], bm[1], bm[2],
-              (bm[0]**2 + bm[1]**2 + bm[2]**2)**(1/2)]
+        bc, br, bm = self.datapool.Bc, self.datapool.Br, self.datapool.Bm
+
+        # # Convert from nT to uT:  SLOWER
+        # for b in (bc, br, bm):
+        #     b = [b[0]/1000, b[1]/1000, b[2]/1000]
+        #
+        # Bc = [bc[0], bc[1], bc[2],
+        #       (bc[0]**2 + bc[1]**2 + bc[2]**2)**(1/2)]
+        # Br = [br[0], br[1], br[2],
+        #       (br[0]**2 + br[1]**2 + br[2]**2)**(1/2)]
+        # Bm = [bm[0], bm[1], bm[2],
+        #       (bm[0]**2 + bm[1]**2 + bm[2]**2)**(1/2)]
+
+        # Convert from nT to uT and calculate vector magnitudes
+        Bc = [bc[0]/1000, bc[1]/1000, bc[2]/1000,
+              (bc[0]**2 + bc[1]**2 + bc[2]**2)**(1/2)/1000]
+        Br = [br[0]/1000, br[1]/1000, br[2]/1000,
+              (br[0]**2 + br[1]**2 + br[2]**2)**(1/2)/1000]
+        Bm = [bm[0]/1000, bm[1]/1000, bm[2]/1000,
+              (bm[0]**2 + bm[1]**2 + bm[2]**2)**(1/2)/1000]
 
         Bo = [Bc[0]-Br[0], Bc[1]-Br[1], Bc[2]-Br[2],
               ((Bc[0]-Br[0])**2 + (Bc[1]-Br[1])**2 + (Bc[2]-Br[2])**2)**(1/2)]
@@ -803,7 +899,7 @@ class GroupManualInput(QGroupBox):
         Im = [im[0], im[1], im[2], 0]
         Id = [Ic[0]-Im[0], Ic[1]-Im[1], Ic[2]-Im[2], 0]
 
-        t1 = time()  # [TIMING]
+        # t1 = time()  # [TIMING]
 
         # Mapping values to labels:
         for i, p in enumerate((Bc, Br, Bo, Bm, Bd, Vc, Ic, Im, Id)):
@@ -814,7 +910,7 @@ class GroupManualInput(QGroupBox):
                 else:
                     self.biv_labels[i][j].setText("{:.3f}".format(p[j]))
 
-        t2 = time() # [TIMING]
+        # t2 = time() # [TIMING]
         # print("update_biv_labels calc:", round((t1-t0)*1E6), "us")  # [TIMING]
         # print("update_biv_labels updt:", round((t2-t1)*1E6), "us")  # [TIMING]
 

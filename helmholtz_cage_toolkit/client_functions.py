@@ -1192,6 +1192,8 @@ def set_Br(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
+    print(f"[DEBUG] cf.set_Br({Br})")
+
     if len(Br) != 3:
         raise AssertionError(f"Br given is not length 3 but length {len(Br)}!")
 

@@ -158,6 +158,14 @@ class DataPool:
         self.Bc = Bc
 
 
+    def do_set_Br(self, Br):
+        print(f"[DEBUG] datapool.do_set_Br({Br})")
+        if self.socket_connected:
+            cf.set_Br(self.socket, Br, self.ds)
+
+        self.Br = Br
+
+
     def do_get_Bm(self):  # TODO STALE
         """Requests the value of Bm from the server, and stores it to self.tm
         and self.Bm
