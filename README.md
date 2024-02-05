@@ -16,8 +16,8 @@ The MSc thesis work of the author therefore investigated not only how to better 
 In essence, this toolkit allows you to take a set of Helmholtz coil pairs, and some general hardware, and connect these together to form a test setup. The toolkit was developed with flexibility as one of its core requirements. As such, the software itself is agnostic to what operating system it is used with, so long as it can run a Python interpreter and interface with the hardware. Some additional drivers and conversion is probably needed to make it work with a particular set of hardware, but since the Helmholtz Cage Toolkit is also designed to be fairly modular, this should pose a relatively approachable challenge.
 
 
-## Messy files warning
-It bears mentioning that this repository is in a fairly disorganised state, and is being worked on full-time. If you plan on using this repository in the near future, it is recommended to wait for a few days, as the hierarchy of the code is being iterated.
+## Development status
+The contents of this repository are being developed full-time, and are therefore in a state of flux. If you plan on using this repository in the near future, it should be mentioned that its contents may still change rapidly in the weeks to come.
 
 
 ## Usage
@@ -28,7 +28,7 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-Then clone the repository and install the requirements:
+Then clone the repository and install it as a package, using `setup.py`:
 ```bash
 git clone https://github.com/Hans-Bananendans/Helmholtz-Cage-Toolkit.git
 pip install .
@@ -36,21 +36,37 @@ pip install .
 
 ## Dependencies
 This software uses the following dependencies:
- * ~~[PySide6](https://pypi.org/project/PySide6/)~~ (coming soon, for now PyQt5)
- * [PyQtGraph 0.13.3](https://www.pyqtgraph.org/)
+ * [PyQt5 5.15](https://pypi.org/project/PyQt5/) (migration to PySide6 has been suspended for now, due to significant performance degradation.)
  * [Qt-Material](https://qt-material.readthedocs.io/en/latest/)
+ * [PyQtGraph 0.13.3](https://www.pyqtgraph.org/)
+ * [PyOpenGL 3.1.7](https://pypi.org/project/pyopengl/)
  * [Numpy](https://numpy.org/)
+ * [SciPy](https://pypi.org/project/scipy/)
+ * [pyIGRF](https://pypi.org/project/pyigrf/)
+ * [pyadi-iio](https://pypi.org/project/pyadi-iio/)
 
-as well a number of other dependencies, all of which can be found in `requirements.txt`.
+as well a number of other dependencies, all of which can be found in `setup.py`.
 
-## Screenshots
+## Early screenshots of client interface
+![alt text](helmholtz_cage_toolkit/extras/screenshot_command_manual_0.2.png?raw=true)
+Command interface for controlling the Helmholtz cage in a server-client setup. Currently "manual mode" is selected, which allows the user to manually set input field vectors, and specify a constant field vector to reject.
+___
 
-![alt text](helmholtz_cage_toolkit/extras/screenshot_cyclics_ui.png?raw=true)
+![alt text](helmholtz_cage_toolkit/extras/screenshot_command_play_0.2.png?raw=true)
+Command interface in "play mode", in which pre-defined schedules can be played on the remote device, whilst measurement data is coming in.
+___
+
+![alt text](helmholtz_cage_toolkit/extras/screenshot_cyclics_0.2.png?raw=true)
 User interface for one of the generators that can be used to generate time-dependent inputs to the Helmholtz cage setup.
+___
 
-![alt text](helmholtz_cage_toolkit/extras/screenshot_orbital_early.png?raw=true)
+![alt text](helmholtz_cage_toolkit/extras/screenshot_connectionwindow_0.2.png?raw=true)
+Overview interface containing details about the TCP connection between client and server, as well as controls to transfer schedule data to the remote device.
+___
+
+![alt text](helmholtz_cage_toolkit/extras/screenshot_orbital_0.1.png?raw=true)
 Early look at user interface of another input generators, which propagates a low Earth orbit (LEO) over time and acquires the local magnetic field data in the body frame of a simulated satellite. The local field is simulated using the IGRF.
-
+___
 
 ## Attributions
 Some icons were sourced from the excellent [Feather](https://feathericons.com/) collection.
