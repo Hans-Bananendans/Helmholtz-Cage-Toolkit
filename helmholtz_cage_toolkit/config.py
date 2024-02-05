@@ -6,7 +6,7 @@ config = {
     # ==== General settings ====
     "verbosity": 1,
     "use_dummies": True,
-    "default_windowsize": (1280, 760),
+    "default_windowsize": (1280, 720),
 
     # ==== TCP connection settings ====
     "server_address": "127.0.0.1",
@@ -22,10 +22,12 @@ config = {
 
 
     # ==== Data acquisition ====
-    "telemetry_polling_rate": 0.2,   # [S/s] How frequently Bm is polled
+    "telemetry_polling_rate": 50,   # [S/s] How frequently Bm is polled
 
-    "CW_HHCPlots_refresh_rate": 1,
-    "CW_values_refresh_rate": 1,
+    "CW_HHCPlots_refresh_rate": 30,
+    "CW_values_refresh_rate": 30,
+
+    "tracking_timer_period": 10,
 
     "enable_arrow_tips": True,  # Whether to plot vectors with tips (substantial overhead)
 

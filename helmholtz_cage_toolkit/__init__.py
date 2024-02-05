@@ -78,6 +78,7 @@ from PyQt5.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QLCDNumber,
     QLineEdit,
     QMainWindow,

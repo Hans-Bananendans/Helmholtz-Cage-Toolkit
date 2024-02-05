@@ -39,6 +39,8 @@ class DataPool:
         self.socket_connected = False
 
 
+        self.t_playstart = 0.
+
         # Server options
         self.serveropt_loopback = False
         self.serveropt_use_Bdummy = True
@@ -113,13 +115,13 @@ class DataPool:
                 {"text": ["dummy1 tick",
                           "dummy1 ~",
                           "dummy1 x"],
-                 "value": 2,
+                 "value": 0,
                  },
             "dummy_check2":
                 {"text": ["dummy2 tick",
                           "dummy2 ~",
                           "dummy2 x"],
-                 "value": 1,
+                 "value": 0,
                  },
             "dummy_check3":
                 {"text": ["dummy3 tick",
@@ -260,7 +262,7 @@ class DataPool:
         For this reason, this also checks self.socket_connected as a
         low-overhead (<1 us) method to handle this edge case.
         """
-        print("[DEBUG] do_get_telemetry()")
+        # print("[DEBUG] do_get_telemetry()")
         # t0 = time()
         # try:
         #     self.tm, *self.Bm = cf.get_Bm(self.socket, self.ds)
@@ -314,6 +316,16 @@ class DataPool:
         self.interpolation_parameters = {}
 
 
+    def do_start_playback(self):
+        t_before = time()
+        cf.play_start(self.socket, self.ds)
+        t_after = time()
+        self.t_playstart = t_before-(t_after-t_before)
+
+    def do_stop_playback(self):
+        cf.play_stop(self.socket, self.ds)
+
+
     def refresh(self):
         """Refreshes certain key UI elements when the internal schedule and
         generation parameters are changed.
@@ -328,6 +340,8 @@ class DataPool:
 
         # Refresh the plots and play controls in the Cyclics Visualizer:
         self.cyclics_visualizer.refresh()
+
+        self.command_window.on_schedule_refresh()
 
         # TODO: Add UI elements from Orbital Generator
 

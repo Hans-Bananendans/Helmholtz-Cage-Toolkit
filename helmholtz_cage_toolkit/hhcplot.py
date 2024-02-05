@@ -111,11 +111,14 @@ class HHCPlot(pg.GraphicsLayoutWidget):
 
         self.bscale = datapool.config["visualizer_bscale"]
 
+
         self.plot_obj = self.addPlot(row=0, col=0, antialias=True)
-        self.resize(size[0], size[1])
+        self.setAntialiasing(True)  # TODO benchmark effect on draw time
+        self.resize(size[0], size[1])  # Probably does not do anything, judging by source code
+        self.setAspectLocked(True)  # Also seems to do jack shit
+
         self.plot_obj.setRange(xRange=(-1, 1), yRange=(-1, 1))
         self.plot_obj.showGrid(x=True, y=True)
-        # self.plot_obj.setData(antialias=True)
         self.plot_obj.showAxis("bottom", True)
         self.plot_obj.showAxis("left", True)
         self.plot_obj.getAxis("bottom").setStyle(showValues=False)

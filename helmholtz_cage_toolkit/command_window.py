@@ -39,6 +39,7 @@ from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.datapool import DataPool
 from helmholtz_cage_toolkit.hhcplot import HHCPlot, HHCPlotArrow
 from helmholtz_cage_toolkit.utilities import IGRF_from_UNIX
+from helmholtz_cage_toolkit.envelope_plot import EnvelopePlot
 import helmholtz_cage_toolkit.client_functions as cf
 
 class CommandWindow(QWidget):
@@ -49,6 +50,8 @@ class CommandWindow(QWidget):
 
         self.datapool.command_window = self
 
+
+
         # ==== TIMERS
         self.timer_HHCPlot_refresh = QTimer()
         self.timer_HHCPlot_refresh.timeout.connect(self.do_refresh_HHCPlots)
@@ -56,6 +59,10 @@ class CommandWindow(QWidget):
         self.timer_values_refresh = QTimer()
         self.timer_values_refresh.timeout.connect(self.do_refresh_values)
 
+        self.timer_playback_tracker = QTimer()
+        self.timer_playback_tracker.timeout.connect(self.do_playback_tracking)
+
+        self.t_playstart = 0.
 
         # ==== LEFT LAYOUT
         layout_left = QVBoxLayout()
@@ -77,17 +84,30 @@ class CommandWindow(QWidget):
         layout_right = QVBoxLayout()
 
         self.stacker_right = QStackedWidget()
+        # self.stacker_right.setSizePolicy(
+        #     QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum))
+        self.stacker_right.setMaximumHeight(356)
+
+        label_disconnected = QLabel("\n\nNO CONNECTION TO DEVICE...\n\n")
+        label_disconnected.setStyleSheet("""QLabel {font-size: 24px;}""")
+        label_disconnected.setAlignment(Qt.AlignCenter)
+        layout_label_disconnected = QVBoxLayout()
+        layout_label_disconnected.addWidget(label_disconnected)
+        group_label_disconnected = QGroupBox()
+        group_label_disconnected.setLayout(layout_label_disconnected)
+        self.stacker_right.addWidget(group_label_disconnected)    # INDEX 0
 
         # Construct Manual Input groupbox
         self.group_manual_input = GroupManualInput(self.datapool)
         # Update the labels once to flush init values
         self.group_manual_input.do_update_biv_labels()
         # Add to stacked widget
-        self.stacker_right.addWidget(self.group_manual_input)
+        self.stacker_right.addWidget(self.group_manual_input)   # INDEX 1
 
         # Add envelope plot to stacker widget
         dummy_widget = QLabel("DUMMY ENVELOPE PLOT")
-        self.stacker_right.addWidget(dummy_widget)
+        self.envelope_plot = EnvelopePlot(datapool)
+        self.stacker_right.addWidget(self.envelope_plot)   # INDEX 2
 
         # Add stacker to the parent layout
         layout_right.addWidget(self.stacker_right)
@@ -103,7 +123,7 @@ class CommandWindow(QWidget):
 
 
         # Create a grid layout for the HHCPlots
-        layout_hhcplots = QGridLayout()
+        self.layout_hhcplots = QGridLayout()
 
         # Constructing two instances of HHCPlots. First look in config to see
         # if arrow tips should be plotted (disabled gives better performance)
@@ -139,10 +159,15 @@ class CommandWindow(QWidget):
         for i, arrow in enumerate(self.hhcplot_xy.arrows):
             print(f"arrow_xy_{i}: {arrow}")
 
-        layout_hhcplots.addWidget(self.hhcplot_yz, 0, 0)
-        layout_hhcplots.addWidget(self.hhcplot_xy, 0, 1)
+
+
+
+        self.layout_hhcplots.addWidget(self.hhcplot_yz, 0, 0)
+        self.layout_hhcplots.addWidget(self.hhcplot_xy, 0, 1)
+
+        # self.layout_hhcplots.sizeHint(QSize(720, 360))
         # Add to parent layout
-        layout_right.addLayout(layout_hhcplots)
+        layout_right.addLayout(self.layout_hhcplots)
 
         # Debug operations # TODO CLEAN UP
         breset = [[0., ]*3, ]*4
@@ -307,7 +332,7 @@ class CommandWindow(QWidget):
                 self.local_emf(self.datapool.config["local_EMF"])
 
         self.button_br_from_bm = QPushButton(QIcon(
-            "./assets/icons/feather/corner-left-up.svg"), "Take current B_M")
+            "./assets/icons/feather/corner-left-up.svg"), "Current B_M")
         self.button_br_from_bm.clicked.connect(self.do_Br_from_Bm)
         layout_offset_buttons.addWidget(self.button_br_from_bm)
 
@@ -555,6 +580,22 @@ class CommandWindow(QWidget):
         self.group_manual_input.do_update_biv_labels()
 
 
+    def on_schedule_refresh(self):
+        # XYZ lines in envelope plot
+        for item in self.envelope_plot.plot_obj.dataItems:
+            item.clear()
+
+        # Ghosts in HHC plots:
+        for item in [self.hhcplot_yz.plot_obj.dataItems[-1],
+                     self.hhcplot_xy.plot_obj.dataItems[-1]]:
+            item.clear()
+
+        # Refresh envelope plot
+        self.envelope_plot.generate_envelope_plot()
+
+        # Refresh path ghosts on HHC plots
+        self.hhcplot_yz.plot_ghosts(self.datapool.schedule)
+        self.hhcplot_xy.plot_ghosts(self.datapool.schedule)
 
     def do_update_bm_display(self):
         # Bm = [-12345.678, -1.0, -98.765]  TODO REMOVE
@@ -657,6 +698,8 @@ class CommandWindow(QWidget):
             self.button_set_play_mode.setEnabled(False)
             self.button_set_manual_mode.setEnabled(True)
 
+            self.stacker_right.setCurrentIndex(2)
+
         elif mode == "manual" and self.datapool.socket_connected:
             # TODO: IF PLAYING, THEN STOP BEFORE SETTING MAYBE WITH CONFIRMATION POPUP
 
@@ -665,6 +708,7 @@ class CommandWindow(QWidget):
             self.button_set_play_mode.setEnabled(True)
             self.button_set_manual_mode.setEnabled(False)
 
+            self.stacker_right.setCurrentIndex(1)
 
         # Contingency for correct mode but no connection: just skip
         elif mode in ("manual", "play") and not self.datapool.socket_connected:
@@ -699,9 +743,13 @@ class CommandWindow(QWidget):
             int(1000/self.datapool.config["CW_HHCPlots_refresh_rate"])
         )
 
+        self.do_select_mode("manual")
+
     def do_on_disconnected(self):
         self.timer_values_refresh.stop()
         self.timer_HHCPlot_refresh.stop()
+
+        self.stacker_right.setCurrentIndex(0)
 
         for group in self.groups_to_enable_on_connect:
             group.setEnabled(False)
@@ -715,12 +763,14 @@ class CommandWindow(QWidget):
         print("[DEBUG] start_playback()")
 
         if self.button_start_playback.isChecked():
+            print("PLAYBACK START")
 
             # DO A TIME SYNC WITH SERVER
 
             # IF ARMED, START RECORDING
 
-            # SEND START COMMAND
+            # Send START playback command to server
+            self.datapool.do_start_playback()
 
             self.button_start_playback.setIcon(
                 QIcon("./assets/icons/feather/square.svg"))
@@ -730,29 +780,46 @@ class CommandWindow(QWidget):
             self.stacker_play_controls.setCurrentIndex(1)
 
             # START TIMER POLLING FOR SCHEDULE DATA AND UPDATING
-
+            self.timer_playback_tracker.start(
+                self.datapool.config["tracking_timer_period"]
+            )
 
         # STOP
         else:
-            # Swap to checks window:
-            self.stacker_play_controls.setCurrentIndex(0)
+            # Send STOP playback command to server
+            print("PLAYBACK STOP")
+            self.datapool.do_stop_playback()
+            self.timer_playback_tracker.stop()
 
             self.do_post_playback()
 
 
-
     def do_post_playback(self):
         # TODO ANY EXTRA POST-PLAYBACK FUNCTIONS GO HERE
+        # Swap to checks window:
+        self.stacker_play_controls.setCurrentIndex(0)
+
         self.button_start_playback.setEnabled(False)
         self.button_start_playback.setIcon(
             QIcon("./assets/icons/feather/refresh-ccw.svg"))
         self.button_start_playback.setText("RESETTING...")
+
+        self.timer_playback_tracker.stop()
+        self.envelope_plot.vline.setPos(0.0)
 
         # DUMMY TIMER
         self.reset_timer = QTimer()
         self.reset_timer.setSingleShot(True)
         self.reset_timer.timeout.connect(self.do_enable_start_button)
         self.reset_timer.start(2000)
+
+
+
+
+    def do_playback_tracking(self):
+        # if self.datapool.server_play_status or whatever is "playing" or whatever
+        self.envelope_plot.vline.setPos(time()-self.datapool.t_playstart)
+
 
 
     def do_enable_start_button(self):
@@ -797,9 +864,12 @@ class GroupManualInput(QGroupBox):
         self.datapool = datapool
 
         self.setStyleSheet(self.datapool.config["stylesheet_groupbox_smallmargins"])
+        self.setMaximumHeight(220)
+
 
         layout0 = QGridLayout()
         layout0.setHorizontalSpacing(8)
+        layout0.setSizeConstraint(QLayout.SetMinimumSize)
 
         self.biv_labels = []  # Bc, Br, Bo, Bm, Bd, Vc, Ic, Im, Id
 
