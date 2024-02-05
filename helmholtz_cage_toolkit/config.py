@@ -30,6 +30,29 @@ config = {
     "enable_arrow_tips": True,  # Whether to plot vectors with tips (substantial overhead)
 
 
+    # ==== Local ====
+    # In the GUI application, you can choose to automatically reject (negate)
+    # the local Earth magnetic field vector (B_EMF). There are two ways to
+    # tell the GUI what this vector is:
+    # 1. Specify the config setting 'local_EMF' -> [bx, by, bz] nT in the
+    #    frame of the Helmholtz cage.
+    # 2. Set the config setting 'local_EMF' to 'None'. This will make the GUI
+    #    calculate the local EMF from the IGRF model. To do this, parameters
+    #    'local_latitude', 'local_longitude', 'local_altitude' must be
+    #    correctly specified. The time component will be taken from the Unix
+    #    Epoch. In addition, a rotation matrix to convert from the ENU frame
+    #    to the cage frame must be specified 'R_ENU_cageframe'.
+    # 3. Use the "Take from Bm" button in the GUI, although this will not
+    #    strictly provide B_EMF but will include ambient fields at the location
+    #    as well. The first two options are preferred over this one.
+    "local_EMF": None,
+    "local_latitude": 51.99002134132983,        # [deg] +N, -S
+    "local_longitude": 4.375289736921873,       # [deg] +E, -W
+    "local_altitude": 30,                       # [m]   +U, -D
+    "R_ENU_cageframe": [[ 0.92050, 0.39073, 0],    # R_Z(-23 deg)
+                        [-0.39073, 0.92050, 0],
+                        [       0,        0, 1]],
+
     # ==== ADC settings ====
     "adc_pollrate": 30,  # TODO STALE
 
@@ -67,10 +90,10 @@ config = {
     "visualizer_bscale": 100_000,
     "visualizer_updaterate": 30,
 
-    "plotcolor_Bo": "#00ffff",  # cyan
+    "plotcolor_Bc": "#00ffff",  # cyan
     "plotcolor_Bm": "#ffbf00",  # amber
     "plotcolor_Br": "#40ff00",  # lime
-    "plotcolor_Bc": "#ff00ff",  # magenta
+    "plotcolor_Bo": "#ff00ff",  # magenta
     
 
     # ==== LCD box styling ====

@@ -4,7 +4,6 @@ After implementing Bm_sim opts, rewrite
     example_script_client.py
     example_script_client2.py
 
-Incorporate rejection vector
 Reset Bc on disconnect of client
 Better name and versioning
 Sort functions in handle() alphabetically
@@ -15,13 +14,12 @@ Enable_on_connect shortcut: make one object that items can add themselves after
 creation, so you have one object to call, and just have to ensure the item is
 in there when program starts.
 
-Implement infrastructure for Bm_sim:
 
-Implications of bpacket -> tpacket, change related functions
+? Implications of bpacket -> tpacket, change related functions
+
 Overview of all timers + timing events + conditions + locations
 In CommandWindow, connect UI elements:
-    Manual input controlling Bc
-    Manual input values display from t-packet
+
     Offset controls + set Bd, think about how to present (vector TO reject or REJECTED VECTOR?)
     Checks + play becoming available
     Reset button

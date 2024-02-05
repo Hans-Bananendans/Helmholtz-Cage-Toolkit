@@ -38,6 +38,7 @@ from time import time, sleep
 from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.datapool import DataPool
 from helmholtz_cage_toolkit.hhcplot import HHCPlot, HHCPlotArrow
+from helmholtz_cage_toolkit.utilities import IGRF_from_UNIX
 import helmholtz_cage_toolkit.client_functions as cf
 
 class CommandWindow(QWidget):
@@ -47,7 +48,6 @@ class CommandWindow(QWidget):
         self.datapool = datapool
 
         self.datapool.command_window = self
-
 
         # ==== TIMERS
         self.timer_HHCPlot_refresh = QTimer()
@@ -279,6 +279,32 @@ class CommandWindow(QWidget):
         self.button_reset_br = QPushButton("Reset")
         self.button_reset_br.clicked.connect(self.do_reset_Br)
         layout_offset_buttons.addWidget(self.button_reset_br)
+
+        self.button_br_from_local_emf = QPushButton("Local EMF")
+        self.button_br_from_local_emf.clicked.connect(self.do_br_from_local_emf)
+        layout_offset_buttons.addWidget(self.button_br_from_local_emf)
+
+        # Generate local_emf value based on config data
+        if self.datapool.config["local_EMF"] is None:
+            try:
+                self.local_emf = IGRF_from_UNIX(
+                    self.datapool.config["local_latitude"],
+                    self.datapool.config["local_longitude"],
+                    self.datapool.config["local_altitude"]/1000,   # m to km
+                    time(),
+                    rotation_matrix=self.datapool.config["R_ENU_cageframe"]
+                )
+            except: # noqa TODO Improve exception handling
+                self.button_br_from_local_emf.setEnabled(False)
+                self.button_br_from_local_emf.setText("UNAVAILABLE")
+                print("[WARNING] Local EMF could not be calculated. Button 'Br from local EMF' disabled")
+        else:
+            if len(self.datapool.config["local_EMF"]) != 3:
+                self.button_br_from_local_emf.setEnabled(False)
+                self.button_br_from_local_emf.setText("UNAVAILABLE")
+                print("[WARNING] Local EMF could not be calculated. Button 'Br from local EMF' disabled")
+            else:
+                self.local_emf(self.datapool.config["local_EMF"])
 
         self.button_br_from_bm = QPushButton(QIcon(
             "./assets/icons/feather/corner-left-up.svg"), "Take current B_M")
@@ -583,7 +609,7 @@ class CommandWindow(QWidget):
 
         # 4. Update fields in manual_input to reflect 0. 0. 0.
         for le in self.group_manual_input.le_inputs:
-            le.setText("0.")
+            le.setText("0.0")
 
         # 5. Feedback to terminal
         print("TOTAL RESET executed successfully.")
@@ -603,6 +629,12 @@ class CommandWindow(QWidget):
         for le in (self.le_brx, self.le_bry, self.le_brz):
             le.setText("0.0")
 
+
+    def do_br_from_local_emf(self):
+        print("[DEBUG] do_br_from_local_emf()")
+        self.datapool.do_set_Br(self.local_emf)
+        for i, le in enumerate((self.le_brx, self.le_bry, self.le_brz)):
+            le.setText(str(round(self.local_emf[i]/1000, 3)))
 
     def do_Br_from_Bm(self):
         print("[DEBUG] do_Br_from_Bm()")
