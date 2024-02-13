@@ -71,6 +71,7 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QDialog,
     QFileDialog,
+    QFrame,
     QGraphicsLineItem,
     QGraphicsRectItem,
     QGraphicsView,

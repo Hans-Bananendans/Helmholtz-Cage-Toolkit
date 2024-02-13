@@ -98,7 +98,7 @@ config = {
     "plotcolor_Bo": "#ff00ff",  # magenta
     
 
-    # ==== LCD box styling ====
+    # ==== LCD box styling ==== # TODO STALE
     "lcd_maxdigits": 8,
     "stylesheet_lcd_red":
         """QLCDNumber {
