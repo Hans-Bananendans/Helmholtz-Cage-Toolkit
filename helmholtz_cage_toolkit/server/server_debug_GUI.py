@@ -59,13 +59,13 @@ class DebugWindow(QMainWindow):
 
         self.layout_inputs = self.make_layout_inputs()
         self.layout_pinout = self.make_layout_pinout()
-        self.layout_b = self.make_layout_b()
-        self.layout_vi = self.make_layout_vi()
+        self.layout_10 = self.make_layout_10()
+        self.layout_biv = self.make_layout_biv()
 
         layout0.addLayout(self.layout_inputs, 0, 0)
         layout0.addLayout(self.layout_pinout, 0, 1)
-        layout0.addLayout(self.layout_b, 1, 0)
-        layout0.addLayout(self.layout_vi, 1, 1)
+        layout0.addLayout(self.layout_10, 1, 0)
+        layout0.addLayout(self.layout_biv, 1, 1)
 
 
         centralwidget = QWidget()
@@ -334,15 +334,51 @@ class DebugWindow(QMainWindow):
         return layout_pinout
 
 
-    def make_layout_b(self):
-        layout_b = QGridLayout()
-        layout_b.addWidget(QLabel("layout_b"))
-        return layout_b
+    def make_layout_10(self):
+        layout_10 = QGridLayout()
+        # label_layout10 = QLabel("layout_10")
+        # label_layout10.setFrameStyle(QFrame.Box | QFrame.Plain)
+        # label_layout10.setLineWidth(1)
+        # layout_10.addWidget(label_layout10)
+        return layout_10
 
-    def make_layout_vi(self):
-        layout_vi = QGridLayout()
-        layout_vi.addWidget(QLabel("layout_vi"))
-        return layout_vi
+
+    def make_layout_biv(self):
+        layout_biv = QGridLayout()
+
+
+        self.labels_biv = [[0,]*3,]*6
+
+        print(self.labels_biv)
+
+        for i in range(7):
+            texth = ["", "Vvc [V]", "Vc [V]", "Vcc [V]", "Ic [mA]", "Im [mA]", "B [\u03bcT]"][i]
+            if i == 6:
+                layout_biv.addWidget(QLabelCenterB(texth), 0, i)
+            else:
+                layout_biv.addWidget(QLabelCenter(texth), 0, i)
+
+        for i, string in enumerate(("X", "Y", "Z", "norm")):
+            layout_biv.addWidget(QLabel(string), i+1, 0)
+
+        # <header>   <Vvc>   <Vc>   <Vcc>   <Ic>   <Im>
+        phs = ["-99.999", "-99.999", "-99.999", "9.999", "9.999", "-9999.999"]
+        for i in range(0, 6):
+            for j in range(0, 3):
+                if i+1 == 6:
+                    self.labels_biv[i][j] = QLabelCenterB(phs[i])
+                else:
+                    self.labels_biv[i][j] = QLabelCenter(phs[i])
+                layout_biv.addWidget(self.labels_biv[i][j], j+1, i+1)
+
+        # Norm of Bm
+        self.label_b = QLabelCenterB("-9999.999")
+        layout_biv.addWidget(self.label_b, 4, 6)
+
+        for i, stretch in enumerate((1, 1, 1, 1, 1, 1, 1, 2)):
+            layout_biv.setColumnStretch(i, stretch)
+
+        return layout_biv
 
 
     def map_config_pinnames_dict(self):
@@ -388,6 +424,7 @@ class DebugWindow(QMainWindow):
             pinnames_board["adc"][i] = "GND"
 
         return pinnames_board
+
 
     def set_update_rate(self, rate: float):
         print(f"[DEBUG] set_update_rate({rate})")
