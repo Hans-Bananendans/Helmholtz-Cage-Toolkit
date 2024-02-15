@@ -16,7 +16,7 @@ config = {
 
     "connect_on_startup": False,
     "connect_on_startup_delay": 3000,
-    "label_update_period": 10000,
+    "label_update_period": 5000,
     "time_correction_period": 60000,
     "pings_per_test": 8,
 
@@ -89,7 +89,7 @@ config = {
     # ==== Plotwindow settings ====
     "hhcplot_windowsize": (560, 220),
     "visualizer_windowsize": (560, 120),
-    "visualizer_bscale": 100_000,
+    "visualizer_bscale": 200_000,
     "visualizer_updaterate": 30,
 
     "plotcolor_Bc": "#00ffff",  # cyan

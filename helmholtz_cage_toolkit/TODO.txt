@@ -27,7 +27,6 @@ In CommandWindow, connect UI elements:
     Recording controls
     Envelope graph for schedule
 Disable play controls section in manual mode
-Flip-over for manual input (disconnected state)
 Flip-overs for Bm_display and graphs
 Think of checks and hook all the condis in:
     - Connected to server (duh)
@@ -36,7 +35,6 @@ Think of checks and hook all the condis in:
     - Data is coming in from HHC
     - Recording armed
 
-HHCPlot -> Antialiasing possible?
 HHCPlot -> Generalize plotting functions for different directions
 HHCPlot -> Make direction of plots specifyable in config
 Apply all-new HHCPlot class to CyclicsWindow

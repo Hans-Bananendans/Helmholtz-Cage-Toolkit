@@ -733,6 +733,8 @@ class CommandWindow(QWidget):
 
 
     def do_on_connected(self):
+        print("[DEBUG] do_on_connected()")
+
         for group in self.groups_to_enable_on_connect:
             group.setEnabled(True)
 
@@ -746,6 +748,8 @@ class CommandWindow(QWidget):
         self.do_select_mode("manual")
 
     def do_on_disconnected(self):
+        print("[DEBUG] do_on_disconnected()")
+
         self.timer_values_refresh.stop()
         self.timer_HHCPlot_refresh.stop()
 
