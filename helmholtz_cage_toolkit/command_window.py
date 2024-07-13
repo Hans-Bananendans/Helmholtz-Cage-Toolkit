@@ -151,13 +151,13 @@ class CommandWindow(QWidget):
         self.hhcplot_xy = HHCPlot(datapool, arrows_xy, direction="mXY")
 
 
-        print("hhcplot_yz instance: ", self.hhcplot_yz)
-        for i, arrow in enumerate(self.hhcplot_yz.arrows):
-            print(f"arrow_yz_{i}: {arrow}")
-
-        print("hhcplot_xy instance: ", self.hhcplot_xy)
-        for i, arrow in enumerate(self.hhcplot_xy.arrows):
-            print(f"arrow_xy_{i}: {arrow}")
+        # print("[DEBUG] hhcplot_yz instance: ", self.hhcplot_yz)
+        # for i, arrow in enumerate(self.hhcplot_yz.arrows):
+        #     print(f"arrow_yz_{i}: {arrow}")
+        #
+        # print("[DEBUG] hhcplot_xy instance: ", self.hhcplot_xy)
+        # for i, arrow in enumerate(self.hhcplot_xy.arrows):
+        #     print(f"arrow_xy_{i}: {arrow}")
 
 
 

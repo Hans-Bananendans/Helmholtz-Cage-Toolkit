@@ -2,6 +2,7 @@
 from time import time
 from scipy.special import jv
 from pyIGRF import igrf_value
+import numpy as np # TODO REMOVE
 
 import pyqtgraph as pg
 from pyqtgraph.opengl import (
@@ -317,18 +318,18 @@ class OrbitVisualizer(GLViewWidget):
         self.data = datapool
 
         # ==== PREAMBLE
-        self.points, self.ma, self.ta, self.gamma, self.huv, self.v_xyz = self.generate_points()
+        self.points, self.v_xyz, self.ma, self.ta, self.gamma, self.huv = self.generate_points()
         self.dt = self.data.orbit.get_period()/self.data.orbit_subs
         self.dth_E = Earth().axial_rate*self.dt
-        self.year = 2020.
+        self.year = 2024.
 
         self.Rta_ECI_SI = empty((self.data.orbit_subs, 3, 3))
 
         for i in range(self.data.orbit_subs):
             self.Rta_ECI_SI[i, :, :] = vstack([
-                uv3d(self.v_xyz[i]),
-                self.huv,
-                cross3d(uv3d(self.v_xyz[i]), self.huv)])
+                uv3d(self.v_xyz[i]),                        # X-component points along velocity vector
+                self.huv,                                   # Y-component points at angular momentum vector
+                cross3d(uv3d(self.v_xyz[i]), self.huv)])    # Z-component points along the cross product of the two
 
         self.ps = self.data.config["ov_plotscale"]  # Plot scale
         self.c = self.data.config["ov_plotcolours"]
@@ -464,7 +465,6 @@ class OrbitVisualizer(GLViewWidget):
         # Quick and dirty 3D vector plot of field elements
         # Skip if neither scatter nor lineplots are selected, to prevent performance hog:
         if self.data.config["ov_draw"]["B_fieldgrid_scatterplot"] or self.data.config["ov_draw"]["B_fieldgrid_lineplot"]:
-            print("CHECK")
             # Sort out some parameters
             self.bfg_lp_scale = 1E-5 * self.ps
             layers = 3
@@ -746,9 +746,6 @@ class OrbitVisualizer(GLViewWidget):
         B_NED = array([bx, by, bz])
         self.B = R_NED_ECI(self.rlonglat[1], self.rlonglat[2]) @ B_NED
 
-        # print("B_NED:", B_NED)
-        # print("B_ECI:", self.B)
-
         base = self.points[self.data.i_satpos]
         tip = base + self.B*self.bv_scale
 
@@ -830,10 +827,6 @@ class OrbitVisualizer(GLViewWidget):
         xyz_sat = self.points[self.data.i_satpos]
         xy0_sat = array([xyz_sat[0], xyz_sat[1], 0])
 
-        # print("[DEBUG] xyz_sat|ECI :", xyz_sat.round(0))
-        # print("[DEBUG] xyz_sat|ECEF:", (R_ECI_ECEF(self.th_E).transpose()@xyz_sat).round(0))
-
-
         # ==== FRAME TRIPODS
         # Update ECEF tripod:
         if self.data.config["ov_rotate_earth"]:
@@ -897,6 +890,9 @@ class OrbitVisualizer(GLViewWidget):
         self.B = R_NED_ECI(self.rlonglat[1], self.rlonglat[2]) @ B_NED
         if self.data.config["ov_draw"]["B_vector"] and self.data.config["ov_anim"]["B_vector"]:
             self.bv_plotitem.setData(pos=[xyz_sat, xyz_sat+self.B*self.bv_scale])
+
+        # print(f"[OLD] [{self.data.i_satpos}] B={self.B.round()} |B|={round(np.linalg.norm(self.B))}")
+
 
         # # TODO: De-shittify
         # rlonglat = conv_ECEF_geoc(xyz_sat)

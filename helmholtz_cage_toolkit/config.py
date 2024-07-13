@@ -96,7 +96,7 @@ config = {
     "plotcolor_Bm": "#ffbf00",  # amber
     "plotcolor_Br": "#40ff00",  # lime
     "plotcolor_Bo": "#ff00ff",  # magenta
-    
+
 
     # ==== LCD box styling ==== # TODO STALE
     "lcd_maxdigits": 8,
@@ -164,10 +164,10 @@ config = {
     "ov_draw": {
         "XY_grid": True,
         "tripod_ECI": True,
-        "tripod_ECEF": False,
+        "tripod_ECEF": True,
         "tripod_NED": False,
         "tripod_SI": True,
-        "tripod_B": False,
+        "tripod_B": True,
         "earth_model": True,
         "satellite": True,
         "satellite_helpers": True,
@@ -175,7 +175,7 @@ config = {
         "orbit_lineplot": True,
         "orbit_scatterplot": False,
         "orbit_helpers": True,
-        "velocity_vector": False,
+        "velocity_vector": True,
         "B_vector": True,
         "B_fieldgrid_lineplot": False,
         "B_fieldgrid_scatterplot": False,
@@ -196,6 +196,41 @@ config = {
     "ov_earth_model_smoothing": True,
     "ov_use_antialiasing": True,
     "ov_endpatching": True,
+
+
+    # ==== Orbital generator options ====
+    "eotc_order": 12,                       # Default order to use for the Equation of the Centre approximation
+    "orbit_spacing": "isochronal",          # Default orbit point spacing
+
+    # ==== Orbital_default_parameters ====
+    "orbital_default_generation_parameters": {
+        # Orbital elements
+        "orbit_eccentricity": 0.15,         # [-]
+        "orbit_inclination": 90,            # [deg]
+        "orbit_pericentre_altitude": 600E3, # [m]
+        "orbit_RAAN": 10.,                   # [deg]
+        "orbit_argp": 20.,                   # [deg]
+        "orbit_ma0": 60.,                    # [deg]
+
+        # Body configuration
+        "angle_body_x_0": 0.,               # [deg]
+        "angle_body_y_0": 0.,               # [deg]
+        "angle_body_z_0": 0.,               # [deg]
+        "rate_body_x": 0.,                  # [deg/s]
+        "rate_body_y": 0.,                  # [deg/s]
+        "rate_body_z": 0.,                  # [deg/s]
+
+        # Various
+        "earth_zero_datum": 0,              # [deg]
+        "date0": 2024.0,                    # [decimal date]
+
+        # Simulation settings
+        "n_orbit_subs": 128,                # [-] <positive int>
+        "n_step": 512,                      # [-] <positive int>
+        # "interpolation_factor": 1,          # [-] <positive int>
+        # "time_speed_factor": 1.0            # [-] <positive float>
+    },
+
 
 
     # ==== Cyclics_default_parameters ====
@@ -290,38 +325,43 @@ config = {
             "icon": "./assets/icons/feather/sliders.svg"
         },
         2: {
-            "name": "OrbitDesignWindow",
+            "name": "OrbitalWindow",
             "checkable": True,
             "icon": "./assets/icons/orbitB.svg"
         },
         3: {
+            "name": "OrbitDesignWindow",
+            "checkable": True,
+            "icon": "./assets/icons/orbitB.svg"
+        },
+        4: {
             "name": "GeneratorWindow",
             "checkable": True,
             "icon": "./assets/icons/feather/activity.svg"
         },
-        4: {
+        5: {
             "name": "WebcamWindow",
             "checkable": True,
             "icon": "./assets/icons/feather/video.svg"
         },
-        5: {
+        6: {
             "name": "ControlWindow",
             "checkable": True,
             "icon": "./assets/icons/feather/sliders.svg"
         },
-        6: {
+        7: {
             "name": "Tab 6",
             "checkable": True,
             "icon": "./assets/icons/feather/box.svg"
         },
-        7: {
+        8: {
             "name": "Tab 7",
             "checkable": True,
             "icon": "./assets/icons/feather/info.svg"
         },
     },
 
-    "default_tab": 0,
+    "default_tab": 2,
 
     # ==== Stylesheets for individual widgets ====
     "stylesheet_groupbox_smallmargins_notitle":
@@ -440,3 +480,4 @@ config = {
         ''',
 
 }
+

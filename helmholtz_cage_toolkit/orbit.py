@@ -2,6 +2,8 @@ from time import time
 
 from scipy.special import jv
 
+import matplotlib.pyplot as plt #TODO REMOVE
+
 from helmholtz_cage_toolkit import *
 
 class Orbit:
@@ -24,13 +26,12 @@ class Orbit:
         self.ma0 = self.d2r*(ta % 360)      # Initial Mean anomaly
 
         # General orbital properties
-        self.r_p = (self.body.r + self.h_r)/(1-self.e)   # Distance of pericentre
+        # self.r_p = (self.body.r + self.h_r)/(1-self.e)   # Distance of pericentre #TODO REMOVE
+        self.r_p = self.body.r + self.h_r   # Distance of pericentre
         self.r_a = self.r_p*(1+e)/(1-e)     # Distance of apocentre
         self.a = (self.r_p+self.r_a)/2      # Semi-major axis
         self.b = (self.r_p*self.r_a)**0.5   # Semi-minor axis
         self.period = 2*pi * (self.a**3 / self.body.gm)**0.5  # Orbital period
-
-
 
     def orbit_transformation_matrix(self):
         so, sO, si = sin(self.argp), sin(self.raan), sin(self.i)
@@ -68,7 +69,7 @@ class Orbit:
         # (see: https://en.wikipedia.org/wiki/Equation_of_the_center#Series_expansion)
         v = M
         if 0 < e < 1:  # If e == 0 (circular orbit) don't bother
-            b = 1 / e * (1 - (1 - e * e) ** 0.5)
+            b = 1/e * (1 - (1-e*e)**0.5)
             for s in range(1, order):
                 bt = 0
                 for p in range(1, order):
@@ -77,7 +78,7 @@ class Orbit:
 
         return v
 
-    def draw(self, subdivisions=128, spacing="isochronal", order=12):
+    def draw(self, subdivisions=128, spacing="isochronal", eotc_order=12):
 
         t0 = time()
         if spacing in ("equitemporal", "isochronal"):
@@ -90,7 +91,7 @@ class Orbit:
             true_anomaly = zeros(len(mean_anomaly))
             for i in range(len(mean_anomaly)):
                 true_anomaly[i] = self.equation_of_the_center(
-                    mean_anomaly[i], self.e, order=order)
+                    mean_anomaly[i], self.e, order=eotc_order)
 
         elif spacing == "equidistant":
             # Equally spacing points along orbit:
@@ -123,6 +124,8 @@ class Orbit:
             v_xyzf[i, 0:2] = vabs[i]*array([[cos(tg), -sin(tg)], [sin(tg), cos(tg)]])@array([0., 1.])
             v_xyzf[i, 2] = 0.
 
+
+
         # Apply transformation to ellipse coordinates using orbital elements
         T = self.orbit_transformation_matrix()
         xyz = empty((len(true_anomaly), 3), dtype=float)
@@ -138,9 +141,9 @@ class Orbit:
         # direction for unperturbed orbits with e>1)
         H_unit_vector = dot(T, array([0, 0, 1]))
 
-        print(f"[DEBUG] draw() time: {round((time()-t0)*1E6, 1)} us")
+        # print(f"[DEBUG] draw() time: {round((time()-t0)*1E6, 1)} us")
 
-        return xyz, mean_anomaly, true_anomaly, gamma, H_unit_vector, v_xyz
+        return xyz, v_xyz, mean_anomaly, true_anomaly, gamma, H_unit_vector
 
 
     def calc(self, ):
@@ -152,6 +155,7 @@ class Orbit:
         ax.plot(x, y, "r")
         ax.set(aspect=1)
         plt.show()
+
 
     def print_properties(self):
         # TODO

@@ -17,6 +17,9 @@ parent
 
 """
 
+from time import time
+import numpy as np # TODO REMOVE
+
 from helmholtz_cage_toolkit import *
 
 from helmholtz_cage_toolkit.schedule_player import SchedulePlayer
@@ -28,9 +31,11 @@ from helmholtz_cage_toolkit.generator_cyclics import (
     interpolation_parameters,
     interpolate,
 )
+from helmholtz_cage_toolkit.generator_orbital import generator_orbital2
+from helmholtz_cage_toolkit.orbital_plot import OrbitalPlot
 
 
-class CyclicsWindow(QWidget):
+class OrbitalWindow(QWidget):
     def __init__(self, config, datapool):
         super().__init__()
 
@@ -40,188 +45,176 @@ class CyclicsWindow(QWidget):
         layout0 = QGridLayout()
 
 
-        group_cyclics_input = CyclicsInput(self.datapool)
-        group_cyclics_visualizer = VisualizerCyclics(self.datapool)
-        group_cyclics_input.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        group_cyclics_visualizer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        group_orbital_input = OrbitalInput(self.datapool)
+        group_orbital_visualizer = OrbitalVisualizer(self.datapool)
+        group_orbital_input.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        group_orbital_visualizer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
 
-        layout0.addWidget(group_cyclics_input, 0, 0)
-        layout0.addWidget(group_cyclics_visualizer, 0, 1)
+        layout0.addWidget(group_orbital_input, 0, 0)
+        layout0.addWidget(group_orbital_visualizer, 0, 1)
         self.setLayout(layout0)
 
 
-class CyclicsInput(QGroupBox):
+class OrbitalInput(QGroupBox):
     def __init__(self, datapool) -> None:
         super().__init__("Generation Parameters")
         self.datapool = datapool
-        self.datapool.cyclics_input = self
+        self.datapool.orbital_input = self
 
         self.setStyleSheet(self.datapool.config["stylesheet_groupbox_smallmargins"])
 
         self.setMinimumWidth(560)
-
-        self.ui_elements = {
-            "duration": {
-                "group": "common",
-                "pos": (1, 1),
-                "label": QLabel("Duration [s]:"),
-                "duration": QLineEdit(),
-            },
-            "resolution": {
-                "group": "common",
-                "pos": (1, 4),
-                "label": QLabel("Resolution [S/s]:"),
-                "resolution": QLineEdit(),
-            },
-            # "predelay": {
-            #     "group": "common",
-            #     "pos": (2, 1),
-            #     "label": QLabel("Predelay [s]:"),
-            #     "predelay": QLineEdit(),
-            # },
-            # "postdelay": {
-            #     "group": "common",
-            #     "pos": (2, 4),
-            #     "label": QLabel("Postdelay [s]:"),
-            #     "postdelay": QLineEdit(),
-            # },
-            "labels": {
-                "group": "xyz",
-                "pos": (1, 0),
-                "alignment": Qt.AlignCenter,
-                "label": QLabel(),
-                "labelX": QLabel("X"),
-                "labelY": QLabel("Y"),
-                "labelZ": QLabel("Z"),
-            },
-            "fbase": {
-                "group": "xyz",
-                "pos": (2, 0),
-                "cb_items": ["constant", "linear", "sine", "sawtooth", "triangle", "square"],
-                "label": QLabel("Base function:"),
-                "fbaseX": QComboBox(),
-                "fbaseY": QComboBox(),
-                "fbaseZ": QComboBox(),
-            },
-            "amplitude": {
-                "group": "xyz",
-                "pos": (3, 0),
-                "label": QLabel("Amp. [\u03bcT]:"),
-                "amplitudeX": QLineEdit(),
-                "amplitudeY": QLineEdit(),
-                "amplitudeZ": QLineEdit(),
-            },
-            "frequency": {
-                "group": "xyz",
-                "pos": (4, 0),
-                "label": QLabel("Frequency [Hz]:"),
-                "frequencyX": QLineEdit(),
-                "frequencyY": QLineEdit(),
-                "frequencyZ": QLineEdit(),
-            },
-            "phase": {
-                "group": "xyz",
-                "pos": (5, 0),
-                "label": QLabel("Phase [-\u03c0 rad]:"),
-                "phaseX": QLineEdit(),
-                "phaseY": QLineEdit(),
-                "phaseZ": QLineEdit(),
-            },
-            "offset": {
-                "group": "xyz",
-                "pos": (6, 0),
-                "label": QLabel("Offset [\u03bcT]:"),
-                "offsetX": QLineEdit(),
-                "offsetY": QLineEdit(),
-                "offsetZ": QLineEdit(),
-            },
-            "fbase_noise": {
-                "group": "xyz",
-                "pos": (7, 0),
-                "cb_items": ["gaussian", "uniform"],
-                "label": QLabel("Noise function:"),
-                "fbase_noiseX": QComboBox(),
-                "fbase_noiseY": QComboBox(),
-                "fbase_noiseZ": QComboBox(),
-            },
-            "noise_factor": {
-                "group": "xyz",
-                "pos": (8, 0),
-                "label": QLabel("Factor:"),
-                "noise_factorX": QLineEdit(),
-                "noise_factorY": QLineEdit(),
-                "noise_factorZ": QLineEdit(),
-            },
-        }
-
-        self.interpolation_ui_elements = {
-            "cb_items": ["none", "linear"],  # TODO: Expand with cubic, spline, etc.
-            "label_function": QLabel("Function:"),
-            "function": QComboBox(),
-            "label_factor": QLabel("Factor:"),
-            "factor": QLineEdit(),
-        }
-
-        # Make two layouts for the generation parameters
-        self.layout_common_grid = QGridLayout()
-        self.layout_xyz_grid = QGridLayout()
-
-        # Make a layout for the interpolation parameters
-        self.layout_interpolation = QHBoxLayout()
-
-        # Call functions to populate these layouts
-        self.populate_cyclics()
-        self.populate_interpolation_parameters()
-
-        # Get the default values for both sets
-        defaults_cyclics = self.datapool.config["cyclics_default_generation_parameters"]
-        defaults_interpolation = self.datapool.config["default_interpolation_parameters"]
-
-        # Deposit the default values onto the fields
-        self.deposit_cyclics(defaults_cyclics)
-        self.deposit_interpolation_parameters(defaults_interpolation)
-
-        # Create a button to trigger self.generate()
-        button_generate = QPushButton("Generate!")
-        button_generate.clicked.connect(self.generate)
-
-        # Groupbox for common generation parameters
-        group_common = QGroupBox()
-        group_common.setLayout(self.layout_common_grid)
-        group_common.setStyleSheet(
-            self.datapool.config["stylesheet_groupbox_smallmargins_notitle"]
-        )
-
-        # Groupbox for XYZ specific generation parameters
-        group_xyz = QGroupBox()
-        group_xyz.setLayout(self.layout_xyz_grid)
-        group_xyz.setStyleSheet(
-            self.datapool.config["stylesheet_groupbox_smallmargins_notitle"]
-        )
-
-        # Groupbox for interpolation parameters
-        group_interpolation = QGroupBox("Interpolation")
-        group_interpolation.setLayout(self.layout_interpolation)
-        group_interpolation.setStyleSheet(
-            self.datapool.config["stylesheet_groupbox_smallmargins"]
-        )
+        #
+        # self.ui_elements = {
+        #     "duration": {
+        #         "group": "common",
+        #         "pos": (1, 1),
+        #         "label": QLabel("Duration [s]:"),
+        #         "duration": QLineEdit(),
+        #     },
+        #     "resolution": {
+        #         "group": "common",
+        #         "pos": (1, 4),
+        #         "label": QLabel("Resolution [S/s]:"),
+        #         "resolution": QLineEdit(),
+        #     },
+        #     "labels": {
+        #         "group": "xyz",
+        #         "pos": (1, 0),
+        #         "alignment": Qt.AlignCenter,
+        #         "label": QLabel(),
+        #         "labelX": QLabel("X"),
+        #         "labelY": QLabel("Y"),
+        #         "labelZ": QLabel("Z"),
+        #     },
+        #     "fbase": {
+        #         "group": "xyz",
+        #         "pos": (2, 0),
+        #         "cb_items": ["constant", "linear", "sine", "sawtooth", "triangle", "square"],
+        #         "label": QLabel("Base function:"),
+        #         "fbaseX": QComboBox(),
+        #         "fbaseY": QComboBox(),
+        #         "fbaseZ": QComboBox(),
+        #     },
+        #     "amplitude": {
+        #         "group": "xyz",
+        #         "pos": (3, 0),
+        #         "label": QLabel("Amp. [\u03bcT]:"),
+        #         "amplitudeX": QLineEdit(),
+        #         "amplitudeY": QLineEdit(),
+        #         "amplitudeZ": QLineEdit(),
+        #     },
+        #     "frequency": {
+        #         "group": "xyz",
+        #         "pos": (4, 0),
+        #         "label": QLabel("Frequency [Hz]:"),
+        #         "frequencyX": QLineEdit(),
+        #         "frequencyY": QLineEdit(),
+        #         "frequencyZ": QLineEdit(),
+        #     },
+        #     "phase": {
+        #         "group": "xyz",
+        #         "pos": (5, 0),
+        #         "label": QLabel("Phase [-\u03c0 rad]:"),
+        #         "phaseX": QLineEdit(),
+        #         "phaseY": QLineEdit(),
+        #         "phaseZ": QLineEdit(),
+        #     },
+        #     "offset": {
+        #         "group": "xyz",
+        #         "pos": (6, 0),
+        #         "label": QLabel("Offset [\u03bcT]:"),
+        #         "offsetX": QLineEdit(),
+        #         "offsetY": QLineEdit(),
+        #         "offsetZ": QLineEdit(),
+        #     },
+        #     "fbase_noise": {
+        #         "group": "xyz",
+        #         "pos": (7, 0),
+        #         "cb_items": ["gaussian", "uniform"],
+        #         "label": QLabel("Noise function:"),
+        #         "fbase_noiseX": QComboBox(),
+        #         "fbase_noiseY": QComboBox(),
+        #         "fbase_noiseZ": QComboBox(),
+        #     },
+        #     "noise_factor": {
+        #         "group": "xyz",
+        #         "pos": (8, 0),
+        #         "label": QLabel("Factor:"),
+        #         "noise_factorX": QLineEdit(),
+        #         "noise_factorY": QLineEdit(),
+        #         "noise_factorZ": QLineEdit(),
+        #     },
+        # }
+        #
+        # self.interpolation_ui_elements = {
+        #     "cb_items": ["none", "linear"],  # TODO: Expand with cubic, spline, etc.
+        #     "label_function": QLabel("Function:"),
+        #     "function": QComboBox(),
+        #     "label_factor": QLabel("Factor:"),
+        #     "factor": QLineEdit(),
+        # }
+        #
+        # # Make two layouts for the generation parameters
+        # self.layout_common_grid = QGridLayout()
+        # self.layout_xyz_grid = QGridLayout()
+        #
+        # # Make a layout for the interpolation parameters
+        # self.layout_interpolation = QHBoxLayout()
+        #
+        # # Call functions to populate these layouts
+        # self.populate_cyclics()
+        # self.populate_interpolation_parameters()
+        #
+        # # Get the default values for both sets
+        # defaults_cyclics = self.datapool.config["cyclics_default_generation_parameters"]
+        # defaults_interpolation = self.datapool.config["default_interpolation_parameters"]
+        #
+        # # Deposit the default values onto the fields
+        # self.deposit_cyclics(defaults_cyclics)
+        # self.deposit_interpolation_parameters(defaults_interpolation)
+        #
+        # # Create a button to trigger self.generate()
+        # button_generate = QPushButton("Generate!")
+        # button_generate.clicked.connect(self.generate)
+        #
+        # # Groupbox for common generation parameters
+        # group_common = QGroupBox()
+        # group_common.setLayout(self.layout_common_grid)
+        # group_common.setStyleSheet(
+        #     self.datapool.config["stylesheet_groupbox_smallmargins_notitle"]
+        # )
+        #
+        # # Groupbox for XYZ specific generation parameters
+        # group_xyz = QGroupBox()
+        # group_xyz.setLayout(self.layout_xyz_grid)
+        # group_xyz.setStyleSheet(
+        #     self.datapool.config["stylesheet_groupbox_smallmargins_notitle"]
+        # )
+        #
+        # # Groupbox for interpolation parameters
+        # group_interpolation = QGroupBox("Interpolation")
+        # group_interpolation.setLayout(self.layout_interpolation)
+        # group_interpolation.setStyleSheet(
+        #     self.datapool.config["stylesheet_groupbox_smallmargins"]
+        # )
 
 
         # Create and configure main layout
         layout0 = QVBoxLayout()
 
-        layout0.addWidget(group_common)
-        layout0.addWidget(group_xyz)
-        layout0.addWidget(group_interpolation)
-        layout0.addWidget(button_generate)
+        # layout0.addWidget(group_common)
+        # layout0.addWidget(group_xyz)
+        # layout0.addWidget(group_interpolation)
+        # layout0.addWidget(button_generate)
 
         self.setLayout(layout0)
 
-    def populate_cyclics(self):
-        """Populates the UI with input widgets for cyclics generation
+    def populate_orbital(self):
+        """Populates the UI with input widgets for orbital generation
         parameters.
         """
-        # print("[DEBUG] populate_cyclics()")
+        print("[DEBUG] populate_orbital()")
         for prop, elements in self.ui_elements.items():
             for key, val in elements.items():
                 i, j = elements["pos"]
@@ -373,7 +366,7 @@ class CyclicsInput(QGroupBox):
     # @Slot()
     def generate(self):
         """Invokes the Cyclics Generator
-        1. Slurp values
+        1. slurp values
         2. Assemble generation_parameters
         3. Shove into generator_cyclics(), get (t, B)
         4. Slurp interpolation_parameters
@@ -399,7 +392,7 @@ class CyclicsInput(QGroupBox):
         self.datapool.refresh()
 
 
-class VisualizerCyclics(QGroupBox):
+class OrbitalVisualizer(QGroupBox):
     def __init__(self, datapool) -> None:
         # super().__init__("Visualizations")
         super().__init__()
@@ -407,7 +400,7 @@ class VisualizerCyclics(QGroupBox):
         # Import datapool reference
         self.datapool = datapool
         # Place reference to self into datapool for reference
-        self.datapool.cyclics_visualizer = self
+        self.datapool.orbital_visualizer = self
 
         # Apply stylesheet for smaller margins
         self.setStyleSheet(
@@ -422,51 +415,78 @@ class VisualizerCyclics(QGroupBox):
         # Fetch preconfigured bscale, which plotting functions will use
         self.bscale = self.datapool.config["visualizer_bscale"]
 
+        # Define orbital plot
+        self.widget_orbitalplot = OrbitalPlot(self.datapool)
 
-        # Define envelope plot
-        self.widget_envelopeplot = EnvelopePlot(self.datapool)
-
-        # Define HHC plots
-        self.hhcplot_yz = HHCPlot(direction="YZ")
-        self.hhcplot_mxy = HHCPlot(direction="mXY")
-
-        # Plot path ghosts on HHC plots
-        self.plot_ghosts()
+        self.widget_orbitalplot.draw_statics()
 
 
-        # Put HHC Plots and relevant labels in their own layout
-        layout_hhcplot = QGridLayout()
-        layout_hhcplot.addWidget(QLabel("Front view (YZ)"), 0, 0)
-        layout_hhcplot.addWidget(self.hhcplot_yz, 1, 0)
+        # TODO REMOVE DEBUG
+        genparams = self.datapool.config["orbital_default_generation_parameters"]
+        self.datapool.simdata = generator_orbital2(genparams, datapool)
 
-        layout_hhcplot.addWidget(QLabel("Top view (-XY)"), 0, 1)
-        layout_hhcplot.addWidget(self.hhcplot_mxy, 1, 1)
+        self.widget_orbitalplot.draw_simdata()
 
-
-        # Define subclassed SchedulePlayer object (does not have a UI)
-        self.scheduleplayer = SchedulePlayerCyclics(
-            self.hhcplot_mxy, self.hhcplot_yz, self.widget_envelopeplot,
-            self.bscale, self.datapool)
-        # Pass reference to datapool for reference
-        self.datapool.cyclics_scheduleplayer = self.scheduleplayer
-        # Set playback multiplier
-        self.mult = 1
-
-        # Create PlayerControl widget
-        self.group_playcontrols = PlayerControls(
-            self.datapool, self.scheduleplayer
-        )
+        # # Define envelope plot
+        # self.widget_envelopeplot = EnvelopePlot(self.datapool)
+        #
+        # # Define HHC plots
+        # self.hhcplot_yz = HHCPlot(direction="YZ")
+        # self.hhcplot_mxy = HHCPlot(direction="mXY")
+        #
+        # # Plot path ghosts on HHC plots
+        # self.plot_ghosts()
+        #
+        #
+        # # Put HHC Plots and relevant labels in their own layout
+        # layout_hhcplot = QGridLayout()
+        # layout_hhcplot.addWidget(QLabel("Front view (YZ)"), 0, 0)
+        # layout_hhcplot.addWidget(self.hhcplot_yz, 1, 0)
+        #
+        # layout_hhcplot.addWidget(QLabel("Top view (-XY)"), 0, 1)
+        # layout_hhcplot.addWidget(self.hhcplot_mxy, 1, 1)
+        #
+        #
+        # # Define subclassed SchedulePlayer object (does not have a UI)
+        # self.scheduleplayer = SchedulePlayerCyclics(
+        #     self.hhcplot_mxy, self.hhcplot_yz, self.widget_envelopeplot,
+        #     self.bscale, self.datapool)
+        # # Pass reference to datapool for reference
+        # self.datapool.cyclics_scheduleplayer = self.scheduleplayer
+        # # Set playback multiplier
+        # self.mult = 1
+        #
+        # # Create PlayerControl widget
+        # self.group_playcontrols = PlayerControls(
+        #     self.datapool, self.scheduleplayer
+        # )
 
 
         # Make main layout
         layout0 = QVBoxLayout()
 
-        layout0.addWidget(self.widget_envelopeplot)
-        layout0.addWidget(self.group_playcontrols)
-        layout0.addLayout(layout_hhcplot)
+        # layout0.addWidget(self.widget_envelopeplot)
+        # layout0.addWidget(self.group_playcontrols)
+        # layout0.addLayout(layout_hhcplot)
+        layout0.addWidget(self.widget_orbitalplot)
 
         self.setLayout(layout0)
 
+        # Timer
+        self.i_step = 0
+        self.play_timer = QTimer()
+        self.play_timer.timeout.connect(self.update_orbital_plot)
+        self.play_timer.start(50)  # TODO
+
+    def update_orbital_plot(self, timing=True):
+        # print(f"[NEW] [{self.i_step}] B={self.datapool.simdata['B_ECI'][self.i_step].round()} |B|={round(np.linalg.norm(self.datapool.simdata['B_ECI'][self.i_step]))}")
+        if timing:
+            t0 = time()
+        self.widget_orbitalplot.draw_step(self.i_step)
+        self.i_step = (self.i_step + 1) % len(self.datapool.simdata["i_step"])
+        if timing:
+            t = round((time()-t0)*1000, 3)
+            print(f"update_orbital_plot(): i_step {self.i_step} - time: {t} ms")
 
     def refresh(self):
         """When the schedule, or other parameters relevant to the

@@ -21,8 +21,10 @@ class DataPool:
         self.command_window = None
 
         self.bscale = self.config["visualizer_bscale"]
-        self.cyclics_visualizer = None
         self.cyclics_input = None
+        self.cyclics_visualizer = None
+        self.orbital_input = None
+        self.orbital_visualizer = None
 
         # self.cyclics_plot = None
         # self.cyclics_scheduleplayer = None
@@ -84,13 +86,16 @@ class DataPool:
 
         # Schedule
         self.init_schedule()
+        self.init_simdata()
 
         # Orbital parameters
         # TODO: Fix these presets Replace
-        self.orbit = Orbit(Earth(), 100E3, 0.25, 60, 120, 0, 0)
-        self.orbit_subs = 256
-        self.orbit_spacing = "isochronal"
-        self.i_satpos = 0
+
+        self.init_orbit()
+        # self.orbit = Orbit(Earth(), 400E3, 0.0, 0, 0, 0, 0)
+        self.orbit_subs = self.config["orbital_default_generation_parameters"]["n_orbit_subs"]
+        self.orbit_spacing = self.config["orbit_spacing"]
+        self.i_satpos = 0 # TODO DEPRECATED
 
         self.checks = {
             "connection_up":
@@ -315,6 +320,19 @@ class DataPool:
         self.generation_parameters_orbital = {}
         self.interpolation_parameters = {}
 
+    def init_simdata(self): #TODO UPDATE
+        self.simdata = None
+
+    def init_orbit(self):
+        odgp = self.config["orbital_default_generation_parameters"]
+        self.orbit = Orbit(
+            Earth(),
+            odgp["orbit_pericentre_altitude"],
+            odgp["orbit_eccentricity"],
+            odgp["orbit_inclination"],
+            odgp["orbit_RAAN"],
+            odgp["orbit_argp"],
+            odgp["orbit_ma0"],)
 
     def do_start_playback(self):
         t_before = time()
