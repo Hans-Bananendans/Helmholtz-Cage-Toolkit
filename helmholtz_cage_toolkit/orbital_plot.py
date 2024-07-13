@@ -48,6 +48,9 @@ class OrbitalPlot(GLViewWidget):
         print("[DEBUG] OrbitalPlot.__init__() called")
 
         self.data = datapool
+        self.data.orbital_plot = self
+
+        self.resize(720, 360)
 
         # Shorthands for common config settings
         self.ps = self.data.config["ov_plotscale"]  # Plot scale
@@ -89,7 +92,7 @@ class OrbitalPlot(GLViewWidget):
             self.addItem(self.earth_meshitem)
 
 
-    def draw_simdata(self, i_step=92):
+    def draw_simdata(self, i_step=0):
 
         simdata = self.data.simdata
 

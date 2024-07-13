@@ -50,6 +50,8 @@ class OrbitalWindow(QWidget):
         group_orbital_input.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         group_orbital_visualizer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
 
+        group_orbital_input.setMaximumWidth(360)
+
         layout0.addWidget(group_orbital_input, 0, 0)
         layout0.addWidget(group_orbital_visualizer, 0, 1)
         self.setLayout(layout0)
@@ -63,150 +65,186 @@ class OrbitalInput(QGroupBox):
 
         self.setStyleSheet(self.datapool.config["stylesheet_groupbox_smallmargins"])
 
-        self.setMinimumWidth(560)
-        #
-        # self.ui_elements = {
-        #     "duration": {
-        #         "group": "common",
-        #         "pos": (1, 1),
-        #         "label": QLabel("Duration [s]:"),
-        #         "duration": QLineEdit(),
-        #     },
-        #     "resolution": {
-        #         "group": "common",
-        #         "pos": (1, 4),
-        #         "label": QLabel("Resolution [S/s]:"),
-        #         "resolution": QLineEdit(),
-        #     },
-        #     "labels": {
-        #         "group": "xyz",
-        #         "pos": (1, 0),
-        #         "alignment": Qt.AlignCenter,
-        #         "label": QLabel(),
-        #         "labelX": QLabel("X"),
-        #         "labelY": QLabel("Y"),
-        #         "labelZ": QLabel("Z"),
-        #     },
-        #     "fbase": {
-        #         "group": "xyz",
-        #         "pos": (2, 0),
-        #         "cb_items": ["constant", "linear", "sine", "sawtooth", "triangle", "square"],
-        #         "label": QLabel("Base function:"),
-        #         "fbaseX": QComboBox(),
-        #         "fbaseY": QComboBox(),
-        #         "fbaseZ": QComboBox(),
-        #     },
-        #     "amplitude": {
-        #         "group": "xyz",
-        #         "pos": (3, 0),
-        #         "label": QLabel("Amp. [\u03bcT]:"),
-        #         "amplitudeX": QLineEdit(),
-        #         "amplitudeY": QLineEdit(),
-        #         "amplitudeZ": QLineEdit(),
-        #     },
-        #     "frequency": {
-        #         "group": "xyz",
-        #         "pos": (4, 0),
-        #         "label": QLabel("Frequency [Hz]:"),
-        #         "frequencyX": QLineEdit(),
-        #         "frequencyY": QLineEdit(),
-        #         "frequencyZ": QLineEdit(),
-        #     },
-        #     "phase": {
-        #         "group": "xyz",
-        #         "pos": (5, 0),
-        #         "label": QLabel("Phase [-\u03c0 rad]:"),
-        #         "phaseX": QLineEdit(),
-        #         "phaseY": QLineEdit(),
-        #         "phaseZ": QLineEdit(),
-        #     },
-        #     "offset": {
-        #         "group": "xyz",
-        #         "pos": (6, 0),
-        #         "label": QLabel("Offset [\u03bcT]:"),
-        #         "offsetX": QLineEdit(),
-        #         "offsetY": QLineEdit(),
-        #         "offsetZ": QLineEdit(),
-        #     },
-        #     "fbase_noise": {
-        #         "group": "xyz",
-        #         "pos": (7, 0),
-        #         "cb_items": ["gaussian", "uniform"],
-        #         "label": QLabel("Noise function:"),
-        #         "fbase_noiseX": QComboBox(),
-        #         "fbase_noiseY": QComboBox(),
-        #         "fbase_noiseZ": QComboBox(),
-        #     },
-        #     "noise_factor": {
-        #         "group": "xyz",
-        #         "pos": (8, 0),
-        #         "label": QLabel("Factor:"),
-        #         "noise_factorX": QLineEdit(),
-        #         "noise_factorY": QLineEdit(),
-        #         "noise_factorZ": QLineEdit(),
-        #     },
-        # }
-        #
-        # self.interpolation_ui_elements = {
-        #     "cb_items": ["none", "linear"],  # TODO: Expand with cubic, spline, etc.
-        #     "label_function": QLabel("Function:"),
-        #     "function": QComboBox(),
-        #     "label_factor": QLabel("Factor:"),
-        #     "factor": QLineEdit(),
-        # }
-        #
-        # # Make two layouts for the generation parameters
-        # self.layout_common_grid = QGridLayout()
-        # self.layout_xyz_grid = QGridLayout()
-        #
-        # # Make a layout for the interpolation parameters
-        # self.layout_interpolation = QHBoxLayout()
-        #
-        # # Call functions to populate these layouts
-        # self.populate_cyclics()
-        # self.populate_interpolation_parameters()
-        #
-        # # Get the default values for both sets
-        # defaults_cyclics = self.datapool.config["cyclics_default_generation_parameters"]
-        # defaults_interpolation = self.datapool.config["default_interpolation_parameters"]
-        #
-        # # Deposit the default values onto the fields
-        # self.deposit_cyclics(defaults_cyclics)
-        # self.deposit_interpolation_parameters(defaults_interpolation)
-        #
-        # # Create a button to trigger self.generate()
-        # button_generate = QPushButton("Generate!")
-        # button_generate.clicked.connect(self.generate)
-        #
-        # # Groupbox for common generation parameters
-        # group_common = QGroupBox()
-        # group_common.setLayout(self.layout_common_grid)
-        # group_common.setStyleSheet(
-        #     self.datapool.config["stylesheet_groupbox_smallmargins_notitle"]
-        # )
-        #
-        # # Groupbox for XYZ specific generation parameters
-        # group_xyz = QGroupBox()
-        # group_xyz.setLayout(self.layout_xyz_grid)
-        # group_xyz.setStyleSheet(
-        #     self.datapool.config["stylesheet_groupbox_smallmargins_notitle"]
-        # )
-        #
-        # # Groupbox for interpolation parameters
-        # group_interpolation = QGroupBox("Interpolation")
-        # group_interpolation.setLayout(self.layout_interpolation)
-        # group_interpolation.setStyleSheet(
-        #     self.datapool.config["stylesheet_groupbox_smallmargins"]
-        # )
+        self.setMinimumWidth(300)
+
+        self.ui_elements = {
+            "n_step": {
+                "group": "common",
+                "pos": (1, 1),
+                "label": QLabel("Simulation points [-]:"),
+                "n_step": QLineEdit(),
+            },
+            "n_orbit_subs": {
+                "group": "common",
+                "pos": (2, 1),
+                "label": QLabel("Points per orbit [-]:"),
+                "n_orbit_subs": QLineEdit(),
+            },
+            "time_speed_factor": {
+                "group": "common",
+                "pos": (3, 1),
+                "label": QLabel("Time speed factor [-]:"),
+                "time_speed_factor": QLineEdit(),
+            },
+            "date0": {
+                "group": "common",
+                "pos": (4, 1),
+                "label": QLabel("Date at t0 [base10 date]:"),
+                "date0": QLineEdit(),
+            },
+            "earth_zero_datum": {
+                "group": "common",
+                "pos": (5, 1),
+                "label": QLabel("Earth datum at t0 [\u00b0]:"),
+                "earth_zero_datum": QLineEdit(),
+            },
+
+
+            "orbit_eccentricity": {
+                "group": "elements",
+                "pos": (1, 1),
+                "label": QLabel("e [-]:"),
+                "orbit_eccentricity": QLineEdit(),
+            },
+            "orbit_RAAN": {
+                "group": "elements",
+                "pos": (1, 4),
+                "label": QLabel("\u03a9 [\u00b0]:"),
+                "orbit_RAAN": QLineEdit(),
+            },
+            "orbit_pericentre_altitude": {
+                "group": "elements",
+                "pos": (2, 1),
+                "label": QLabel("h_p [km]:"),
+                "orbit_pericentre_altitude": QLineEdit(),
+            },
+            "orbit_argp": {
+                "group": "elements",
+                "pos": (2, 4),
+                "label": QLabel("\u03c9 [\u00b0]:"),
+                "orbit_argp": QLineEdit(),
+            },
+            "orbit_inclination": {
+                "group": "elements",
+                "pos": (3, 1),
+                "label": QLabel("i [\u00b0]:"),
+                "orbit_inclination": QLineEdit(),
+            },
+            "orbit_ma0": {
+                "group": "elements",
+                "pos": (3, 4),
+                "label": QLabel("M0 [\u00b0]:"),
+                "orbit_ma0": QLineEdit(),
+            },
+
+
+            "angle_body_x_0": {
+                "group": "body",
+                "pos": (1, 1),
+                "label": QLabel("\u03c6 [\u00b0]:"),
+                "angle_body_x_0": QLineEdit(),
+            },
+            "rate_body_x": {
+                "group": "body",
+                "pos": (1, 4),
+                "label": QLabel("d\u03c6/dt [\u00b0/s]:"),
+                "rate_body_x": QLineEdit(),
+            },
+            "angle_body_y_0": {
+                "group": "body",
+                "pos": (2, 1),
+                "label": QLabel("\u03b8 [\u00b0]:"),
+                "angle_body_y_0": QLineEdit(),
+            },
+            "rate_body_y": {
+                "group": "body",
+                "pos": (2, 4),
+                "label": QLabel("d\u03b8/dt [\u00b0/s]:"),
+                "rate_body_y": QLineEdit(),
+            },
+            "angle_body_z_0": {
+                "group": "body",
+                "pos": (3, 1),
+                "label": QLabel("\u03c8 [\u00b0]:"),
+                "angle_body_z_0": QLineEdit(),
+            },
+            "rate_body_z": {
+                "group": "body",
+                "pos": (3, 4),
+                "label": QLabel("d\u03c8/dt [\u00b0/s]:"),
+                "rate_body_z": QLineEdit(),
+            },
+        }
+
+        self.interpolation_ui_elements = {
+            "cb_items": ["none", "linear"],  # TODO: Expand with cubic, spline, etc.
+            "label_function": QLabel("Function:"),
+            "function": QComboBox(),
+            "label_factor": QLabel("Factor:"),
+            "factor": QLineEdit(),
+        }
+
+        # Make layouts for the generation parameters
+        self.layout_common_grid = QGridLayout()
+        self.layout_elements_grid = QGridLayout()
+        self.layout_body_grid = QGridLayout()
+
+        # Make a layout for the interpolation parameters
+        self.layout_interpolation = QHBoxLayout()
+
+        # Call functions to populate these layouts
+        self.populate_orbital()
+        self.populate_interpolation_parameters()
+
+        # Get the default values for both sets
+        defaults_orbital = self.datapool.config["orbital_default_generation_parameters"]
+        defaults_interpolation = self.datapool.config["default_interpolation_parameters"]
+
+        # Deposit the default values onto the fields
+        self.deposit_cyclics(defaults_orbital)  # TODO
+        self.deposit_interpolation_parameters(defaults_interpolation)
+
+        # Create a button to trigger self.generate()
+        button_generate = QPushButton("Generate!")
+        button_generate.clicked.connect(self.generate) # TODO
+
+        # Groupbox for common generation parameters
+        group_common = QGroupBox()
+        group_common.setLayout(self.layout_common_grid)
+        group_common.setStyleSheet(
+            self.datapool.config["stylesheet_groupbox_smallmargins_notitle"]
+        )
+
+        # Groupbox for orbital elements
+        group_elements = QGroupBox("Orbital elements")
+        group_elements.setLayout(self.layout_elements_grid)
+        group_elements.setStyleSheet(
+            self.datapool.config["stylesheet_groupbox_smallmargins_notitle"]
+        )
+
+        # Groupbox for body motion parameters
+        group_body = QGroupBox("Body motion")
+        group_body.setLayout(self.layout_body_grid)
+        group_body.setStyleSheet(
+            self.datapool.config["stylesheet_groupbox_smallmargins_notitle"]
+        )
+
+        # Groupbox for interpolation parameters
+        group_interpolation = QGroupBox("Interpolation")
+        group_interpolation.setLayout(self.layout_interpolation)
+        group_interpolation.setStyleSheet(
+            self.datapool.config["stylesheet_groupbox_smallmargins"]
+        )
 
 
         # Create and configure main layout
         layout0 = QVBoxLayout()
 
-        # layout0.addWidget(group_common)
-        # layout0.addWidget(group_xyz)
-        # layout0.addWidget(group_interpolation)
-        # layout0.addWidget(button_generate)
+        layout0.addWidget(group_common)
+        layout0.addWidget(group_elements)
+        layout0.addWidget(group_body)
+        layout0.addWidget(group_interpolation)
+        layout0.addWidget(button_generate)
 
         self.setLayout(layout0)
 
@@ -228,16 +266,28 @@ class OrbitalInput(QGroupBox):
                     if key == prop:
                         self.layout_common_grid.addWidget(val, i, j+1)
 
-                elif elements["group"] == "xyz":
+                if elements["group"] == "elements":
                     if key == "label":
-                        self.layout_xyz_grid.addWidget(val, i, 1)
+                        self.layout_elements_grid.addWidget(val, i, j)
+                    if key == prop:
+                        self.layout_elements_grid.addWidget(val, i, j+1)
 
-                    if "X" in key:
-                        self.layout_xyz_grid.addWidget(val, i, 2)
-                    elif "Y" in key:
-                        self.layout_xyz_grid.addWidget(val, i, 3)
-                    elif "Z" in key:
-                        self.layout_xyz_grid.addWidget(val, i, 4)
+                if elements["group"] == "body":
+                    if key == "label":
+                        self.layout_body_grid.addWidget(val, i, j)
+                    if key == prop:
+                        self.layout_body_grid.addWidget(val, i, j+1)
+
+                # elif elements["group"] == "xyz":
+                #     if key == "label":
+                #         self.layout_xyz_grid.addWidget(val, i, 1)
+                #
+                #     if "X" in key:
+                #         self.layout_xyz_grid.addWidget(val, i, 2)
+                #     elif "Y" in key:
+                #         self.layout_xyz_grid.addWidget(val, i, 3)
+                #     elif "Z" in key:
+                #         self.layout_xyz_grid.addWidget(val, i, 4)
 
                 if type(val) == QLineEdit:
                     val.setAlignment(Qt.AlignCenter)
@@ -335,7 +385,7 @@ class OrbitalInput(QGroupBox):
         """
         # print("[DEBUG] populate_cyclics()")
         if contents == {}:
-            contents = self.datapool.config["cyclics_default_generation_parameters"]
+            contents = self.datapool.config["orbital_default_generation_parameters"]
 
         for prop, elements in self.ui_elements.items():
             for key, val in elements.items():
@@ -430,28 +480,28 @@ class OrbitalVisualizer(QGroupBox):
         # # Define envelope plot
         # self.widget_envelopeplot = EnvelopePlot(self.datapool)
         #
-        # # Define HHC plots
-        # self.hhcplot_yz = HHCPlot(direction="YZ")
-        # self.hhcplot_mxy = HHCPlot(direction="mXY")
-        #
-        # # Plot path ghosts on HHC plots
+        # Define HHC plots
+        self.hhcplot_yz = HHCPlot(direction="YZ")
+        self.hhcplot_mxy = HHCPlot(direction="mXY")
+
+        # Plot path ghosts on HHC plots
         # self.plot_ghosts()
         #
         #
-        # # Put HHC Plots and relevant labels in their own layout
-        # layout_hhcplot = QGridLayout()
-        # layout_hhcplot.addWidget(QLabel("Front view (YZ)"), 0, 0)
-        # layout_hhcplot.addWidget(self.hhcplot_yz, 1, 0)
+        # Put HHC Plots and relevant labels in their own layout
+        layout_hhcplot = QGridLayout()
+        layout_hhcplot.addWidget(QLabel("Front view (YZ)"), 0, 0)
+        layout_hhcplot.addWidget(self.hhcplot_yz, 1, 0)
+
+        layout_hhcplot.addWidget(QLabel("Top view (-XY)"), 0, 1)
+        layout_hhcplot.addWidget(self.hhcplot_mxy, 1, 1)
         #
-        # layout_hhcplot.addWidget(QLabel("Top view (-XY)"), 0, 1)
-        # layout_hhcplot.addWidget(self.hhcplot_mxy, 1, 1)
         #
-        #
-        # # Define subclassed SchedulePlayer object (does not have a UI)
+        # Define subclassed SchedulePlayer object (does not have a UI)
         # self.scheduleplayer = SchedulePlayerCyclics(
         #     self.hhcplot_mxy, self.hhcplot_yz, self.widget_envelopeplot,
         #     self.bscale, self.datapool)
-        # # Pass reference to datapool for reference
+        # Pass reference to datapool for reference
         # self.datapool.cyclics_scheduleplayer = self.scheduleplayer
         # # Set playback multiplier
         # self.mult = 1
@@ -460,15 +510,19 @@ class OrbitalVisualizer(QGroupBox):
         # self.group_playcontrols = PlayerControls(
         #     self.datapool, self.scheduleplayer
         # )
+        # TODO TEMPORARY REMOVE
+        self.group_playcontrols = QLabel("SCHEDULE PLAYER")
+
+
 
 
         # Make main layout
         layout0 = QVBoxLayout()
 
-        # layout0.addWidget(self.widget_envelopeplot)
-        # layout0.addWidget(self.group_playcontrols)
-        # layout0.addLayout(layout_hhcplot)
         layout0.addWidget(self.widget_orbitalplot)
+        layout0.addWidget(self.group_playcontrols)
+        layout0.addLayout(layout_hhcplot)
+
 
         self.setLayout(layout0)
 
@@ -478,7 +532,7 @@ class OrbitalVisualizer(QGroupBox):
         self.play_timer.timeout.connect(self.update_orbital_plot)
         self.play_timer.start(50)  # TODO
 
-    def update_orbital_plot(self, timing=True):
+    def update_orbital_plot(self, timing=False):
         # print(f"[NEW] [{self.i_step}] B={self.datapool.simdata['B_ECI'][self.i_step].round()} |B|={round(np.linalg.norm(self.datapool.simdata['B_ECI'][self.i_step]))}")
         if timing:
             t0 = time()

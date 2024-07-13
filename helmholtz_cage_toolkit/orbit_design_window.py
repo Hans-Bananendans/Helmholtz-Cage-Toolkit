@@ -40,7 +40,7 @@ class GroupOrbitControl(QGroupBox):
         super().__init__("Orbit Controls")
 
         # self.setMinimumSize(QSize(480, 360))
-        self.setMaximumWidth(200)  # TODO: Properly address this
+        self.setMaximumWidth(450)  # TODO: Properly address this
         
         self.data = datapool
 

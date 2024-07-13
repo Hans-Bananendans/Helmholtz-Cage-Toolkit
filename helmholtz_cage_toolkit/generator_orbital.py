@@ -187,7 +187,7 @@ def generator_orbital2(generation_parameters, datapool, timing=False):
 
     n_orbit_subs = g["n_orbit_subs"]
     n_step = g["n_step"]
-    # time_speed_factor = g["time_speed_factor"]
+    time_speed_factor = g["time_speed_factor"]
 
     if timing:
         t1 = time()
@@ -230,6 +230,8 @@ def generator_orbital2(generation_parameters, datapool, timing=False):
     ))
     simdata["n_orbit_subs"] = n_orbit_subs
     simdata["n_step"] = n_step
+    simdata["t"] = dt/time_speed_factor * simdata["i_step"]
+
 
     if timing:
         t4 = time()

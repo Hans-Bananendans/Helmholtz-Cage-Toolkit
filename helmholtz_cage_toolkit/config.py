@@ -206,11 +206,11 @@ config = {
     "orbital_default_generation_parameters": {
         # Orbital elements
         "orbit_eccentricity": 0.15,         # [-]
-        "orbit_inclination": 90,            # [deg]
+        "orbit_inclination": 45,            # [deg]
         "orbit_pericentre_altitude": 600E3, # [m]
-        "orbit_RAAN": 10.,                   # [deg]
-        "orbit_argp": 20.,                   # [deg]
-        "orbit_ma0": 60.,                    # [deg]
+        "orbit_RAAN": 0.,                   # [deg]
+        "orbit_argp": 0.,                   # [deg]
+        "orbit_ma0": 0.,                    # [deg]
 
         # Body configuration
         "angle_body_x_0": 0.,               # [deg]
@@ -227,8 +227,7 @@ config = {
         # Simulation settings
         "n_orbit_subs": 128,                # [-] <positive int>
         "n_step": 512,                      # [-] <positive int>
-        # "interpolation_factor": 1,          # [-] <positive int>
-        # "time_speed_factor": 1.0            # [-] <positive float>
+        "time_speed_factor": 1.0            # [-] <positive float>
     },
 
 
