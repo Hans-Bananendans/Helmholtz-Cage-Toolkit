@@ -21,7 +21,7 @@ from helmholtz_cage_toolkit import *
 
 from helmholtz_cage_toolkit.schedule_player import SchedulePlayer
 from helmholtz_cage_toolkit.utilities import tB_to_schedule
-from helmholtz_cage_toolkit.hhcplot import HHCPlot, HHCPlotArrow
+# from helmholtz_cage_toolkit.hhcplot import HHCPlot, HHCPlotArrow
 from helmholtz_cage_toolkit.generator_cyclics import (
     generator_cyclics_single,
     generator_cyclics,
@@ -280,7 +280,7 @@ class CyclicsInput(QGroupBox):
         """
         print("[DEBUG] slurp_cyclics()")
 
-        # Load defaults as template
+        # Load defaults as template (to overwrite next)
         inputs = cyclics_generation_parameters
 
         # First fill inputs with generation parameters already in datapool:
@@ -397,7 +397,7 @@ class CyclicsInput(QGroupBox):
         self.datapool.generation_parameters_cyclics = generation_parameters
         self.datapool.interpolation_parameters = interpolation_parameters
 
-        self.datapool.refresh()
+        self.datapool.refresh(source="cyclics")
 
 
 class VisualizerCyclics(QGroupBox):
@@ -515,163 +515,163 @@ class VisualizerCyclics(QGroupBox):
         )
 
 
-# class HHCPlot(pg.GraphicsLayoutWidget):
-#     def __init__(self, direction="YZ"):
-#         super().__init__()
-#
-#         self.direction = direction
-#
-#         self.plot_obj = self.addPlot(row=0, col=0, antialias=True)
-#         self.resize(360, 360)
-#         self.plot_obj.setRange(xRange=(-1, 1), yRange=(-1, 1))
-#         self.plot_obj.showGrid(x=True, y=True)
-#         # self.plot_obj.setData(antialias=True)
-#         self.plot_obj.showAxis("bottom", True)
-#         self.plot_obj.showAxis("left", True)
-#         self.plot_obj.getAxis("bottom").setStyle(showValues=False)
-#         self.plot_obj.getAxis("left").setStyle(showValues=False)
-#
-#         if direction == "YZ":
-#             self.plot_hhc_elements_yz()
-#         elif direction == "XY":
-#             self.plot_hhc_elements_xy()
-#         elif direction == "mXY":
-#             self.plot_hhc_elements_mxy()
-#         else:
-#             raise ValueError("Parameter 'direction' must be 'XY' or 'YZ'!")
-#
-#         self.arrow_pen = pg.mkPen("c", width=3)
-#         self.arrow_tail = QGraphicsLineItem(QLineF(0, 0, 0, 0))
-#         self.arrow_tail.setPen(self.arrow_pen)
-#
-#         self.arrow_tip = pg.ArrowItem(angle=90, headLen=20, tipAngle=30, tailLen=0, pen=None, brush='c', pxMode=True)
-#
-#         self.plot_obj.addItem(self.arrow_tail)
-#         self.plot_obj.addItem(self.arrow_tip)
-#
-#
-#     def plot_hhc_elements_mxy(self):
-#
-#         ts = 0.15
-#         tripod = (
-#             QGraphicsLineItem(QLineF(-1, -1, -1, -1-ts)),
-#             QGraphicsLineItem(QLineF(-1, -1, -1+ts, -1)),
-#             QGraphicsLineItem(QLineF(-1, -1, -1-ts/3, -1-ts/5))
-#         )
-#         for i, c in enumerate(("#F00F", "#0F0F", "#22FF")):
-#             tripod[i].setPen(pg.mkPen(c))
-#             self.plot_obj.addItem(tripod[i])
-#
-#         coils = (
-#             QGraphicsRectItem(QRectF(-0.95, -0.80, 2 * 0.95, 0.05)),
-#             QGraphicsRectItem(QRectF(-0.95, 0.75, 2 * 0.95, 0.05)),
-#             QGraphicsRectItem(QRectF(-0.80, -0.95, 0.05, 2 * 0.95)),
-#             QGraphicsRectItem(QRectF( 0.75, -0.95, 0.05, 2 * 0.95)),
-#             QGraphicsRectItem(QRectF(-0.90, -0.90, 2 * 0.90, 2 * 0.90)),
-#             QGraphicsRectItem(QRectF(-0.95, -0.95, 2 * 0.95, 2 * 0.95)),
-#         )
-#         for i, c in enumerate(("#F008", "#F008", "#0F08", "#0F08", "#22F8", "#22F8")):
-#             coils[i].setPen(pg.mkPen(c))
-#             self.plot_obj.addItem(coils[i])
-#
-#
-#         walls = (
-#             QGraphicsRectItem(QRectF(-1.0, 1.0, 2 * 1.0, 0.05)),
-#             QGraphicsRectItem(QRectF(1.0, -1.0, 0.05, 2 * 1.0)),
-#         )
-#         for wall in walls:
-#             wall.setPen(pg.mkPen("#FFF6"))
-#             wall.setBrush(pg.mkBrush("#FFF1"))
-#             self.plot_obj.addItem(wall)
-#
-#
-#         table = (
-#             QGraphicsRectItem(QRectF(-0.25, -0.25, 2 * 0.25, 2 * 0.25)),
-#         )
-#         for item in table:
-#             item.setPen(pg.mkPen("#FFF6"))
-#             self.plot_obj.addItem(item)
-#
-#     def plot_hhc_elements_xy(self):
-#
-#         ts = 0.15
-#         tripod = (
-#             QGraphicsLineItem(QLineF(-1, -1, -1+ts, -1)),
-#             QGraphicsLineItem(QLineF(-1, -1, -1, -1+ts)),
-#             QGraphicsLineItem(QLineF(-1, -1, -1-ts/3, -1-ts/5))
-#         )
-#         for i, c in enumerate(("#F00F", "#0F0F", "#22FF")):
-#             tripod[i].setPen(pg.mkPen(c))
-#             self.plot_obj.addItem(tripod[i])
-#
-#         coils = (
-#             QGraphicsRectItem(QRectF(-0.80, -0.95, 0.05, 2 * 0.95)),
-#             QGraphicsRectItem(QRectF( 0.75, -0.95, 0.05, 2 * 0.95)),
-#             QGraphicsRectItem(QRectF(-0.95, -0.80, 2 * 0.95, 0.05)),
-#             QGraphicsRectItem(QRectF(-0.95,  0.75, 2 * 0.95, 0.05)),
-#             QGraphicsRectItem(QRectF(-0.90, -0.90, 2 * 0.90, 2 * 0.90)),
-#             QGraphicsRectItem(QRectF(-0.95, -0.95, 2 * 0.95, 2 * 0.95)),
-#         )
-#         for i, c in enumerate(("#F008", "#F008", "#0F08", "#0F08", "#22F8", "#22F8")):
-#             coils[i].setPen(pg.mkPen(c))
-#             self.plot_obj.addItem(coils[i])
-#
-#         # walls = (
-#         #     QGraphicsRectItem(QRectF(-1.0, 1.0, 2 * 1.0, 0.05)),
-#         #     QGraphicsRectItem(QRectF(-1.0, -1.0, 0.05, 2 * 1.0)),
-#         # )
-#         # for wall in walls:
-#         #     wall.setPen(pg.mkPen("#FFF6"))
-#         #     wall.setBrush(pg.mkBrush("#FFF1"))
-#         #     self.plot_obj.addItem(wall)
-#
-#         table = (
-#             QGraphicsRectItem(QRectF(-0.25, -0.25, 2 * 0.25, 2 * 0.25)),
-#         )
-#         for item in table:
-#             item.setPen(pg.mkPen("#FFF6"))
-#             self.plot_obj.addItem(item)
-#
-#     def plot_hhc_elements_yz(self):
-#         ts = 0.15
-#         tripod = (
-#             QGraphicsLineItem(QLineF(-1, -1, -1+ts, -1)),
-#             QGraphicsLineItem(QLineF(-1, -1, -1, -1+ts)),
-#             QGraphicsLineItem(QLineF(-1, -1, -1-ts/3, -1-ts/5))
-#         )
-#         for i, c in enumerate(("#0F0F", "#22FF", "#F00F")):
-#             tripod[i].setPen(pg.mkPen(c))
-#             self.plot_obj.addItem(tripod[i])
-#
-#         coils = (
-#             QGraphicsRectItem(QRectF(-0.90, -0.90, 2 * 0.90, 2 * 0.90)),
-#             QGraphicsRectItem(QRectF(-0.95, -0.95, 2 * 0.95, 2 * 0.95)),
-#             QGraphicsRectItem(QRectF(-0.80, -0.95, 0.05, 2 * 0.95)),
-#             QGraphicsRectItem(QRectF( 0.75, -0.95, 0.05, 2 * 0.95)),
-#             QGraphicsRectItem(QRectF(-0.95, -0.80, 2 * 0.95, 0.05)),
-#             QGraphicsRectItem(QRectF(-0.95,  0.75, 2 * 0.95, 0.05)),
-#         )
-#         for i, c in enumerate(("#F008", "#F008", "#0F08", "#0F08", "#22F8", "#22F8")):
-#             coils[i].setPen(pg.mkPen(c))
-#             self.plot_obj.addItem(coils[i])
-#
-#         walls = (
-#             QGraphicsRectItem(QRectF(1.0, -1.0, 0.05, 2 * 1.0)),
-#         )
-#         for wall in walls:
-#             wall.setPen(pg.mkPen("#FFF6"))
-#             wall.setBrush(pg.mkBrush("#FFF1"))
-#             self.plot_obj.addItem(wall)
-#
-#         table = (
-#             QGraphicsRectItem(QRectF(-0.25, -0.05, 2 * 0.25, 1 * 0.05)),
-#             QGraphicsRectItem(QRectF(-0.15, -1, 0.05, 0.95)),
-#             QGraphicsRectItem(QRectF(0.1, -1, 0.05, 0.95)),
-#         )
-#
-#         for item in table:
-#             item.setPen(pg.mkPen("#FFF6"))
-#             self.plot_obj.addItem(item)
+class HHCPlot(pg.GraphicsLayoutWidget):
+    def __init__(self, direction="YZ"):
+        super().__init__()
+
+        self.direction = direction
+
+        self.plot_obj = self.addPlot(row=0, col=0, antialias=True)
+        self.resize(360, 360)
+        self.plot_obj.setRange(xRange=(-1, 1), yRange=(-1, 1))
+        self.plot_obj.showGrid(x=True, y=True)
+        # self.plot_obj.setData(antialias=True)
+        self.plot_obj.showAxis("bottom", True)
+        self.plot_obj.showAxis("left", True)
+        self.plot_obj.getAxis("bottom").setStyle(showValues=False)
+        self.plot_obj.getAxis("left").setStyle(showValues=False)
+
+        if direction == "YZ":
+            self.plot_hhc_elements_yz()
+        elif direction == "XY":
+            self.plot_hhc_elements_xy()
+        elif direction == "mXY":
+            self.plot_hhc_elements_mxy()
+        else:
+            raise ValueError("Parameter 'direction' must be 'XY' or 'YZ'!")
+
+        self.arrow_pen = pg.mkPen("c", width=3)
+        self.arrow_tail = QGraphicsLineItem(QLineF(0, 0, 0, 0))
+        self.arrow_tail.setPen(self.arrow_pen)
+
+        self.arrow_tip = pg.ArrowItem(angle=90, headLen=20, tipAngle=30, tailLen=0, pen=None, brush='c', pxMode=True)
+
+        self.plot_obj.addItem(self.arrow_tail)
+        self.plot_obj.addItem(self.arrow_tip)
+
+
+    def plot_hhc_elements_mxy(self):
+
+        ts = 0.15
+        tripod = (
+            QGraphicsLineItem(QLineF(-1, -1, -1, -1-ts)),
+            QGraphicsLineItem(QLineF(-1, -1, -1+ts, -1)),
+            QGraphicsLineItem(QLineF(-1, -1, -1-ts/3, -1-ts/5))
+        )
+        for i, c in enumerate(("#F00F", "#0F0F", "#22FF")):
+            tripod[i].setPen(pg.mkPen(c))
+            self.plot_obj.addItem(tripod[i])
+
+        coils = (
+            QGraphicsRectItem(QRectF(-0.95, -0.80, 2 * 0.95, 0.05)),
+            QGraphicsRectItem(QRectF(-0.95, 0.75, 2 * 0.95, 0.05)),
+            QGraphicsRectItem(QRectF(-0.80, -0.95, 0.05, 2 * 0.95)),
+            QGraphicsRectItem(QRectF( 0.75, -0.95, 0.05, 2 * 0.95)),
+            QGraphicsRectItem(QRectF(-0.90, -0.90, 2 * 0.90, 2 * 0.90)),
+            QGraphicsRectItem(QRectF(-0.95, -0.95, 2 * 0.95, 2 * 0.95)),
+        )
+        for i, c in enumerate(("#F008", "#F008", "#0F08", "#0F08", "#22F8", "#22F8")):
+            coils[i].setPen(pg.mkPen(c))
+            self.plot_obj.addItem(coils[i])
+
+
+        walls = (
+            QGraphicsRectItem(QRectF(-1.0, 1.0, 2 * 1.0, 0.05)),
+            QGraphicsRectItem(QRectF(1.0, -1.0, 0.05, 2 * 1.0)),
+        )
+        for wall in walls:
+            wall.setPen(pg.mkPen("#FFF6"))
+            wall.setBrush(pg.mkBrush("#FFF1"))
+            self.plot_obj.addItem(wall)
+
+
+        table = (
+            QGraphicsRectItem(QRectF(-0.25, -0.25, 2 * 0.25, 2 * 0.25)),
+        )
+        for item in table:
+            item.setPen(pg.mkPen("#FFF6"))
+            self.plot_obj.addItem(item)
+
+    def plot_hhc_elements_xy(self):
+
+        ts = 0.15
+        tripod = (
+            QGraphicsLineItem(QLineF(-1, -1, -1+ts, -1)),
+            QGraphicsLineItem(QLineF(-1, -1, -1, -1+ts)),
+            QGraphicsLineItem(QLineF(-1, -1, -1-ts/3, -1-ts/5))
+        )
+        for i, c in enumerate(("#F00F", "#0F0F", "#22FF")):
+            tripod[i].setPen(pg.mkPen(c))
+            self.plot_obj.addItem(tripod[i])
+
+        coils = (
+            QGraphicsRectItem(QRectF(-0.80, -0.95, 0.05, 2 * 0.95)),
+            QGraphicsRectItem(QRectF( 0.75, -0.95, 0.05, 2 * 0.95)),
+            QGraphicsRectItem(QRectF(-0.95, -0.80, 2 * 0.95, 0.05)),
+            QGraphicsRectItem(QRectF(-0.95,  0.75, 2 * 0.95, 0.05)),
+            QGraphicsRectItem(QRectF(-0.90, -0.90, 2 * 0.90, 2 * 0.90)),
+            QGraphicsRectItem(QRectF(-0.95, -0.95, 2 * 0.95, 2 * 0.95)),
+        )
+        for i, c in enumerate(("#F008", "#F008", "#0F08", "#0F08", "#22F8", "#22F8")):
+            coils[i].setPen(pg.mkPen(c))
+            self.plot_obj.addItem(coils[i])
+
+        # walls = (
+        #     QGraphicsRectItem(QRectF(-1.0, 1.0, 2 * 1.0, 0.05)),
+        #     QGraphicsRectItem(QRectF(-1.0, -1.0, 0.05, 2 * 1.0)),
+        # )
+        # for wall in walls:
+        #     wall.setPen(pg.mkPen("#FFF6"))
+        #     wall.setBrush(pg.mkBrush("#FFF1"))
+        #     self.plot_obj.addItem(wall)
+
+        table = (
+            QGraphicsRectItem(QRectF(-0.25, -0.25, 2 * 0.25, 2 * 0.25)),
+        )
+        for item in table:
+            item.setPen(pg.mkPen("#FFF6"))
+            self.plot_obj.addItem(item)
+
+    def plot_hhc_elements_yz(self):
+        ts = 0.15
+        tripod = (
+            QGraphicsLineItem(QLineF(-1, -1, -1+ts, -1)),
+            QGraphicsLineItem(QLineF(-1, -1, -1, -1+ts)),
+            QGraphicsLineItem(QLineF(-1, -1, -1-ts/3, -1-ts/5))
+        )
+        for i, c in enumerate(("#0F0F", "#22FF", "#F00F")):
+            tripod[i].setPen(pg.mkPen(c))
+            self.plot_obj.addItem(tripod[i])
+
+        coils = (
+            QGraphicsRectItem(QRectF(-0.90, -0.90, 2 * 0.90, 2 * 0.90)),
+            QGraphicsRectItem(QRectF(-0.95, -0.95, 2 * 0.95, 2 * 0.95)),
+            QGraphicsRectItem(QRectF(-0.80, -0.95, 0.05, 2 * 0.95)),
+            QGraphicsRectItem(QRectF( 0.75, -0.95, 0.05, 2 * 0.95)),
+            QGraphicsRectItem(QRectF(-0.95, -0.80, 2 * 0.95, 0.05)),
+            QGraphicsRectItem(QRectF(-0.95,  0.75, 2 * 0.95, 0.05)),
+        )
+        for i, c in enumerate(("#F008", "#F008", "#0F08", "#0F08", "#22F8", "#22F8")):
+            coils[i].setPen(pg.mkPen(c))
+            self.plot_obj.addItem(coils[i])
+
+        walls = (
+            QGraphicsRectItem(QRectF(1.0, -1.0, 0.05, 2 * 1.0)),
+        )
+        for wall in walls:
+            wall.setPen(pg.mkPen("#FFF6"))
+            wall.setBrush(pg.mkBrush("#FFF1"))
+            self.plot_obj.addItem(wall)
+
+        table = (
+            QGraphicsRectItem(QRectF(-0.25, -0.05, 2 * 0.25, 1 * 0.05)),
+            QGraphicsRectItem(QRectF(-0.15, -1, 0.05, 0.95)),
+            QGraphicsRectItem(QRectF(0.1, -1, 0.05, 0.95)),
+        )
+
+        for item in table:
+            item.setPen(pg.mkPen("#FFF6"))
+            self.plot_obj.addItem(item)
 
 
 class EnvelopePlot(pg.GraphicsLayoutWidget):

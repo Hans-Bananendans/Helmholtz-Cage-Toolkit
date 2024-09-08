@@ -193,10 +193,14 @@ class OrbitalPlot(GLViewWidget):
             self.addItem(self.orbit_scatterplot)
 
         # Draw helpers (vertical coordinate lines and a XY-projected orbit)
+        # if self.data.config["ov_draw"]["orbit_helpers"]:
+        #     self.orbit_flatcircle, self.orbit_vlines = self.make_orbit_helpers()
+        #     self.addItem(self.orbit_flatcircle)
+        #     [self.addItem(vline) for vline in self.orbit_vlines]
         if self.data.config["ov_draw"]["orbit_helpers"]:
-            self.orbit_flatcircle, self.orbit_vlines = self.make_orbit_helpers()
+            self.orbit_vlines, self.orbit_flatcircle = self.make_orbit_helpers()
+            self.addItem(self.orbit_vlines)
             self.addItem(self.orbit_flatcircle)
-            [self.addItem(vline) for vline in self.orbit_vlines]
 
         # ==== SATELLITE =====================================================
 
@@ -219,7 +223,7 @@ class OrbitalPlot(GLViewWidget):
 
         # Draw velocity vector
         if self.data.config["ov_draw"]["velocity_vector"]:
-            self.vv_scale = 0.2E-3*self.ps
+            self.vv_scale = 5E-5*self.ps
             self.vv_plotitem = self.make_velocity_vector()
             self.addItem(self.vv_plotitem)
 
@@ -490,34 +494,69 @@ class OrbitalPlot(GLViewWidget):
         scatterplot.setDepthValue(0)
         return scatterplot
 
-    def make_orbit_helpers(self):
-        # Add flat circle
-        # Always patch this circle:
-        points_flatZ = vstack([self.data.simdata["xyz"][:],
-                               self.data.simdata["xyz"][0]])
+    # def make_orbit_helpers_old(self):
+    #     # Add flat circle
+    #     # Always patch this circle:
+    #     points_flatZ = vstack([self.data.simdata["xyz"][:],
+    #                            self.data.simdata["xyz"][0]])
+    #
+    #     # Flatten Z-coordinates
+    #     points_flatZ[:, 2] = 0
+    #
+    #     flatcircle = GLLinePlotItem(
+    #         pos=points_flatZ,
+    #         color=(1, 1, 1, 0.2),
+    #         width=1,
+    #         antialias=self.data.config["ov_use_antialiasing"])
+    #     flatcircle.setDepthValue(0)
+    #
+    #     # Add vlines
+    #     vlines = []
+    #     for i in range(len(self.data.simdata["xyz"])):
+    #         vline = GLLinePlotItem(
+    #             pos=[points_flatZ[i], self.data.simdata["xyz"][i]],
+    #             color=(1, 1, 1, 0.1),
+    #             antialias=self.data.config["ov_use_antialiasing"],
+    #             width=1)
+    #         vline.setDepthValue(0)
+    #         vlines.append(vline)
+    #
+    #     return flatcircle, vlines
 
-        # Flatten Z-coordinates
-        points_flatZ[:, 2] = 0
+    def make_orbit_helpers(self):
+
+        vline_points = []
+        flatcircle_points = []
+
+        for i in range(len(self.data.simdata["xyz"])):
+            [x, y, z] = self.data.simdata["xyz"][i]
+            vline_points.append(array([x, y, 0.0]))
+            vline_points.append(array([x, y, z]))
+            vline_points.append(array([x, y, 0.0]))
+
+            flatcircle_points.append(array([x, y, 0.0]))
+
+        # Patch the circle
+        [x, y, z] = self.data.simdata["xyz"][0]
+        vline_points.append(array([x, y, 0.0]))
+        flatcircle_points.append(array([x, y, 0.0]))
+
+
+        # Add vlines
+        vlines = GLLinePlotItem(
+            pos=vline_points,
+            color=(1, 1, 1, 0.1),
+            antialias=self.data.config["ov_use_antialiasing"],
+            width=1)
 
         flatcircle = GLLinePlotItem(
-            pos=points_flatZ,
+            pos=flatcircle_points,
             color=(1, 1, 1, 0.2),
             width=1,
             antialias=self.data.config["ov_use_antialiasing"])
         flatcircle.setDepthValue(0)
 
-        # Add vlines
-        vlines = []
-        for i in range(len(self.data.simdata["xyz"])):
-            vline = GLLinePlotItem(
-                pos=[points_flatZ[i], self.data.simdata["xyz"][i]],
-                color=(1, 1, 1, 0.1),
-                antialias=self.data.config["ov_use_antialiasing"],
-                width=1)
-            vline.setDepthValue(0)
-            vlines.append(vline)
-
-        return flatcircle, vlines
+        return vlines, flatcircle
 
     def make_satellite(self):
         # Draw satellite

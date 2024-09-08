@@ -173,6 +173,21 @@ class MainWindow(QMainWindow):
         act_dump_config.setCheckable(False)
         menu_tools.addAction(act_dump_config)
 
+        act_dump_generation_parameters_cyclics = QAction(
+            QIcon("./assets/icons/feather/terminal.svg"),
+            "Dump C&yclics genparameters", self)
+        act_dump_generation_parameters_cyclics.setStatusTip("Dump the current Cyclics generation parameters to the terminal.")
+        act_dump_generation_parameters_cyclics.triggered.connect(self.datapool.dump_generation_parameters_cyclics)
+        act_dump_generation_parameters_cyclics.setCheckable(False)
+        menu_tools.addAction(act_dump_generation_parameters_cyclics)
+
+        act_dump_generation_parameters_orbital = QAction(
+            QIcon("./assets/icons/feather/terminal.svg"),
+            "Dump &Orbital genparameters", self)
+        act_dump_generation_parameters_orbital.setStatusTip("Dump the current Orbital generation parameters to the terminal.")
+        act_dump_generation_parameters_orbital.triggered.connect(self.datapool.dump_generation_parameters_orbital)
+        act_dump_generation_parameters_orbital.setCheckable(False)
+        menu_tools.addAction(act_dump_generation_parameters_orbital)
 
         # ==== Bm_sim action group
         # TODO: DISABLE UNTIL CONNECT

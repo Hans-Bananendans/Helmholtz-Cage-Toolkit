@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt #TODO REMOVE
 from helmholtz_cage_toolkit import *
 
 class Orbit:
-    def __init__(self, body, h_r, e, i, raan, argp, ta):
+    def __init__(self, body, h_r, e, i, raan, argp, ma):
         if 0 > e >= 1:
             raise ValueError(f"Eccentricity value {e} not allowed (only elliptical orbits are supported)!")
         if h_r <= 0:
@@ -23,7 +23,7 @@ class Orbit:
         self.i = self.d2r*(i % 180)         # Inclination
         self.raan = self.d2r*(raan % 360)   # Right ascention of the ascending node
         self.argp = self.d2r*(argp % 360)   # Argument of periapsis
-        self.ma0 = self.d2r*(ta % 360)      # Initial Mean anomaly
+        self.ma0 = self.d2r*(ma % 360)      # Initial mean anomaly
 
         # General orbital properties
         # self.r_p = (self.body.r + self.h_r)/(1-self.e)   # Distance of pericentre #TODO REMOVE

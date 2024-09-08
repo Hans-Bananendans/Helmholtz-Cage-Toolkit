@@ -25,6 +25,7 @@ class DataPool:
         self.cyclics_visualizer = None
         self.orbital_input = None
         self.orbital_visualizer = None
+        self.cage3d_plot = None
 
         # self.cyclics_plot = None
         # self.cyclics_scheduleplayer = None
@@ -343,21 +344,31 @@ class DataPool:
     def do_stop_playback(self):
         cf.play_stop(self.socket, self.ds)
 
-
-    def refresh(self):
+    def refresh(self, source):
         """Refreshes certain key UI elements when the internal schedule and
         generation parameters are changed.
         """
         print("[DEBUG] refresh()")
 
-        # Deposit cyclics_input with whatever interpolation_parameters in datapool:
-        self.cyclics_input.deposit_interpolation_parameters(self.interpolation_parameters)
+        if source == "cyclics":
+            # Deposit cyclics_input with whatever interpolation_parameters in datapool:
+            self.cyclics_input.deposit_interpolation_parameters(self.interpolation_parameters)
 
-        # Deposit cyclics_input with whatever genparams in datapool:
-        self.cyclics_input.deposit_cyclics(self.generation_parameters_cyclics)
+            # Deposit cyclics_input with whatever genparams in datapool:
+            self.cyclics_input.deposit_cyclics(self.generation_parameters_cyclics)
 
-        # Refresh the plots and play controls in the Cyclics Visualizer:
-        self.cyclics_visualizer.refresh()
+            # Refresh the plots and play controls in the Cyclics Visualizer:
+            self.cyclics_visualizer.refresh()
+
+        if source == "orbital":
+            # Deposit cyclics_input with whatever interpolation_parameters in datapool:
+            self.orbital_input.deposit_interpolation_parameters(self.interpolation_parameters)
+
+            # Deposit cyclics_input with whatever genparams in datapool:
+            self.orbital_input.deposit_orbital(self.generation_parameters_orbital)
+
+            # Refresh the plots and play controls in the Cyclics Visualizer:
+            self.orbital_visualizer.refresh()
 
         self.command_window.on_schedule_refresh()
 
@@ -409,6 +420,16 @@ class DataPool:
     def dump_config(self):
         print("\n ==== CONFIG DUMP ==== ")
         for key, val in self.config.items():
+            print(key, "=", val)
+
+    def dump_generation_parameters_orbital(self):
+        print("\n ==== ORBITAL GENPARAMS DUMP ==== ")
+        for key, val in self.generation_parameters_orbital.items():
+            print(key, "=", val)
+
+    def dump_generation_parameters_cyclics(self):
+        print("\n ==== CYCLICS GENPARAMS DUMP ==== ")
+        for key, val in self.generation_parameters_cyclics.items():
             print(key, "=", val)
 
     def set_window_title(self, suffix: str = ""):

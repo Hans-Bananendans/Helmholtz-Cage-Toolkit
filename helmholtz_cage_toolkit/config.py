@@ -1,6 +1,6 @@
 config = {
     "APPNAME": "Helmholtz Cage Toolkit",
-    "VERSION": "0.2.0",
+    "VERSION": "0.2.1",
 
 
     # ==== General settings ====
@@ -177,8 +177,8 @@ config = {
         "orbit_helpers": True,
         "velocity_vector": True,
         "B_vector": True,
-        "B_fieldgrid_lineplot": False,
-        "B_fieldgrid_scatterplot": False,
+        "B_fieldgrid_lineplot": True,
+        "B_fieldgrid_scatterplot": True,
     },
     "ov_anim": {
         "tripod_ECEF": True,
@@ -197,6 +197,44 @@ config = {
     "ov_use_antialiasing": True,
     "ov_endpatching": True,
 
+    # ==== Cage3D Plot ====
+    "c3d_cage_dimensions": {
+        "x": 1.85,
+        "y": 1.95,
+        "z": 2.05,
+        "t": 0.08,
+        "z_offset": 2.05/2,
+        "spacing": 0.5445,
+    },
+    "c3d_cage_alpha": 0.25,
+    "c3d_line_alpha": 0.1,
+    "c3d_preferred_colour": 2,
+    "c3d_plotscale": 5E4,
+    "c3d_draw": {
+        "XY_grid": True,
+        "tripod_main": True,
+        "cage_structure": True,
+        "satellite_model": True,
+        # "tripod_ECEF": True,
+        # "tripod_NED": False,
+        # "tripod_SI": True,
+        # "tripod_B": True,
+        # "earth_model": True,
+        # "satellite": True,
+        # "satellite_helpers": True,
+        # "position_vector": True,
+        "lineplot": True,
+        "scatterplot": False,
+        "line_spokes": True,   # Warning: Can cause lag for large datasets
+        # "orbit_helpers": True,
+        # "velocity_vector": True,
+        "B_vector": True,
+        "B_dot": True,
+        "B_tail": True,
+        # "B_fieldgrid_lineplot": False,
+        # "B_fieldgrid_scatterplot": False,
+    },
+    "c3d_tail_length": [3, 6, 9, 12, 15, 18, 21, 24],
 
     # ==== Orbital generator options ====
     "eotc_order": 12,                       # Default order to use for the Equation of the Centre approximation
@@ -205,29 +243,29 @@ config = {
     # ==== Orbital_default_parameters ====
     "orbital_default_generation_parameters": {
         # Orbital elements
-        "orbit_eccentricity": 0.15,         # [-]
-        "orbit_inclination": 45,            # [deg]
-        "orbit_pericentre_altitude": 600E3, # [m]
-        "orbit_RAAN": 0.,                   # [deg]
-        "orbit_argp": 0.,                   # [deg]
-        "orbit_ma0": 0.,                    # [deg]
+        "orbit_eccentricity": 0.25,  # [-]
+        "orbit_inclination": 50,  # [deg]
+        "orbit_pericentre_altitude": 350E3,  # [m]
+        "orbit_RAAN": 24,  # [deg]
+        "orbit_argp": 0.,  # [deg]
+        "orbit_ma0": 0.,  # [deg]
 
         # Body configuration
-        "angle_body_x_0": 0.,               # [deg]
-        "angle_body_y_0": 0.,               # [deg]
-        "angle_body_z_0": 0.,               # [deg]
-        "rate_body_x": 0.,                  # [deg/s]
-        "rate_body_y": 0.,                  # [deg/s]
-        "rate_body_z": 0.,                  # [deg/s]
+        "angle_body_x_0": 0.,  # [deg]
+        "angle_body_y_0": 0.,  # [deg]
+        "angle_body_z_0": 0.,  # [deg]
+        "rate_body_x": 0.1,  # [deg/s]
+        "rate_body_y": 0.,  # [deg/s]
+        "rate_body_z": -0.1,  # [deg/s]
 
         # Various
-        "earth_zero_datum": 0,              # [deg]
-        "date0": 2024.0,                    # [decimal date]
+        "earth_zero_datum": 0,  # [deg]
+        "date0": 2024.0,  # [decimal date]
 
         # Simulation settings
-        "n_orbit_subs": 128,                # [-] <positive int>
-        "n_step": 512,                      # [-] <positive int>
-        "time_speed_factor": 1.0            # [-] <positive float>
+        "n_orbit_subs": 512,  # [-] <positive int>
+        "n_step": 10240,  # [-] <positive int>
+        "time_speed_factor": 1.0  # [-] <positive float>
     },
 
 

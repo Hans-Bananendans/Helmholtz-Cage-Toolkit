@@ -2,6 +2,7 @@ from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.datapool import DataPool
 from helmholtz_cage_toolkit.orbit_visualizer import OrbitVisualizer
 
+# TODO ANTIQUATED FILE: REMOVE
 
 class OrbitDesignWindow(QWidget):
     def __init__(self, config, datapool):

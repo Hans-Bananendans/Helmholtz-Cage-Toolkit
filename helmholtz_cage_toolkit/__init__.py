@@ -54,6 +54,7 @@ from PyQt5.QtGui import (
     QPalette,
     QPainter,
     QTextFormat,
+    QVector3D
 )
 from PyQt5.QtNetwork import (
     QAbstractSocket,
@@ -92,6 +93,8 @@ from PyQt5.QtWidgets import (
     QStackedLayout,
     QStackedWidget,
     QStatusBar,
+    QTabBar,
+    QTabWidget,
     QTextEdit,
     QToolBar,
     QToolButton,

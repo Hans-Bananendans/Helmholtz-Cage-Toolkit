@@ -1,5 +1,6 @@
 # from scipy.signal import sawtooth, square
 from pyIGRF import igrf_value
+from scipy.interpolate import make_interp_spline
 
 from time import time  # todo remove
 
@@ -20,6 +21,26 @@ def interpolate(t,
                 B,
                 factor: int,
                 type: str):
+    """ General-purpose interpolation function for processing generated
+    schedules, regardless of the underlying generator used. The idea is that
+    this function is always applied, and when no interpolation needs to occur,
+    the variable 'type' is left as 'none'. Variable 'factor' must be a
+    positive integer and represends how many more points will be generated.
+    For example, for a dataset of length 1000, a factor of 4 will result in an
+    interpolated dataset of length 4000.
+
+    Currently supported interpolation:
+    'linear' : Linear interpolation for each axis
+    'spline' : Cubic spline interpolation for each axis
+    'none' or anything else : No interpolation, inputs are returned untouched
+
+    't' must be a 1D array of length n
+    'B' must be a bundle of three 1D arrays of length n containing the X, Y, Z
+        components of B.
+    """
+    if factor < 1:
+        raise ValueError(f"Input 'factor' must be a positive, non-zero integer (given {factor})!")
+
     if type == "linear":
         t_interp = linspace(t[0], t[-1], len(t) * factor)
         B_interp = [
@@ -28,7 +49,33 @@ def interpolate(t,
             array(interp(t_interp, t, B[2])),
         ]
         return t_interp, B_interp
+
+    elif type == "spline":
+        # Interpolate time steps linearly
+        t_interp = linspace(t[0], t[-1], len(t) * factor)
+
+        # Construction ranges for interpolation
+        r = range(len(t))
+        r2 = linspace(r[0], r[-1], len(t_interp))
+
+        # Construct spline contours, where boundary conditions clamp the ends
+        splineX = make_interp_spline(r, B[0], bc_type="natural")
+        splineY = make_interp_spline(r, B[1], bc_type="natural")
+        splineZ = make_interp_spline(r, B[2], bc_type="natural")
+
+        # Perform interpolation by running r2 through the spline contours
+        B_interp = [
+            splineX(r2),
+            splineY(r2),
+            splineZ(r2),
+        ]
+        return t_interp, B_interp
+
+    elif type == "none":
+        return t, B
+
     else:
+        print(f"interpolate() was given an unknown type '{type}'; No interpolation was performed.")
         return t, B
 
 
@@ -208,16 +255,34 @@ def generator_orbital2(generation_parameters, datapool, timing=False):
 
     # ==== PREAMBLE
 
-    # Invoke the draw() function in Orbit class to generate orbit points.
-    simdata["xyz"], simdata["v_xyz"], simdata["ma"], \
-        simdata["ta"], simdata["gamma"], simdata["huv"] = data.orbit.draw(
-        subdivisions=n_orbit_subs,
-        spacing=data.config["orbit_spacing"],
-        eotc_order=data.config["eotc_order"]
+    # Update the Orbit() class with the new orbital elements
+    data.orbit = Orbit(
+        Earth(),
+        orbit_pericentre_altitude,
+        orbit_eccentricity,
+        orbit_inclination,
+        orbit_RAAN,
+        orbit_argp,
+        orbit_ma0,
     )
 
     if timing:
         t3 = time()
+
+    print("DEBUG!!!")
+    print(datapool.config)
+
+    # Invoke the draw() function in Orbit class to generate orbit points.
+    simdata["xyz"], simdata["v_xyz"], simdata["ma"], \
+        simdata["ta"], simdata["gamma"], simdata["huv"] = data.orbit.draw(
+        subdivisions=n_orbit_subs,
+        # spacing=data.config["orbit_spacing"],
+        spacing="isochronal",
+        eotc_order=data.config["eotc_order"]
+    )
+
+    if timing:
+        t4 = time()
 
     dt = data.orbit.get_period() / n_orbit_subs     # [s/dt]
     dth_E = data.orbit.body.axial_rate * dt         # [rad/dt]
@@ -234,7 +299,7 @@ def generator_orbital2(generation_parameters, datapool, timing=False):
 
 
     if timing:
-        t4 = time()
+        t5 = time()
 
     # R_ECI_SI
     for isub in range(n_orbit_subs):
@@ -245,15 +310,15 @@ def generator_orbital2(generation_parameters, datapool, timing=False):
                     simdata["huv"])])  # Z-component points along the cross product of the two
 
     if timing:
-        t5 = time()
-        t6a = 0
-        t6b = 0
-        t6c = 0
-        t6d = 0
-        t6e = 0
-        t6f = 0
-        t6g = 0
         t6 = time()
+        t7a = 0
+        t7b = 0
+        t7c = 0
+        t7d = 0
+        t7e = 0
+        t7f = 0
+        t7g = 0
+        t7 = time()
 
     for i in range(n_step):
 
@@ -261,32 +326,32 @@ def generator_orbital2(generation_parameters, datapool, timing=False):
         simdata["date"][i] = date0 + dt * i / 31_556_952  # decimal date at i_step
 
         if timing:
-            t6a += time()-t6
-            t6 = time()
+            t7a += time()-t7
+            t7 = time()
 
         rotangles = array((  # [deg], [deg/s] -> [rad(/dt)]
-            180 / pi * (angle_body_x_0 + i * rate_body_x * dt),  # phi_B, angle around X
-            180 / pi * (angle_body_y_0 + i * rate_body_y * dt),  # theta_B, angle around Y
-            180 / pi * (angle_body_z_0 + i * rate_body_z * dt)  # psi_B, angle around Z
+            pi/180 * (angle_body_x_0 + i * rate_body_x * dt),   # phi_B, angle around X
+            pi/180 * (angle_body_y_0 + i * rate_body_y * dt),   # theta_B, angle around Y
+            pi/180 * (angle_body_z_0 + i * rate_body_z * dt)    # psi_B, angle around Z
         ))
 
         if timing:
-            t6b += time()-t6
-            t6 = time()
+            t7b += time()-t7
+            t7 = time()
 
         # R_SI_B
         simdata["Rt_SI_B"][i, :, :] = R_SI_B(rotangles)
 
         if timing:
-            t6c += time()-t6
-            t6 = time()
+            t7c += time()-t7
+            t7 = time()
 
         # Radius/altitude, longitude and latitude
         rlli = conv_ECI_geoc(simdata["xyz"][divmod(i, n_orbit_subs)[1], :])  # |ECI
 
         if timing:
-            t6d += time()-t6
-            t6 = time()
+            t7d += time()-t7
+            t7 = time()
 
         simdata["hll"][i, :] = array((
             1E-3 * (rlli[0] - data.orbit.body.r),  # Altitude in [km]
@@ -297,8 +362,8 @@ def generator_orbital2(generation_parameters, datapool, timing=False):
         ))
 
         if timing:
-            t6e += time()-t6
-            t6 = time()
+            t7e += time()-t7
+            t7 = time()
 
         # Local magnetic field vector (syntax: igrf_value(lat, lon, alt=0., year=2005.))
         _, _, _, bx, by, bz, _ = igrf_value(
@@ -308,8 +373,8 @@ def generator_orbital2(generation_parameters, datapool, timing=False):
             simdata["date"][i])
 
         if timing:
-            t6f += time()-t6
-            t6 = time()
+            t7f += time()-t7
+            t7 = time()
 
         Bi_NED = array([bx, by, bz])                                    # B|NED
         simdata["B_ECI"][i, :] = R_NED_ECI(rlli[1], rlli[2]) @ Bi_NED   # B|ECI
@@ -318,25 +383,26 @@ def generator_orbital2(generation_parameters, datapool, timing=False):
         simdata["B_B"][i, :] = simdata["Rt_SI_B"][i] @ Bi_SI            # B|B
 
         if timing:
-            t6g += time()-t6
-            t6 = time()
+            t7g += time()-t7
+            t7 = time()
 
     if timing:
         t7 = time()
 
         print(f"[DEBUG] generator_orbital2() import:      {round((t1 - t0) * 1E6, 1)} us")
         print(f"[DEBUG] generator_orbital2() preallocate: {round((t2 - t1) * 1E6, 1)} us")
-        print(f"[DEBUG] generator_orbital2() draw:        {round((t3 - t2) * 1E6, 1)} us")
-        print(f"[DEBUG] generator_orbital2() orbit props: {round((t4 - t3) * 1E6, 1)} us")
-        print(f"[DEBUG] generator_orbital2() loop n_subs: {round((t5 - t4) * 1E6, 1)} us")
-        print(f"[DEBUG] generator_orbital2() loop n_step: {round((t7 - t5) * 1E6, 1)} us")
-        print(f"[DEBUG] a): {round(t6a * 1E6, 1)} us")
-        print(f"[DEBUG] b): {round(t6b * 1E6, 1)} us")
-        print(f"[DEBUG] c): {round(t6c * 1E6, 1)} us")
-        print(f"[DEBUG] d): {round(t6d * 1E6, 1)} us")
-        print(f"[DEBUG] e): {round(t6e * 1E6, 1)} us")
-        print(f"[DEBUG] f): {round(t6f * 1E6, 1)} us")
-        print(f"[DEBUG] g): {round(t6g * 1E6, 1)} us")
+        print(f"[DEBUG] generator_orbital2() orbit updat: {round((t3 - t2) * 1E6, 1)} us")
+        print(f"[DEBUG] generator_orbital2() draw:        {round((t4 - t3) * 1E6, 1)} us")
+        print(f"[DEBUG] generator_orbital2() orbit props: {round((t5 - t4) * 1E6, 1)} us")
+        print(f"[DEBUG] generator_orbital2() loop n_subs: {round((t6 - t5) * 1E6, 1)} us")
+        print(f"[DEBUG] generator_orbital2() loop n_step: {round((t7 - t6) * 1E6, 1)} us")
+        print(f"[DEBUG] a): {round(t7a * 1E6, 1)} us")
+        print(f"[DEBUG] b): {round(t7b * 1E6, 1)} us")
+        print(f"[DEBUG] c): {round(t7c * 1E6, 1)} us")
+        print(f"[DEBUG] d): {round(t7d * 1E6, 1)} us")
+        print(f"[DEBUG] e): {round(t7e * 1E6, 1)} us")
+        print(f"[DEBUG] f): {round(t7f * 1E6, 1)} us")
+        print(f"[DEBUG] g): {round(t7g * 1E6, 1)} us")
         print(f"[DEBUG] generator_orbital2() TOTAL:       {round((t7 - t0) * 1E6, 1)} us")
 
     return simdata
@@ -367,7 +433,7 @@ orbital_generation_parameters = {
     "n_orbit_subs": 256,  # [-] <positive int>
     "n_step": 1024,  # [-] <positive int>
     # "interpolation_factor": 1,          # [-] <positive int>
-    # "time_speed_factor": 1.0            # [-] <positive float>
+    "time_speed_factor": 1.0            # [-] <positive float>
 }
 
 # ============================================================================
@@ -401,7 +467,7 @@ if __name__ == "__main__":
         "n_orbit_subs": 256,  # [-] <positive int>
         "n_step": 1024,  # [-] <positive int>
         # "interpolation_factor": 1,          # [-] <positive int>
-        # "time_speed_factor": 1.0            # [-] <positive float>
+        "time_speed_factor": 1.0            # [-] <positive float>
     }
 
     odgp = orbital_default_generation_parameters  # Shorthand

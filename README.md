@@ -64,8 +64,10 @@ ___
 Overview interface containing details about the TCP connection between client and server, as well as controls to transfer schedule data to the remote device.
 ___
 
-![alt text](helmholtz_cage_toolkit/extras/screenshot_orbital_0.1.png?raw=true)
+![alt text](helmholtz_cage_toolkit/extras/screenshot_orbital_0.2.png?raw=true)
 Early look at user interface of another input generators, which propagates a low Earth orbit (LEO) over time and acquires the local magnetic field data in the body frame of a simulated satellite. The local field is simulated using the IGRF.
+![alt text](helmholtz_cage_toolkit/extras/screenshot_orbital_cage3d_0.2.png?raw=true)
+The local field data can then be converted to the satellite body frame and then to software instructions for the Helmholtz cage system.
 ___
 
 ## Attributions
