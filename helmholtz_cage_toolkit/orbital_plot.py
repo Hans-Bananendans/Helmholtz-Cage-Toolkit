@@ -545,7 +545,7 @@ class OrbitalPlot(GLViewWidget):
         # Add vlines
         vlines = GLLinePlotItem(
             pos=vline_points,
-            color=(1, 1, 1, 0.1),
+            color=(1, 1, 1, 0.05),
             antialias=self.data.config["ov_use_antialiasing"],
             width=1)
 

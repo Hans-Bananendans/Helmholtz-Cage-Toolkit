@@ -282,6 +282,22 @@ def plotframe(frame: PGFrame3D, pgwindow, plotscale=1,
 
     return frame_plotitems
 
+def plotframe2(frame: PGFrame3D, plotscale=1,
+               alpha=1.0, depth=10, width=3, antialias=True):
+
+    frame_plotitems = []
+
+    for i, axis_colour in enumerate(("ff0000", "00ff00", "0000ff")):
+        axis_plotitem = gl.GLLinePlotItem(
+            pos=[frame.get_o(), frame.get_o()+frame.get_r()[i]*plotscale],
+            color=hex2rgba(axis_colour, alpha),
+            width=width, antialias=antialias
+        )
+        axis_plotitem.setDepthValue(depth)
+        frame_plotitems.append(axis_plotitem)
+
+    return frame_plotitems
+
 def updateframe(frame_plotitems, frame: PGFrame3D, plotscale=1, alpha=None):
 
     if alpha is None:  # Just update position without overhead of alpha edit

@@ -36,7 +36,7 @@ from helmholtz_cage_toolkit.generator_orbital import (
     orbital_generation_parameters,
 )
 from helmholtz_cage_toolkit.orbital_plot import OrbitalPlot
-from helmholtz_cage_toolkit.cage3d_plot import Cage3DPlot
+from helmholtz_cage_toolkit.cage3d_plot import Cage3DPlot, Cage3DPlotButtons
 
 
 class OrbitalWindow(QWidget):
@@ -544,9 +544,22 @@ class OrbitalVisualizer(QGroupBox):
 
 
         # self.widget_cage3d = QLabel("Cage3D")
+        self.layout_cage3d = QHBoxLayout()
+
         self.widget_cage3d = Cage3DPlot(datapool)
         self.widget_cage3d.draw_statics()
         self.widget_cage3d.draw_simdata()
+
+        self.widget_cage3d_buttons = Cage3DPlotButtons(self.widget_cage3d, datapool)
+
+        self.layout_cage3d.addWidget(self.widget_cage3d)
+        self.layout_cage3d.addWidget(self.widget_cage3d_buttons)
+
+        self.group_cage3d = QGroupBox()
+        self.group_cage3d.setStyleSheet(
+            self.datapool.config["stylesheet_groupbox_hidden"]
+        )
+        self.group_cage3d.setLayout(self.layout_cage3d)
 
 
         self.group_playcontrols = QLabel("SCHEDULE PLAYER CONTROLS HERE")
@@ -555,7 +568,8 @@ class OrbitalVisualizer(QGroupBox):
 
         self.plottabs = QTabWidget()
         self.plottabs.addTab(self.widget_orbitalplot, "Orbit plot")
-        self.plottabs.addTab(self.widget_cage3d, "Cage plot")
+        self.plottabs.addTab(self.group_cage3d, "Cage plot")
+
 
         # Make main layout
         layout0 = QVBoxLayout()

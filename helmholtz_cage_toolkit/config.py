@@ -1,6 +1,6 @@
 config = {
     "APPNAME": "Helmholtz Cage Toolkit",
-    "VERSION": "0.2.1",
+    "VERSION": "0.2.2",
 
 
     # ==== General settings ====
@@ -211,8 +211,8 @@ config = {
     "c3d_preferred_colour": 2,
     "c3d_plotscale": 5E4,
     "c3d_draw": {
-        "XY_grid": True,
-        "tripod_main": True,
+        "xy_grid": True,
+        "tripod_b": True,
         "cage_structure": True,
         "satellite_model": True,
         # "tripod_ECEF": True,
@@ -225,12 +225,12 @@ config = {
         # "position_vector": True,
         "lineplot": True,
         "scatterplot": False,
-        "line_spokes": True,   # Warning: Can cause lag for large datasets
+        "linespokes": True,
         # "orbit_helpers": True,
         # "velocity_vector": True,
-        "B_vector": True,
-        "B_dot": True,
-        "B_tail": True,
+        "b_vector": True,
+        "b_dot": True,
+        "b_tail": True,
         # "B_fieldgrid_lineplot": False,
         # "B_fieldgrid_scatterplot": False,
     },
@@ -263,8 +263,8 @@ config = {
         "date0": 2024.0,  # [decimal date]
 
         # Simulation settings
-        "n_orbit_subs": 512,  # [-] <positive int>
-        "n_step": 10240,  # [-] <positive int>
+        "n_orbit_subs": 256,  # [-] <positive int>
+        "n_step": 1024,  # [-] <positive int>
         "time_speed_factor": 1.0  # [-] <positive float>
     },
 
@@ -423,6 +423,20 @@ config = {
                 height: 0px;
             }
         ''',
+    "stylesheet_groupbox_hidden":
+        ''' 
+            QGroupBox {
+                border: 0;
+                padding: 0px;
+                padding-top: 0px;
+            }
+            QGroupBox::title {
+                border: 0;
+                padding: 0px;
+                height: 0px;
+            }
+        ''',
+
 
     "stylesheet_label_timestep":
         ''' 
