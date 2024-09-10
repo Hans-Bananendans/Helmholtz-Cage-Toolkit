@@ -154,7 +154,20 @@ class MainWindow(QMainWindow):
         #
         # # Menu bar - View menu
         # # TODO: Add menu items
-        #
+        act_toggle_plot_visibility_tabs = QAction(
+            QIcon("./assets/icons/sidebar_right.svg"),
+            "Show plot &sidebars", self)
+        act_toggle_plot_visibility_tabs.setStatusTip(
+            "Dump the internal datapool to the terminal.")
+        act_toggle_plot_visibility_tabs.triggered.connect(
+            self.datapool.toggle_plot_visibility_tabs)
+        act_toggle_plot_visibility_tabs.setCheckable(True)
+        act_toggle_plot_visibility_tabs.setChecked(
+            self.datapool.config["show_plot_visibility_tabs"])
+        menu_view.addAction(act_toggle_plot_visibility_tabs)
+
+
+
         # # Menu bar - Tools menu
         # # TODO: Add menu items, connect actions
         act_dump_datapool = QAction(
@@ -293,13 +306,13 @@ class MainWindow(QMainWindow):
                 self.tabcontainer.addWidget(CommandWindow(self.config, self.datapool))
             elif i == 2:
                 self.tabcontainer.addWidget(OrbitalWindow(self.config, self.datapool))
+            # elif i == 3:
+            #     self.tabcontainer.addWidget(OrbitDesignWindow(self.config, self.datapool))
             elif i == 3:
-                self.tabcontainer.addWidget(OrbitDesignWindow(self.config, self.datapool))
-            elif i == 4:
                 self.tabcontainer.addWidget(CyclicsWindow(self.config, self.datapool))
-            elif i == 5:
+            elif i == 4:
                 self.tabcontainer.addWidget(WebcamWindow(self.config, self.datapool))
-            elif i == 6:
+            elif i == 5:
                 self.tabcontainer.addWidget(ControlWindow(self.config, self.datapool))
             else:
                 self.tabcontainer.addWidget(TestTab(attrs["name"]))

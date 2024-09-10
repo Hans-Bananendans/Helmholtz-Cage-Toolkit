@@ -432,6 +432,19 @@ class DataPool:
         for key, val in self.generation_parameters_cyclics.items():
             print(key, "=", val)
 
+    def toggle_plot_visibility_tabs(self):
+        if self.orbital_visualizer is None:
+            pass
+        else:
+            if self.config["show_plot_visibility_tabs"] is True:
+                self.orbital_visualizer.widget_orbitalplot_buttons.setVisible(False)
+                self.orbital_visualizer.widget_cage3d_buttons.setVisible(False)
+                self.config["show_plot_visibility_tabs"] = False
+            else:
+                self.orbital_visualizer.widget_orbitalplot_buttons.setVisible(True)
+                self.orbital_visualizer.widget_cage3d_buttons.setVisible(True)
+                self.config["show_plot_visibility_tabs"] = True
+
     def set_window_title(self, suffix: str = ""):
         if suffix != "":
             suffix = " - " + suffix.split(os.sep)[-1]

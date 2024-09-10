@@ -35,7 +35,7 @@ from helmholtz_cage_toolkit.generator_orbital import (
     generator_orbital2,
     orbital_generation_parameters,
 )
-from helmholtz_cage_toolkit.orbital_plot import OrbitalPlot
+from helmholtz_cage_toolkit.orbital_plot import OrbitalPlot, OrbitalPlotButtons
 from helmholtz_cage_toolkit.cage3d_plot import Cage3DPlot, Cage3DPlotButtons
 
 
@@ -462,6 +462,9 @@ class OrbitalVisualizer(QGroupBox):
         # Place reference to self into datapool for reference
         self.datapool.orbital_visualizer = self
 
+        # self.show_plot_visibility_tabs = \
+        #     self.datapool.config["show_plot_visibility_tabs"]
+
         # Apply stylesheet for smaller margins
         self.setStyleSheet(
             self.datapool.config["stylesheet_groupbox_smallmargins_notitle"]
@@ -475,75 +478,44 @@ class OrbitalVisualizer(QGroupBox):
         # Fetch preconfigured bscale, which plotting functions will use
         self.bscale = self.datapool.config["visualizer_bscale"]
 
+
+        self.layout_orbitalplot = QHBoxLayout()
+
         # Define orbital plot
         self.widget_orbitalplot = OrbitalPlot(self.datapool)
-
         self.widget_orbitalplot.draw_statics()
-
 
         # TODO REMOVE DEBUG
         genparams = self.datapool.config["orbital_default_generation_parameters"]
         self.datapool.simdata = generator_orbital2(genparams, datapool)
 
-
-        # Writes B_B to a file in np.array format
-        f = open("b_dump.txt", "w")
-        f.write("")
-        f.close()
-        f = open("b_dump.txt", "a")
-        f.write("B = np.array([")
-        for line in range(self.datapool.simdata["n_step"]):
-            f.write("[")
-            f.write(str(round(self.datapool.simdata["B_B"][line, 0])))
-            f.write(",")
-            f.write(str(round(self.datapool.simdata["B_B"][line, 1])))
-            f.write(",")
-            f.write(str(round(self.datapool.simdata["B_B"][line, 2])))
-            f.write("],")
-            f.write("\n")
-        f.write("])")
-        f.close()
-        print("Done!")
+        # # Writes B_B to a file in np.array format
+        # f = open("b_dump.txt", "w")
+        # f.write("")
+        # f.close()
+        # f = open("b_dump.txt", "a")
+        # f.write("B = np.array([")
+        # for line in range(self.datapool.simdata["n_step"]):
+        #     f.write("[")
+        #     f.write(str(round(self.datapool.simdata["B_B"][line, 0])))
+        #     f.write(",")
+        #     f.write(str(round(self.datapool.simdata["B_B"][line, 1])))
+        #     f.write(",")
+        #     f.write(str(round(self.datapool.simdata["B_B"][line, 2])))
+        #     f.write("],")
+        #     f.write("\n")
+        # f.write("])")
+        # f.close()
+        # print("Done!")
 
         self.widget_orbitalplot.draw_simdata()
 
-        # # Define envelope plot
-        # self.widget_envelopeplot = EnvelopePlot(self.datapool)
-        #
-        # Define HHC plots
-        # self.hhcplot_yz = HHCPlot(direction="YZ")
-        # self.hhcplot_mxy = HHCPlot(direction="mXY")
+        self.widget_orbitalplot_buttons = OrbitalPlotButtons(self.widget_orbitalplot, datapool)
 
-        # Plot path ghosts on HHC plots
-        # self.plot_ghosts()
-        #
-        #
-        # Put HHC Plots and relevant labels in their own layout
-        # layout_hhcplot = QGridLayout()
-        # layout_hhcplot.addWidget(QLabel("Front view (YZ)"), 0, 0)
-        # layout_hhcplot.addWidget(self.hhcplot_yz, 1, 0)
+        self.layout_orbitalplot.addWidget(self.widget_orbitalplot)
+        self.layout_orbitalplot.addWidget(self.widget_orbitalplot_buttons)
 
-        # layout_hhcplot.addWidget(QLabel("Top view (-XY)"), 0, 1)
-        # layout_hhcplot.addWidget(self.hhcplot_mxy, 1, 1)
-        #
-        #
-        # Define subclassed SchedulePlayer object (does not have a UI)
-        # self.scheduleplayer = SchedulePlayerCyclics(
-        #     self.hhcplot_mxy, self.hhcplot_yz, self.widget_envelopeplot,
-        #     self.bscale, self.datapool)
-        # Pass reference to datapool for reference
-        # self.datapool.cyclics_scheduleplayer = self.scheduleplayer
-        # # Set playback multiplier
-        # self.mult = 1
-        #
-        # # Create PlayerControl widget
-        # self.group_playcontrols = PlayerControls(
-        #     self.datapool, self.scheduleplayer
-        # )
-        # TODO TEMPORARY REMOVE
-
-
-        # self.widget_cage3d = QLabel("Cage3D")
+        # Cage3D Plot
         self.layout_cage3d = QHBoxLayout()
 
         self.widget_cage3d = Cage3DPlot(datapool)
@@ -552,8 +524,22 @@ class OrbitalVisualizer(QGroupBox):
 
         self.widget_cage3d_buttons = Cage3DPlotButtons(self.widget_cage3d, datapool)
 
+
         self.layout_cage3d.addWidget(self.widget_cage3d)
         self.layout_cage3d.addWidget(self.widget_cage3d_buttons)
+        # Set visibility once, then let datapool.toggle_plot_visibility_tabs()
+        # handle it henceforth
+        if self.datapool.config["show_plot_visibility_tabs"] is False:
+            self.widget_orbitalplot_buttons.setVisible(False)
+            self.widget_cage3d_buttons.setVisible(False)
+
+        # self.widget_cage3d_buttons.set
+
+        self.group_orbitalplot = QGroupBox()
+        self.group_orbitalplot.setStyleSheet(
+            self.datapool.config["stylesheet_groupbox_hidden"]
+        )
+        self.group_orbitalplot.setLayout(self.layout_orbitalplot)
 
         self.group_cage3d = QGroupBox()
         self.group_cage3d.setStyleSheet(
@@ -567,7 +553,7 @@ class OrbitalVisualizer(QGroupBox):
 
 
         self.plottabs = QTabWidget()
-        self.plottabs.addTab(self.widget_orbitalplot, "Orbit plot")
+        self.plottabs.addTab(self.group_orbitalplot, "Orbit plot")
         self.plottabs.addTab(self.group_cage3d, "Cage plot")
 
 
@@ -578,14 +564,11 @@ class OrbitalVisualizer(QGroupBox):
         layout0.addWidget(self.group_playcontrols)
         # layout0.addLayout(layout_hhcplot)
 
-
         self.setLayout(layout0)
 
         # Timer
         self.i_step = 0
         self.play_timer = QTimer()
-        # self.play_timer.timeout.connect(self.update_cage3d_plot)
-        # self.play_timer.timeout.connect(self.update_orbital_plot)
         self.play_timer.timeout.connect(self.update_plots)
         self.play_timer.start(50)  # TODO
 
@@ -612,6 +595,7 @@ class OrbitalVisualizer(QGroupBox):
         if timing:
             t = round((time()-t0)*1000, 3)
             print(f"update_cage3d_plot(): i_step {self.i_step} - time: {t} ms")
+
 
     def refresh(self):
         """When the schedule, or other parameters relevant to the

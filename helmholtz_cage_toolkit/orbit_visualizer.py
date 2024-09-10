@@ -315,6 +315,8 @@ class OrbitVisualizer(GLViewWidget):
     def __init__(self, datapool):
         super().__init__()
 
+        print("[DEBUG] LOOK MUM, I'M STILL RELEVANT!")
+
         self.data = datapool
 
         # ==== PREAMBLE

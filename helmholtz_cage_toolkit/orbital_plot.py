@@ -17,7 +17,7 @@ from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.pg3d import (
     RX, RY, RZ, R,
     PGPoint3D, PGVector3D, PGFrame3D,
-    plotgrid, plotpoint, plotpoints, plotvector, plotframe,
+    plotgrid, plotpoint, plotpoints, plotvector, plotframe, plotframe2,
     updatepoint, updatepoints, updatevector, updateframe,
     hex2rgb, hex2rgba,
     sign, wrap, uv3d,
@@ -45,7 +45,7 @@ class OrbitalPlot(GLViewWidget):
     def __init__(self, datapool):
         super().__init__()
 
-        print("[DEBUG] OrbitalPlot.__init__() called")
+        # print("[DEBUG] OrbitalPlot.__init__() called")
 
         self.data = datapool
         self.data.orbital_plot = self
@@ -67,29 +67,19 @@ class OrbitalPlot(GLViewWidget):
         Static objects to draw:
             - XY grid
             - ECI tripod
-            - Earth meshitem
+            - Earth model
         """
 
-        print("[DEBUG] OrbitalPlot.draw_statics() called")
+        # print("[DEBUG] OrbitalPlot.draw_statics() called")
 
         # Generate grid
-        if self.data.config["ov_draw"]["XY_grid"]:
-            self.grid = plotgrid(self, plotscale=self.ps)
+        self.make_xy_grid()
 
         # Generate ECI-frame tripod_components
-        self.frame_ECI = PGFrame3D()
-        if self.data.config["ov_draw"]["tripod_ECI"]:
-            self.frame_ECI_plotitems = plotframe(
-                self.frame_ECI, self,
-                plotscale=1.5*self.ps, alpha=0.4, antialias=self.aa
-            )
+        self.make_tripod_ECI()
 
         # Draw Earth meshitem
-        if self.data.config["ov_draw"]["earth_model"]:
-            self.earth_meshitem = self.make_earth_meshitem()
-            # if self.th_E != 0: # Moved to draw_simdata()
-            #     self.earth_meshitem.rotate(self.th_E*180/pi, 0, 0, 1, local=False)
-            self.addItem(self.earth_meshitem)
+        self.make_earth_model()
 
 
     def draw_simdata(self, i_step=0):
@@ -107,175 +97,72 @@ class OrbitalPlot(GLViewWidget):
         # Rotate Earth meshitem
         # Since the meshitem has no meaningful absolute position, just make it
         # look as though it's doing stuff, i.e. at the start, just rotate
-        # backwards by
+        # backwards by theta_E,i
         if self.data.config["ov_draw"]["earth_model"]:
             if simdata["dth_E"] != 0.:
-                self.earth_meshitem.rotate(self.th_Ei*180/pi, 0, 0, 1, local=False)
+                self.earth_model.rotate(self.th_Ei*180/pi, 0, 0, 1, local=False)
 
         # ==== FRAME TRIPODS =================================================
 
         # Generate ECEF-frame tripod_components
-        # self.th_E0 = simdata["th_E0"]
-        # self.th_Ei = (simdata["th_E0"]+i_step*simdata["dth_E"]) % (2*pi)  # Earth axial rotation angle
-        Ri_ECEF_ECI = R_ECEF_ECI(self.th_Ei)
-        self.frame_ECEF = PGFrame3D(r=Ri_ECEF_ECI)
-        if self.data.config["ov_draw"]["tripod_ECEF"]:
-            self.tripod_ECEF_ps = Earth().r
-            self.frame_ECEF_plotitems = plotframe(
-                self.frame_ECEF, self,
-                plotscale=self.tripod_ECEF_ps, alpha=0.4, antialias=self.aa
-            )
-
+        self.make_tripod_ECEF()
 
         # Generate NED-frame tripod_components
-        xyzi = simdata["xyz"][i_step]
-
-        # print(f"i_step: {i_step} th_Ei: {self.th_Ei*180/pi} deg")
-        # # TODO Compare timing of using conv_ECI_geoc vs. using hll->shift to ECI
-        # t0 = time()
-        # for i in range(100):
-        #     rll = conv_ECI_geoc(xyzi)
-        # print(f"rlonglat: long {round(rll[1], 3)} lat {round(rll[2], 3)} time {round(1E6*(time()-t0))} us")
-        # t0 = time()
-        # for i in range(100):
-        #     oll = array((
-        #         0,
-        #         simdata["hll"][i_step, 1],
-        #         simdata["hll"][i_step, 2]
-        #     ))
-        # print(f"hll     : long {round(oll[1], 3)} lat {round(oll[2], 3)} time {round(1E6 * (time() - t0))} us")
-
-        # xyz_ECEF = R_ECI_ECEF(self.th_E)@self.points[self.data.i_satpos]
-        # self.rlonglat = conv_ECI_geoc(xyzi)
-        # Ri_NED_ECI = R_NED_ECI(self.rlonglat[1], self.rlonglat[2]).transpose()  # TODO Homogenise transpose
-        Ri_NED_ECI = R_NED_ECI(
-            simdata["hll"][i_step, 1], simdata["hll"][i_step, 2]).transpose()  # TODO Homogenise transpose
-        self.frame_NED = PGFrame3D(o=xyzi, r=Ri_NED_ECI)
-        if self.data.config["ov_draw"]["tripod_NED"]:
-            self.tripod_NED_ps = 0.4 * self.ps
-            self.frame_NED_plotitems = plotframe(
-                self.frame_NED, self,
-                plotscale=self.tripod_NED_ps, alpha=0.4, antialias=self.aa
-            )
+        self.make_tripod_NED()
 
         # Generate SI-frame tripod_components
-        Ri_ECI_SI = simdata["Rt_ECI_SI"][i_step]
-        self.frame_SI = PGFrame3D(o=xyzi, r=Ri_ECI_SI)
-        if self.data.config["ov_draw"]["tripod_SI"]:
-            self.tripod_SI_ps = 0.4 * self.ps
-            self.frame_SI_plotitems = plotframe(
-                self.frame_SI, self,
-                plotscale=self.tripod_SI_ps, alpha=0.4, antialias=self.aa
-            )
+        self.make_tripod_SI()
 
         # Generate B-frame tripod_components
-        ab0 = simdata["angle_body0"]    # Initial rotation
-        self.ab = ab0                   # Euler angles of SI -> B transformation
-        Ri_ECI_B = R_SI_B(self.ab)@Ri_ECI_SI
-        self.frame_B = PGFrame3D(o=xyzi, r=Ri_ECI_B)
-        if self.data.config["ov_draw"]["tripod_B"]:
-            self.tripod_B_ps = 0.25 * self.ps
-            self.frame_B_plotitems = plotframe(
-                self.frame_B, self,
-                plotscale=self.tripod_B_ps, alpha=1, width=3, antialias=self.aa
-            )
+        self.make_tripod_B()
+
 
         # ==== ORBIT =========================================================
 
         # Draw orbit lineplot
-        if self.data.config["ov_draw"]["orbit_lineplot"]:
-            self.orbit_lineplot = self.make_orbit_lineplot()
-            self.addItem(self.orbit_lineplot)
+        self.make_orbit_lineplot()
 
         # Draw orbit scatterplot
-        if self.data.config["ov_draw"]["orbit_scatterplot"]:
-            self.orbit_scatterplot = self.make_orbit_scatterplot()
-            self.addItem(self.orbit_scatterplot)
+        self.make_orbit_scatterplot()
 
         # Draw helpers (vertical coordinate lines and a XY-projected orbit)
-        # if self.data.config["ov_draw"]["orbit_helpers"]:
-        #     self.orbit_flatcircle, self.orbit_vlines = self.make_orbit_helpers()
-        #     self.addItem(self.orbit_flatcircle)
-        #     [self.addItem(vline) for vline in self.orbit_vlines]
-        if self.data.config["ov_draw"]["orbit_helpers"]:
-            self.orbit_vlines, self.orbit_flatcircle = self.make_orbit_helpers()
-            self.addItem(self.orbit_vlines)
-            self.addItem(self.orbit_flatcircle)
+        self.make_orbit_helpers()
+
 
         # ==== SATELLITE =====================================================
 
         # Draw representation of satellite, including highlighted helpers
-        self.satellite, self.vline_sat, self.vdot_sat = self.make_satellite()
-        self.addItem(self.satellite)
-        if self.data.config["ov_draw"]["satellite_helpers"]:
-            self.addItem(self.vline_sat)
-            self.addItem(self.vdot_sat)
+        self.make_satellite()
+        self.make_satellite_helpers()
 
         # Draw angular momentum unit vector
-        # self.huv_scale = 2E6
-        # self.huv_plotitem = self.make_angular_momentum_vector()
-        # self.addItem(self.huv_plotitem)
+        self.make_angular_momentum_vector()
 
         # Draw position vector
-        if self.data.config["ov_draw"]["position_vector"]:
-            self.pv_plotitem = self.make_position_vector()
-            self.addItem(self.pv_plotitem)
+        self.vv_scale = 4E-5 * self.ps
+        self.make_position_vector()
 
         # Draw velocity vector
-        if self.data.config["ov_draw"]["velocity_vector"]:
-            self.vv_scale = 5E-5*self.ps
-            self.vv_plotitem = self.make_velocity_vector()
-            self.addItem(self.vv_plotitem)
+        self.make_velocity_vector()
+
 
         # ==== MAGNETIC FIELD ================================================
 
         # Draw B vector
-        if self.data.config["ov_draw"]["B_vector"]:
-            self.bv_scale = 1.5E-5*self.ps * 2
-            self.bv_plotitem = self.make_B_vector()
-            self.addItem(self.bv_plotitem)
+        self.bv_scale = 1.5E-5 * self.ps
+        self.make_b_vector()
+
+        self.make_b_lineplot()
+        self.make_b_linespokes()
+        # if self.data.config["ov_draw"]["B_vector"]:
+        #     self.bv_plotitem = self.make_B_vector()
+        #     self.addItem(self.bv_plotitem)
+
 
         # Quick and dirty 3D vector plot of field elements
         # Skip if neither scatter nor lineplots are selected, to prevent performance hog:
-        if self.data.config["ov_draw"]["B_fieldgrid_scatterplot"] or self.data.config["ov_draw"]["B_fieldgrid_lineplot"]:
-            print("CHECK")
-            # Sort out some parameters
-            self.bfg_lp_scale = 1E-5 * self.ps
-            layers = 3
-            h_min = 5E5
-            h_spacing = 15E5
-            brows = 16
-            bcols = 8
+        self.make_b_fieldgrid()
 
-            B_fieldgrid_sp_plotitems = [0]*layers
-            B_fieldgrid_lp_plotitems = [0]*layers
-
-            # Sequentially call make_B_fieldgrid() to make the plotitems
-            for i in range(layers):
-                B_fieldgrid_sp_plotitems[i], B_fieldgrid_lp_plotitems[i] = self.make_B_fieldgrid(
-                h=h_min+i*h_spacing, rows=brows, cols=bcols, alpha=0.4)
-
-            # Sequentially add the plotitems, but only when configured to do so
-            for i in range(layers):
-                if self.data.config["ov_draw"]["B_fieldgrid_scatterplot"]:
-                    self.addItem(B_fieldgrid_sp_plotitems[i])
-
-                if self.data.config["ov_draw"]["B_fieldgrid_lineplot"]:
-                    [self.addItem(bline) for bline in B_fieldgrid_lp_plotitems[i]]  # noqa
-
-
-        # # DEBUGGING VECTOR FOR RLONGLAT - TODO: Remove after verification complete
-        # self.vector_pos = self.make_vector_pos()
-        # self.addItem(self.vector_pos)
-
-        # Generate NED tripod_components
-        # self.tripod_NED_components = self.make_tripod_NED()
-        # [self.addItem(comp) for comp in self.tripod_NED_components]
-
-        # # Timer
-        # self.timer = QTimer()
-        # self.timer.timeout.connect(self.satellite_update)
-        # self.timer.start(50)  # TODO
 
     def draw_step(self, i_step):
         """Update the Orbital Plot with the simdata corresponding to time step
@@ -292,114 +179,175 @@ class OrbitalPlot(GLViewWidget):
         self.th_Ei = (simdata["th_E0"]+i_step*simdata["dth_E"]) % (2*pi)
 
 
-        # # TODO TEST THEN REMOVE
-        # print(f"i_step: {i_step} xyzi: {xyzi.round()} th_Ei: {round(self.th_Ei*180/pi, 1)} deg")
-        # t0 = time()
-        # for i in range(100):
-        #     rll = conv_ECI_geoc(xyzi)
-        # print(f"rlonglat: long {round(rll[1], 3)} lat {round(rll[2], 3)} time {round(1E6*(time()-t0))} us")
-        # t0 = time()
-        # for i in range(100):
-        #     oll = array((
-        #         0,
-        #         simdata["hll"][i_step, 1],
-        #         simdata["hll"][i_step, 2]
-        #     ))
-        # print(f"hll     : long {round(oll[1], 3)} lat {round(oll[2], 3)} time {round(1E6 * (time() - t0))} us")
-
-
-
         # ==== FRAME TRIPODS
         # Update ECEF tripod:
-        # if self.data.config["ov_rotate_earth"]:
-        #     self.th_E = (self.data.i_satpos * self.dth_E + self.th_E0) % (2 * pi)
         Ri_ECEF_ECI = R_ECEF_ECI(self.th_Ei)
         self.frame_ECEF.set_r(Ri_ECEF_ECI)
-        if self.data.config["ov_draw"]["tripod_ECEF"] \
-                and self.data.config["ov_anim"]["tripod_ECEF"]:
-            updateframe(self.frame_ECEF_plotitems, self.frame_ECEF,
+        if self.data.config["ov_draw"]["tripod_ECEF"]:
+            updateframe(self.tripod_ECEF, self.frame_ECEF,
                         plotscale=self.tripod_ECEF_ps)
 
         # Update NED tripod:
-        # xyz_ECEF = R_ECI_ECEF(self.th_E)@self.points[self.data.i_satpos]
-        # self.rlonglat = conv_ECI_geoc(xyzi)
         Ri_NED_ECI = R_NED_ECI(
-            simdata["hll"][i_step, 1],
-            simdata["hll"][i_step, 2]).transpose()  # TODO Homogenise transpose
+            # Longitude, with correction for the instantaneous Earth rotation
+            simdata["hll"][i_step, 1] * pi / 180 + self.th_Ei,
+            simdata["hll"][i_step, 2] * pi / 180  # Latitude
+        ).transpose()
         self.frame_NED.set_o(xyzi)
         self.frame_NED.set_r(Ri_NED_ECI)
-        if self.data.config["ov_draw"]["tripod_NED"] \
-                and self.data.config["ov_anim"]["tripod_NED"]:
-            updateframe(self.frame_NED_plotitems, self.frame_NED,
+        if self.data.config["ov_draw"]["tripod_NED"]:
+            updateframe(self.tripod_NED, self.frame_NED,
                         plotscale=self.tripod_NED_ps)
 
         # Update SI tripod:
         Ri_ECI_SI = simdata["Rt_ECI_SI"][i_step % simdata["n_orbit_subs"]]
         self.frame_SI.set_o(xyzi)
         self.frame_SI.set_r(Ri_ECI_SI)
-        if self.data.config["ov_draw"]["tripod_SI"] \
-                and self.data.config["ov_anim"]["tripod_SI"]:
-            updateframe(self.frame_SI_plotitems, self.frame_SI,
+        if self.data.config["ov_draw"]["tripod_SI"]:
+            updateframe(self.tripod_SI, self.frame_SI,
                         plotscale=self.tripod_SI_ps)
 
         # Update B tripod:
-        # self.ab = array([simdata["ma"][i_step], 0, 0]) # TODO WTF IS THIS
         Ri_ECI_B = simdata["Rt_SI_B"][i_step] @ Ri_ECI_SI
         self.frame_B.set_o(xyzi)
         self.frame_B.set_r(Ri_ECI_B)
-        if self.data.config["ov_draw"]["tripod_B"] \
-                and self.data.config["ov_anim"]["tripod_B"]:
-            updateframe(self.frame_B_plotitems, self.frame_B,
+        if self.data.config["ov_draw"]["tripod_B"]:
+            updateframe(self.tripod_B, self.frame_B,
                         plotscale=self.tripod_B_ps)
 
+
         # ==== SATELLITE ITEMS
-        if self.data.config["ov_draw"]["satellite"] \
-                and self.data.config["ov_anim"]["satellite"]:
+        if self.data.config["ov_draw"]["satellite"]:
             self.satellite.setData(pos=xyzi)
 
-        if self.data.config["ov_draw"]["satellite_helpers"] \
-                and self.data.config["ov_anim"]["satellite_helpers"]:
-            self.vline_sat.setData(pos=[xy0i, xyzi])
-            self.vdot_sat.setData(pos=xy0i)
+        if self.data.config["ov_draw"]["satellite_helpers"]:
+            self.satellite_helpers[0].setData(pos=[xy0i, xyzi])
+            self.satellite_helpers[1].setData(pos=xy0i)
 
-        if self.data.config["ov_draw"]["position_vector"] \
-                and self.data.config["ov_anim"]["satellite_helpers"]:
-            self.pv_plotitem.setData(pos=[array([0, 0, 0]), xyzi])
+        if self.data.config["ov_draw"]["position_vector"]:
+            self.position_vector.setData(pos=[array([0, 0, 0]), xyzi])
 
-        if self.data.config["ov_draw"]["velocity_vector"] \
-                and self.data.config["ov_anim"]["velocity_vector"]:
+        if self.data.config["ov_draw"]["velocity_vector"]:
             v_xyzi = simdata["v_xyz"][i_step % simdata["n_orbit_subs"]]
-            self.vv_plotitem.setData(pos=[xyzi, xyzi + v_xyzi*self.vv_scale])
-        # self.huv_plotitem.setData(pos=[xyzi, xyzi+simdata["huv"]*self.huv_scale])
+            self.velocity_vector.setData(pos=[xyzi, xyzi + v_xyzi*self.vv_scale])
 
         # ==== MAGNETIC FIELD
         self.Bi = self.data.simdata["B_ECI"][i_step]
-        if self.data.config["ov_draw"]["B_vector"] \
-                and self.data.config["ov_anim"]["B_vector"]:
-            self.bv_plotitem.setData(pos=[xyzi, xyzi + self.Bi * self.bv_scale])
+        if self.data.config["ov_draw"]["b_vector"]:
+            self.b_vector.setData(pos=[xyzi, xyzi + self.Bi * self.bv_scale])
 
         # ==== EARTH MESHITEM
-        if (
-                self.data.config["ov_draw"]["earth_model"]
+        if (self.data.config["ov_draw"]["earth_model"]
                 and self.data.config["ov_rotate_earth"]
-                and self.data.config["ov_anim"]["earth_model"]
-        ):
+            ):
             rotangle = (self.th_Ei-th_Ei_1) * 180 / pi
-            self.earth_meshitem.rotate(rotangle, 0, 0, 1, local=False)
+            self.earth_model.rotate(rotangle, 0, 0, 1, local=False)
 
-        # self.data.i_satpos = (self.data.i_satpos + 1) % self.data.orbit_subs
+        # ==== AUTO ROTATION
+        if self.data.config["ov_draw"]["autorotate"]:
+            angle = self.data.config["ov_autorotate_angle"]
+            self.setCameraPosition(
+                azimuth=(self.opts["azimuth"] + angle) % 360
+            )
 
-    def make_grid(self):
+
+    def make_tripod_ECI(self):
+        self.frame_ECI = PGFrame3D()
+        self.tripod_ECI = plotframe2(
+            self.frame_ECI,
+            plotscale=1.5*self.ps, alpha=0.4, antialias=self.aa
+        )
+        if self.data.config["ov_draw"]["tripod_ECI"]:
+            for item in self.tripod_ECI:
+                self.addItem(item)
+
+
+    def make_tripod_ECEF(self):
+        Ri_ECEF_ECI = R_ECEF_ECI(self.th_Ei)
+        self.frame_ECEF = PGFrame3D(r=Ri_ECEF_ECI)
+        self.tripod_ECEF_ps = Earth().r
+        self.tripod_ECEF = plotframe2(
+            self.frame_ECEF,
+            plotscale=self.tripod_ECEF_ps, alpha=0.4, antialias=self.aa
+        )
+        if self.data.config["ov_draw"]["tripod_ECEF"]:
+            for item in self.tripod_ECEF:
+                self.addItem(item)
+
+
+    def make_tripod_NED(self):
+        simdata = self.data.simdata
+        Ri_NED_ECI = R_NED_ECI(
+            simdata["hll"][self.i_step, 1],
+            simdata["hll"][self.i_step, 2]
+        ).transpose()
+        self.frame_NED = PGFrame3D(
+            o=simdata["xyz"][self.i_step],
+            r=Ri_NED_ECI
+        )
+        self.tripod_NED_ps = 0.4 * self.ps
+        self.tripod_NED = plotframe2(
+            self.frame_NED,
+            plotscale=self.tripod_NED_ps, alpha=0.4, antialias=self.aa
+        )
+
+        if self.data.config["ov_draw"]["tripod_NED"]:
+            for item in self.tripod_NED:
+                self.addItem(item)
+
+
+    def make_tripod_SI(self):
+        simdata = self.data.simdata
+        Ri_ECI_SI = simdata["Rt_ECI_SI"][self.i_step]
+        self.frame_SI = PGFrame3D(
+            o=simdata["xyz"][self.i_step % simdata["n_orbit_subs"]],
+            r=Ri_ECI_SI
+        )
+        self.tripod_SI_ps = 0.4 * self.ps
+        self.tripod_SI = plotframe2(
+            self.frame_SI,
+            plotscale=self.tripod_SI_ps, alpha=0.4, antialias=self.aa
+        )
+
+        if self.data.config["ov_draw"]["tripod_SI"]:
+            for item in self.tripod_SI:
+                self.addItem(item)
+
+
+    def make_tripod_B(self):
+        simdata = self.data.simdata
+
+        # Initial Euler angles of SI -> B transformation:
+        self.ab0 = simdata["angle_body0"]
+        Ri_ECI_B = R_SI_B(self.ab0) @ simdata["Rt_ECI_SI"][self.i_step]
+        self.frame_B = PGFrame3D(
+            o=simdata["xyz"][self.i_step % simdata["n_orbit_subs"]],
+            r=Ri_ECI_B
+        )
+        self.tripod_B_ps = 0.25 * self.ps
+        self.tripod_B = plotframe2(
+            self.frame_B,
+            plotscale=self.tripod_B_ps, alpha=1, width=4, antialias=self.aa
+        )
+
+        if self.data.config["ov_draw"]["tripod_B"]:
+            for item in self.tripod_B:
+                self.addItem(item)
+
+
+    def make_xy_grid(self):
         # Add horizontal grid
-        grid = GLGridItem()
-        grid.setColor((255, 255, 255, 24))
-        grid.setSpacing(x=self.ps/4, y=self.ps/4)  # Comment out this line at your peril...
-        grid.setSize(x=3*self.ps, y=3*self.ps)
-        grid.setDepthValue(20)  # Ensure grid is drawn after most other features
-        return grid
+        self.xy_grid = GLGridItem(antialias=self.aa)
+        self.xy_grid.setColor((255, 255, 255, 24))
+        self.xy_grid.setSpacing(x=self.ps/10, y=self.ps/10)  # Comment out this line at your peril...
+        self.xy_grid.setSize(x=2*self.ps, y=2*self.ps)
+        self.xy_grid.setDepthValue(20)  # Ensure grid is drawn after most other features
+
+        if self.data.config["ov_draw"]["xy_grid"]:
+            self.addItem(self.xy_grid)
 
 
-    def make_earth_meshitem(self, alpha=1.0):
+    def make_earth_model(self, alpha=1.0):
         sr = self.data.config["ov_earth_model_resolution"]
 
         mesh = MeshData.sphere(rows=sr[0], cols=sr[1], radius=Earth().r)
@@ -457,16 +405,17 @@ class OrbitalPlot(GLViewWidget):
         mesh.setFaceColors(colours)
 
         # Embed the data into a GLMeshItem (that Qt can work with)
-        meshitem = GLMeshItem(
+        self.earth_model = GLMeshItem(
             meshdata=mesh,
             smooth=self.data.config["ov_earth_model_smoothing"],
             computeNormals=True,
             shader="shaded",
         )
+        self.earth_model.setDepthValue(-2)
 
-        meshitem.setDepthValue(-2)
+        if self.data.config["ov_draw"]["earth_model"]:
+            self.addItem(self.earth_model)
 
-        return meshitem
 
     def make_orbit_lineplot(self):
         # Depending on 'orbit_endpatching' setting, patch gap at pericentre
@@ -475,53 +424,30 @@ class OrbitalPlot(GLViewWidget):
                              self.data.simdata["xyz"][0]])
         else:
             points = simdata["xyz"][:]
-        lineplot = GLLinePlotItem(
+        self.orbit_lineplot = GLLinePlotItem(
             pos=points,
             color=self.c[self.data.config["ov_preferred_colour"]],
             width=2,
             antialias=self.data.config["ov_use_antialiasing"]
         )
-        lineplot.setDepthValue(0)
-        return lineplot
+        self.orbit_lineplot.setDepthValue(0)
+
+        if self.data.config["ov_draw"]["orbit_lineplot"]:
+            self.addItem(self.orbit_lineplot)
+
 
     def make_orbit_scatterplot(self):
 
-        scatterplot = GLScatterPlotItem(
+        self.orbit_scatterplot = GLScatterPlotItem(
             pos=self.data.simdata["xyz"],
             color=hex2rgb(self.c[self.data.config["ov_preferred_colour"]]),
             size=4,
             pxMode=True)
-        scatterplot.setDepthValue(0)
-        return scatterplot
+        self.orbit_scatterplot.setDepthValue(0)
 
-    # def make_orbit_helpers_old(self):
-    #     # Add flat circle
-    #     # Always patch this circle:
-    #     points_flatZ = vstack([self.data.simdata["xyz"][:],
-    #                            self.data.simdata["xyz"][0]])
-    #
-    #     # Flatten Z-coordinates
-    #     points_flatZ[:, 2] = 0
-    #
-    #     flatcircle = GLLinePlotItem(
-    #         pos=points_flatZ,
-    #         color=(1, 1, 1, 0.2),
-    #         width=1,
-    #         antialias=self.data.config["ov_use_antialiasing"])
-    #     flatcircle.setDepthValue(0)
-    #
-    #     # Add vlines
-    #     vlines = []
-    #     for i in range(len(self.data.simdata["xyz"])):
-    #         vline = GLLinePlotItem(
-    #             pos=[points_flatZ[i], self.data.simdata["xyz"][i]],
-    #             color=(1, 1, 1, 0.1),
-    #             antialias=self.data.config["ov_use_antialiasing"],
-    #             width=1)
-    #         vline.setDepthValue(0)
-    #         vlines.append(vline)
-    #
-    #     return flatcircle, vlines
+        if self.data.config["ov_draw"]["orbit_scatterplot"]:
+            self.addItem(self.orbit_scatterplot)
+
 
     def make_orbit_helpers(self):
 
@@ -541,139 +467,205 @@ class OrbitalPlot(GLViewWidget):
         vline_points.append(array([x, y, 0.0]))
         flatcircle_points.append(array([x, y, 0.0]))
 
+        self.orbit_helpers = []
 
         # Add vlines
-        vlines = GLLinePlotItem(
+        self.orbit_helpers.append(GLLinePlotItem(
             pos=vline_points,
             color=(1, 1, 1, 0.05),
             antialias=self.data.config["ov_use_antialiasing"],
             width=1)
+        )
 
-        flatcircle = GLLinePlotItem(
+        self.orbit_helpers.append(GLLinePlotItem(
             pos=flatcircle_points,
             color=(1, 1, 1, 0.2),
             width=1,
             antialias=self.data.config["ov_use_antialiasing"])
-        flatcircle.setDepthValue(0)
+        )
+        [item.setDepthValue(0) for item in self.orbit_helpers]
 
-        return vlines, flatcircle
+        if self.data.config["ov_draw"]["orbit_helpers"]:
+            for item in self.orbit_helpers:
+                self.addItem(item)
+
 
     def make_satellite(self):
         # Draw satellite
-        point = self.data.simdata["xyz"][self.i_step]
+        point = self.data.simdata["xyz"][self.i_step]*1
         point_flatZ = array([point[0], point[1], 0])
-        sat = GLScatterPlotItem(
+        self.satellite = GLScatterPlotItem(
             pos=point,
             color=hex2rgb(self.c[self.data.config["ov_preferred_colour"]]),
             size=8,
             pxMode=True)
-        sat.setDepthValue(1)
+        self.satellite.setDepthValue(1)
 
-        vline_sat = GLLinePlotItem(
+        if self.data.config["ov_draw"]["satellite"]:
+            self.addItem(self.satellite)
+
+
+    def make_satellite_helpers(self):
+        # Draw satellite
+        point = self.data.simdata["xyz"][self.i_step]*1
+        point_flatZ = array([point[0], point[1], 0])
+
+        self.satellite_helpers = []
+
+        self.satellite_helpers.append(GLLinePlotItem(
             pos=[point_flatZ, point],
             color=(1.0, 1.0, 1.0, 0.8),
             antialias=self.data.config["ov_use_antialiasing"],
             width=1)
+        )
+        self.satellite_helpers[0].setDepthValue(1)
 
-        vline_sat.setDepthValue(1)
-
-        vdot_sat = GLScatterPlotItem(
+        self.satellite_helpers.append(GLScatterPlotItem(
             pos=[point_flatZ, point],
             color=(1.0, 1.0, 1.0, 0.8),
             size=3,
             pxMode=True)
-        vdot_sat.setDepthValue(1)
+        )
+        self.satellite_helpers[1].setDepthValue(1)
 
-        return sat, vline_sat, vdot_sat
+        if self.data.config["ov_draw"]["orbit_helpers"]:
+            for item in self.satellite_helpers:
+                self.addItem(item)
 
     def make_angular_momentum_vector(self):
-        base = self.data.simdata["xyz"][self.i_step]
-        tip = base + self.huv*self.huv_scale
+        self.huv_scale = 8E6
+        # base = self.data.simdata["xyz"][self.i_step]
+        base = array([0.0, 0.0, 0.0])
+        tip = base + self.data.simdata["huv"]*self.huv_scale
 
-        vector = GLLinePlotItem(
+        self.angular_momentum_vector = GLLinePlotItem(
             pos=[base, tip],
-            color=(1.0, 1.0, 0, 0.8),
+            color=(1.0, 0.0, 1.0, 0.8),
             antialias=self.data.config["ov_use_antialiasing"],
             width=3)
-        vector.setDepthValue(0)
-        return vector
+        self.angular_momentum_vector.setDepthValue(0)
+        if self.data.config["ov_draw"]["angular_momentum_vector"]:
+            self.addItem(self.angular_momentum_vector)
 
     def make_velocity_vector(self):
 
         base = self.data.simdata["xyz"][self.i_step]
         tip = base + self.data.simdata["v_xyz"][self.i_step]*self.vv_scale
 
-        vector = GLLinePlotItem(
+        self.velocity_vector = GLLinePlotItem(
             pos=[base, tip],
             color=(1.0, 1.0, 0, 0.8),
             antialias=self.data.config["ov_use_antialiasing"],
             width=3)
-        vector.setDepthValue(0)
-        return vector
+        self.velocity_vector.setDepthValue(0)
+
+        if self.data.config["ov_draw"]["velocity_vector"]:
+            self.addItem(self.velocity_vector)
 
     def make_position_vector(self):
 
         base = array([0, 0, 0])
         tip = self.data.simdata["xyz"][self.i_step]
 
-        vector = GLLinePlotItem(
+        self.position_vector = GLLinePlotItem(
             pos=[base, tip],
             color=(1.0, 1.0, 0, 0.8),
             antialias=self.data.config["ov_use_antialiasing"],
             width=2)
-        vector.setDepthValue(0)
-        return vector
+        self.position_vector.setDepthValue(0)
 
-    def make_B_vector(self):
-        # Calculate magnetic field vector
-        # _, _, _, bx, by, bz, _ = igrf_value(
-        #     180/pi*self.rlonglat[2],                         # Latitude [deg]
-        #     180/pi*wrap(self.rlonglat[1]-self.th_E, 2*pi),   # Longitude (ECEF) [deg]
-        #     1E-3*(self.rlonglat[0]-self.data.orbit.body.r),  # Altitude [km]
-        #     self.year)                                       # Date formatted as decimal year
+        if self.data.config["ov_draw"]["position_vector"]:
+            self.addItem(self.position_vector)
 
+    def make_b_vector(self):
         self.Bi = self.data.simdata["B_ECI"][self.i_step]
-
-        # print("[OLD] in:", [180/pi*self.rlonglat[2],
-        #                     180/pi*wrap(self.rlonglat[1]-self.th_E, 2*pi),
-        #                     1E-3 * (self.rlonglat[0] - self.data.orbit.body.r),
-        #                     self.year])
-        # print("[OLD] B", [bx, by, bz])
-
-        # print("B_NED:", B_NED)
-        # print("B_ECI:", self.Bi)
 
         base = self.data.simdata["xyz"][self.i_step]
         tip = base + self.Bi*self.bv_scale
 
-        vector = GLLinePlotItem(
+        self.b_vector = GLLinePlotItem(
             pos=[base, tip],
             color=(0.0, 1.0, 1.0, 0.8),
             antialias=self.data.config["ov_use_antialiasing"],
             width=6)
-        vector.setDepthValue(0)
-        return vector
+        self.b_vector.setDepthValue(0)
+
+        if self.data.config["ov_draw"]["b_vector"]:
+            self.addItem(self.b_vector)
+
+    def make_b_lineplot(self):
+
+        # TODO can clean this up
+        n_steps_orbit = len(self.data.simdata["xyz"])
+        n_steps_simdata = len(self.data.simdata["B_ECI"])
+        mult = int(ceil(n_steps_simdata/n_steps_orbit))
+
+        points = tile(self.data.simdata["xyz"][:], (mult, 1))[:n_steps_simdata] \
+                 + self.data.simdata["B_ECI"][:]*self.bv_scale
+
+        # Offset all the data for plotting purposes
+        for i in range(len(points)):
+            points[i][2] = points[i][2]
+
+        self.b_lineplot = GLLinePlotItem(
+            pos=points,
+            # color=self.c[self.data.config["c3d_preferred_colour"]],
+            color=(0, 1, 1, 0.25),
+            width=2,
+            antialias=self.data.config["ov_use_antialiasing"]
+        )
+        self.b_lineplot.setDepthValue(1)
+
+        if self.data.config["ov_draw"]["b_lineplot"]:
+            self.addItem(self.b_lineplot)
 
 
-    def make_B_fieldgrid(self, h=5E5, rows=16, cols=16, alpha=0.5):
-        t0 = time()
+    def make_b_linespokes(self):
 
-        r = Earth().r + h
+        # TODO can clean this up
+        n_steps_orbit = len(self.data.simdata["xyz"])
+        n_steps_simdata = len(self.data.simdata["B_ECI"])
+        mult = int(ceil(n_steps_simdata/n_steps_orbit))
 
-        xyz = MeshData.sphere(rows=rows, cols=cols, radius=r).vertexes()
-        print("Number of fieldgrid points:", len(xyz))
+        points_outer = tile(self.data.simdata["xyz"][:], (mult, 1))[:n_steps_simdata] \
+                 + self.data.simdata["B_ECI"][:]*self.bv_scale
+        points_inner = tile(self.data.simdata["xyz"][:], (mult, 1))[:n_steps_simdata] \
+                 + 1 / 2 * self.data.simdata["B_ECI"][:]*self.bv_scale
 
-        if self.data.config["ov_draw"]["B_fieldgrid_scatterplot"]:
+        points = []
+        for i in range(self.data.simdata["n_step"]):
+            points.append(points_outer[i] * 1)
+            points.append(points_inner[i] * 1)
+            points.append(points_outer[i] * 1)
+
+        self.b_linespokes = GLLinePlotItem(
+            pos=points,
+            color=(0.5, 0.5, 0.5, 0.2),
+            antialias=self.data.config["ov_use_antialiasing"],
+            width=1)
+        self.b_linespokes.setDepthValue(0)
+
+        if self.data.config["ov_draw"]["b_linespokes"]:
+            self.addItem(self.b_linespokes)
+
+
+    def make_b_fieldgrid(self, layers=3, h_min=5E5, h_spacing=15E5, brows=16, bcols=8):
+
+        def make_b_fieldgrid_set(h=5E5, rows=16, cols=16, alpha=0.5):
+            t0 = time()
+
+            r = Earth().r + h
+
+            xyz = MeshData.sphere(rows=rows, cols=cols, radius=r).vertexes()
+            print("Number of fieldgrid points:", len(xyz))
+
             scatterplot = GLScatterPlotItem(
                 pos=xyz,
                 color=(0.0, 1.0, 1.0, alpha),
                 size=3,
                 pxMode=True)
             scatterplot.setDepthValue(0)
-        else:
-            scatterplot = None
 
-        if self.data.config["ov_draw"]["B_fieldgrid_lineplot"]:
             lineplots = []
             for p in xyz:
                 p_rlonglat = conv_ECI_geoc(p)
@@ -694,13 +686,32 @@ class OrbitalPlot(GLViewWidget):
                     width=1)
                 b_line.setDepthValue(0)
                 lineplots.append(b_line)
-        else:
-            lineplots = None
 
-        t1 = time()
-        print(f"[DEBUG] make_B_fieldgrid() time: {round((t1-t0)*1E6,1)} us")
 
-        return scatterplot, lineplots
+            t1 = time()
+            print(f"[DEBUG] make_B_fieldgrid() time: {round((t1-t0)*1E6,1)} us")
+
+            return scatterplot, lineplots
+
+        self.b_fieldgrid = []
+
+        self.bfg_lp_scale = 1E-5 * self.ps
+
+        # Sequentially call make_B_fieldgrid() to make the plotitems
+        for i in range(layers):
+            b_fieldgrid_sp, b_fieldgrid_lp = \
+                make_b_fieldgrid_set(
+                    h=h_min + i * h_spacing, rows=brows, cols=bcols, alpha=0.4
+                )
+
+            self.b_fieldgrid.append(b_fieldgrid_sp)
+            self.b_fieldgrid += b_fieldgrid_lp
+
+        # Sequentially add the plotitems, but only when configured to do so
+        if self.data.config["ov_draw"]["b_fieldgrid"]:
+            for item in self.b_fieldgrid:
+                self.addItem(item)
+
 
     def make_vector_pos(self):  # TODO: Remove (after verification complete)
         point = self.points[self.data.i_satpos]
@@ -717,3 +728,291 @@ class OrbitalPlot(GLViewWidget):
             width=1)
         vector.setDepthValue(0)
         return vector
+
+
+class OrbitalPlotButtons(QGroupBox):
+    """Description"""
+    def __init__(self, orbitalplot, datapool) -> None:
+        super().__init__()
+
+        self.orbitalplot = orbitalplot
+        self.data = datapool
+
+        self.layout0 = QGridLayout()
+        self.buttons = []
+
+        # Generate buttons
+        self.button_tripod_ECI = QPushButton(QIcon("./assets/icons/tripod.svg"), "")
+        self.setup(self.button_tripod_ECI, "tripod_ECI", label="ECI")
+        self.button_tripod_ECI.toggled.connect(self.toggle_tripod_ECI)
+
+        self.button_tripod_ECEF = QPushButton(QIcon("./assets/icons/tripod.svg"), "")
+        self.setup(self.button_tripod_ECEF, "tripod_ECEF", label="ECEF")
+        self.button_tripod_ECEF.toggled.connect(self.toggle_tripod_ECEF)
+
+        self.button_tripod_NED = QPushButton(QIcon("./assets/icons/tripod.svg"), "")
+        self.setup(self.button_tripod_NED, "tripod_NED", label="NED")
+        self.button_tripod_NED.toggled.connect(self.toggle_tripod_NED)
+
+        self.button_tripod_SI = QPushButton(QIcon("./assets/icons/tripod.svg"), "")
+        self.setup(self.button_tripod_SI, "tripod_SI", label="SI")
+        self.button_tripod_SI.toggled.connect(self.toggle_tripod_SI)
+
+        self.button_tripod_B = QPushButton(QIcon("./assets/icons/tripod.svg"), "")
+        self.setup(self.button_tripod_B, "tripod_B", label="B")
+        self.button_tripod_B.toggled.connect(self.toggle_tripod_B)
+
+        self.button_xy_grid = QPushButton(QIcon("./assets/icons/feather/grid.svg"), "")
+        self.setup(self.button_xy_grid, "xy_grid", label="XY")
+        self.button_xy_grid.toggled.connect(self.toggle_xy_grid)
+
+        self.button_earth_model = QPushButton(QIcon("./assets/icons/feather/globe.svg"), "")
+        self.setup(self.button_earth_model, "earth_model")
+        self.button_earth_model.toggled.connect(self.toggle_earth_model)
+
+        self.button_orbit_lineplot = QPushButton(QIcon("./assets/icons/orbitB.svg"), "")
+        self.setup(self.button_orbit_lineplot, "orbit_lineplot")
+        self.button_orbit_lineplot.toggled.connect(self.toggle_orbit_lineplot)
+
+        self.button_orbit_scatterplot = QPushButton(QIcon("./assets/icons/orbitB_dots.svg"), "")
+        self.setup(self.button_orbit_scatterplot, "orbit_scatterplot")
+        self.button_orbit_scatterplot.toggled.connect(self.toggle_orbit_scatterplot)
+
+        self.button_orbit_helpers = QPushButton(QIcon("./assets/icons/feather/bar-chart.svg"), "")
+        self.setup(self.button_orbit_helpers, "orbit_helpers")
+        self.button_orbit_helpers.toggled.connect(self.toggle_orbit_helpers)
+
+        self.button_satellite = QPushButton(QIcon("./assets/icons/dot.svg"), "")
+        self.setup(self.button_satellite, "satellite")
+        self.button_satellite.toggled.connect(self.toggle_satellite)
+
+        self.button_satellite_helpers = QPushButton(QIcon("./assets/icons/feather/bar-chart.svg"), "")
+        self.setup(self.button_satellite_helpers, "satellite_helpers")
+        self.button_satellite_helpers.toggled.connect(self.toggle_satellite_helpers)
+
+        self.button_position_vector = QPushButton(QIcon("./assets/icons/feather/help-circle.svg"), "")
+        self.setup(self.button_position_vector, "position_vector", label="r")
+        self.button_position_vector.toggled.connect(self.toggle_position_vector)
+
+        self.button_velocity_vector = QPushButton(QIcon("./assets/icons/feather/help-circle.svg"), "")
+        self.setup(self.button_velocity_vector, "velocity_vector", label="V")
+        self.button_velocity_vector.toggled.connect(self.toggle_velocity_vector)
+
+        self.button_angular_momentum_vector = QPushButton(QIcon("./assets/icons/feather/help-circle.svg"), "")
+        self.setup(self.button_angular_momentum_vector, "angular_momentum_vector", label="H")
+        self.button_angular_momentum_vector.toggled.connect(self.toggle_angular_momentum_vector)
+
+        self.button_b_vector = QPushButton(QIcon("./assets/icons/feather/help-circle.svg"), "")
+        self.setup(self.button_b_vector, "b_vector", label="B")
+        self.button_b_vector.toggled.connect(self.toggle_b_vector)
+
+        self.button_b_lineplot = QPushButton(QIcon("./assets/icons/field_lines.svg"), "")
+        self.setup(self.button_b_lineplot, "b_lineplot")
+        self.button_b_lineplot.toggled.connect(self.toggle_b_lineplot)
+
+        self.button_b_linespokes = QPushButton(QIcon("./assets/icons/spokes2.svg"), "")
+        self.setup(self.button_b_linespokes, "b_linespokes")
+        self.button_b_linespokes.toggled.connect(self.toggle_b_linespokes)
+
+        self.button_b_fieldgrid = QPushButton(QIcon("./assets/icons/field_lines.svg"), "")
+        self.setup(self.button_b_fieldgrid, "b_fieldgrid")
+        self.button_b_fieldgrid.toggled.connect(self.toggle_b_fieldgrid)
+
+        self.button_autorotate = QPushButton(QIcon("./assets/icons/feather/rotate-ccw.svg"), "")
+        self.setup(self.button_autorotate, "autorotate")
+        self.button_autorotate.toggled.connect(self.toggle_autorotate)
+
+
+        self.setLayout(self.layout0)
+        self.layout0.setSizeConstraint(QLayout.SetMinimumSize)
+        self.setMaximumSize(32, 860)
+        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.layout0.setVerticalSpacing(1)
+        self.layout0.setColumnStretch(0, 0)
+        self.layout0.setColumnStretch(1, 0)
+
+
+    def setup(self, button, reference: str, label=""):
+        """A shorthand function to inherit the 'checked' properties based on
+        the visibility of various plot items as defined in the config file.
+        This must be done before the toggled() action is connected, in order
+        to prevent the toggled () action being triggered and causing plot
+        elements to be redrawn unnecessarily.
+        """
+        button.setCheckable(True)
+        if self.data.config["ov_draw"][reference] is True:
+            button.setChecked(True)
+        button.setFixedSize(QSize(32, 32))
+        button.setIconSize(QSize(24, 24))
+        self.layout0.addWidget(button, len(self.buttons), 0)
+        self.layout0.addWidget(QLabel(label), len(self.buttons), 1)
+        self.buttons.append(button)
+
+
+    def toggle_tripod_ECI(self):
+        if self.button_tripod_ECI.isChecked():
+            self.data.config["ov_draw"]["tripod_ECI"] = True
+            self.orbitalplot.make_tripod_ECI()
+        else:
+            self.data.config["ov_draw"]["tripod_ECI"] = False
+            for item in self.orbitalplot.tripod_ECI:
+                self.orbitalplot.removeItem(item)
+
+    def toggle_tripod_ECEF(self):
+        if self.button_tripod_ECEF.isChecked():
+            self.data.config["ov_draw"]["tripod_ECEF"] = True
+            self.orbitalplot.make_tripod_ECEF()
+        else:
+            self.data.config["ov_draw"]["tripod_ECEF"] = False
+            for item in self.orbitalplot.tripod_ECEF:
+                self.orbitalplot.removeItem(item)
+
+    def toggle_tripod_NED(self):
+        if self.button_tripod_NED.isChecked():
+            self.data.config["ov_draw"]["tripod_NED"] = True
+            self.orbitalplot.make_tripod_NED()
+        else:
+            self.data.config["ov_draw"]["tripod_NED"] = False
+            for item in self.orbitalplot.tripod_NED:
+                self.orbitalplot.removeItem(item)
+
+    def toggle_tripod_SI(self):
+        if self.button_tripod_SI.isChecked():
+            self.data.config["ov_draw"]["tripod_SI"] = True
+            self.orbitalplot.make_tripod_SI()
+        else:
+            self.data.config["ov_draw"]["tripod_SI"] = False
+            for item in self.orbitalplot.tripod_SI:
+                self.orbitalplot.removeItem(item)
+
+    def toggle_tripod_B(self):
+        if self.button_tripod_B.isChecked():
+            self.data.config["ov_draw"]["tripod_B"] = True
+            self.orbitalplot.make_tripod_B()
+        else:
+            self.data.config["ov_draw"]["tripod_B"] = False
+            for item in self.orbitalplot.tripod_B:
+                self.orbitalplot.removeItem(item)
+
+    def toggle_xy_grid(self):
+        if self.button_xy_grid.isChecked():
+            self.data.config["ov_draw"]["xy_grid"] = True
+            self.orbitalplot.make_xy_grid()
+        else:
+            self.data.config["ov_draw"]["xy_grid"] = False
+            self.orbitalplot.removeItem(self.orbitalplot.xy_grid)
+
+    def toggle_earth_model(self):
+        if self.button_earth_model.isChecked():
+            self.data.config["ov_draw"]["earth_model"] = True
+            self.orbitalplot.make_earth_model()
+        else:
+            self.data.config["ov_draw"]["earth_model"] = False
+            self.orbitalplot.removeItem(self.orbitalplot.earth_model)
+
+    def toggle_orbit_lineplot(self):
+        if self.button_orbit_lineplot.isChecked():
+            self.data.config["ov_draw"]["orbit_lineplot"] = True
+            self.orbitalplot.make_orbit_lineplot()
+        else:
+            self.data.config["ov_draw"]["orbit_lineplot"] = False
+            self.orbitalplot.removeItem(self.orbitalplot.orbit_lineplot)
+
+    def toggle_orbit_scatterplot(self):
+        if self.button_orbit_scatterplot.isChecked():
+            self.data.config["ov_draw"]["orbit_scatterplot"] = True
+            self.orbitalplot.make_orbit_scatterplot()
+        else:
+            self.data.config["ov_draw"]["orbit_scatterplot"] = False
+            self.orbitalplot.removeItem(self.orbitalplot.orbit_scatterplot)
+
+    def toggle_orbit_helpers(self):
+        if self.button_orbit_helpers.isChecked():
+            self.data.config["ov_draw"]["orbit_helpers"] = True
+            self.orbitalplot.make_orbit_helpers()
+        else:
+            self.data.config["ov_draw"]["orbit_helpers"] = False
+            for item in self.orbitalplot.orbit_helpers:
+                self.orbitalplot.removeItem(item)
+
+    def toggle_satellite(self):
+        if self.button_satellite.isChecked():
+            self.data.config["ov_draw"]["satellite"] = True
+            self.orbitalplot.make_satellite()
+        else:
+            self.data.config["ov_draw"]["satellite"] = False
+            self.orbitalplot.removeItem(self.orbitalplot.satellite)
+
+    def toggle_satellite_helpers(self):
+        if self.button_satellite_helpers.isChecked():
+            self.data.config["ov_draw"]["satellite_helpers"] = True
+            self.orbitalplot.make_satellite_helpers()
+        else:
+            self.data.config["ov_draw"]["satellite_helpers"] = False
+            for item in self.orbitalplot.satellite_helpers:
+                self.orbitalplot.removeItem(item)
+
+    def toggle_position_vector(self):
+        if self.button_position_vector.isChecked():
+            self.data.config["ov_draw"]["position_vector"] = True
+            self.orbitalplot.make_position_vector()
+        else:
+            self.data.config["ov_draw"]["position_vector"] = False
+            self.orbitalplot.removeItem(self.orbitalplot.position_vector)
+
+    def toggle_velocity_vector(self):
+        if self.button_velocity_vector.isChecked():
+            self.data.config["ov_draw"]["velocity_vector"] = True
+            self.orbitalplot.make_velocity_vector()
+        else:
+            self.data.config["ov_draw"]["velocity_vector"] = False
+            self.orbitalplot.removeItem(self.orbitalplot.velocity_vector)
+
+    def toggle_angular_momentum_vector(self):
+        if self.button_angular_momentum_vector.isChecked():
+            self.data.config["ov_draw"]["angular_momentum_vector"] = True
+            self.orbitalplot.make_angular_momentum_vector()
+        else:
+            self.data.config["ov_draw"]["angular_momentum_vector"] = False
+            self.orbitalplot.removeItem(self.orbitalplot.angular_momentum_vector)
+
+    def toggle_b_vector(self):
+        if self.button_b_vector.isChecked():
+            self.data.config["ov_draw"]["b_vector"] = True
+            self.orbitalplot.make_b_vector()
+        else:
+            self.data.config["ov_draw"]["b_vector"] = False
+            self.orbitalplot.removeItem(self.orbitalplot.b_vector)
+
+    def toggle_b_lineplot(self):
+        if self.button_b_lineplot.isChecked():
+            self.data.config["ov_draw"]["b_lineplot"] = True
+            self.orbitalplot.make_b_lineplot()
+        else:
+            self.data.config["ov_draw"]["b_lineplot"] = False
+            self.orbitalplot.removeItem(self.orbitalplot.b_lineplot)
+
+    def toggle_b_linespokes(self):
+        if self.button_b_linespokes.isChecked():
+            self.data.config["ov_draw"]["b_linespokes"] = True
+            self.orbitalplot.make_b_linespokes()
+        else:
+            self.data.config["ov_draw"]["b_linespokes"] = False
+            self.orbitalplot.removeItem(self.orbitalplot.b_linespokes)
+
+    def toggle_b_fieldgrid(self):
+        if self.button_b_fieldgrid.isChecked():
+            self.data.config["ov_draw"]["b_fieldgrid"] = True
+            for item in self.orbitalplot.b_fieldgrid:
+                self.orbitalplot.addItem(item)
+        else:
+            self.data.config["ov_draw"]["b_fieldgrid"] = False
+            for item in self.orbitalplot.b_fieldgrid:
+                self.orbitalplot.removeItem(item)
+
+    def toggle_autorotate(self):
+        if self.button_autorotate.isChecked():
+            self.data.config["ov_draw"]["autorotate"] = True
+        else:
+            self.data.config["ov_draw"]["autorotate"] = False
+

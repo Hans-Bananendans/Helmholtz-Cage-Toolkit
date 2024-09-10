@@ -1,12 +1,12 @@
 config = {
     "APPNAME": "Helmholtz Cage Toolkit",
-    "VERSION": "0.2.2",
+    "VERSION": "0.3.0",
 
 
     # ==== General settings ====
     "verbosity": 1,
     "use_dummies": True,
-    "default_windowsize": (1280, 720),
+    "default_windowsize": (1280, 860),
 
     # ==== TCP connection settings ====
     "server_address": "127.0.0.1",
@@ -22,7 +22,7 @@ config = {
 
 
     # ==== Data acquisition ====
-    "telemetry_polling_rate": 50,   # [S/s] How frequently Bm is polled
+    "telemetry_polling_rate": 30,   # [S/s] How frequently Bm is polled
 
     "CW_HHCPlots_refresh_rate": 30,
     "CW_values_refresh_rate": 30,
@@ -42,11 +42,11 @@ config = {
     #    calculate the local EMF from the IGRF model. To do this, parameters
     #    'local_latitude', 'local_longitude', 'local_altitude' must be
     #    correctly specified. The time component will be taken from the Unix
-    #    Epoch. In addition, a rotation matrix to convert from the ENU frame
+    #    epoch. In addition, a rotation matrix to convert from the ENU frame
     #    to the cage frame must be specified 'R_ENU_cageframe'.
     # 3. Use the "Take from Bm" button in the GUI, although this will not
     #    strictly provide B_EMF but will include ambient fields at the location
-    #    as well. The first two options are preferred over this one.
+    #    as well.
     "local_EMF": None,
     "local_latitude": 51.99002134132983,        # [deg] +N, -S
     "local_longitude": 4.375289736921873,       # [deg] +E, -W
@@ -125,12 +125,14 @@ config = {
         border-color: rgba(255, 255, 255, 77);
         }""",
 
+    "show_plot_visibility_tabs": True,
 
     # ==== Orbit Visualizer ====
     "ov_plotcolours": ("#ff00ffff", "#ff8000ff", "#00ffffff", "#ffff00ff", "#00ff00ff"),
     "ov_preferred_colour": 1,
-    "ov_draw_B_vector": True,
+    # "ov_draw_B_vector": True,
     "ov_plotscale": 1E7,
+    "ov_autorotate_angle": -0.25,
     "ov_earth_model_resolution": (16, 24),
     "ov_earth_model_colours": {
             "ocean": "#002bff",
@@ -142,56 +144,42 @@ config = {
             "test": "#ff0000",
         },
 
-    # "ov_draw": {
-    #     "XY_grid": True,
-    #     "tripod_ECI": True,
-    #     "tripod_ECEF": False,
-    #     "tripod_NED": False,
-    #     "tripod_SI": False,
-    #     "tripod_B": False,
-    #     "earth_model": True,
-    #     "satellite": False,
-    #     "satellite_helpers": False,
-    #     "position_vector": False,
-    #     "orbit_lineplot": False,
-    #     "orbit_scatterplot": False,
-    #     "orbit_helpers": False,
-    #     "velocity_vector": False,
-    #     "B_vector": False,
-    #     "B_fieldgrid_lineplot": True,
-    #     "B_fieldgrid_scatterplot": False,
-    #     },
     "ov_draw": {
-        "XY_grid": True,
+        "xy_grid": True,
         "tripod_ECI": True,
-        "tripod_ECEF": True,
+        "tripod_ECEF": False,
         "tripod_NED": False,
-        "tripod_SI": True,
+        "tripod_SI": False,
         "tripod_B": True,
         "earth_model": True,
         "satellite": True,
         "satellite_helpers": True,
-        "position_vector": True,
+        "position_vector": False,
         "orbit_lineplot": True,
         "orbit_scatterplot": False,
         "orbit_helpers": True,
-        "velocity_vector": True,
-        "B_vector": True,
-        "B_fieldgrid_lineplot": True,
-        "B_fieldgrid_scatterplot": True,
+        "velocity_vector": False,
+        "angular_momentum_vector": False,
+        "b_vector": True,
+        "b_lineplot": False,
+        "b_linespokes": False,
+        "b_fieldgrid": False,
+        "autorotate": False,
+        # "B_fieldgrid_lineplot": False,
+        # "B_fieldgrid_scatterplot": False,
     },
-    "ov_anim": {
-        "tripod_ECEF": True,
-        "tripod_NED": True,
-        "tripod_SI": True,
-        "tripod_B": True,
-        "earth_model": True,
-        "satellite": True,
-        "satellite_helpers": True,
-        "position_vector": True,
-        "velocity_vector": True,
-        "B_vector": True,
-        },
+    # "ov_anim": {
+    #     "tripod_ECEF": True,
+    #     "tripod_NED": True,
+    #     "tripod_SI": True,
+    #     "tripod_B": True,
+    #     "earth_model": True,
+    #     "satellite": True,
+    #     "satellite_helpers": True,
+    #     "position_vector": True,
+    #     "velocity_vector": True,
+    #     "B_vector": True,
+    #     },
     "ov_rotate_earth": True,
     "ov_earth_model_smoothing": True,
     "ov_use_antialiasing": True,
@@ -208,33 +196,35 @@ config = {
     },
     "c3d_cage_alpha": 0.25,
     "c3d_line_alpha": 0.1,
+    "c3d_component_alpha": 1.0,
     "c3d_preferred_colour": 2,
     "c3d_plotscale": 5E4,
     "c3d_draw": {
         "xy_grid": True,
         "tripod_b": True,
         "cage_structure": True,
-        "satellite_model": True,
-        # "tripod_ECEF": True,
-        # "tripod_NED": False,
-        # "tripod_SI": True,
-        # "tripod_B": True,
-        # "earth_model": True,
-        # "satellite": True,
-        # "satellite_helpers": True,
-        # "position_vector": True,
+        "cage_illumination": False,
+        "satellite_model": False,
         "lineplot": True,
-        "scatterplot": False,
         "linespokes": True,
-        # "orbit_helpers": True,
-        # "velocity_vector": True,
+
         "b_vector": True,
         "b_dot": True,
         "b_tail": True,
-        # "B_fieldgrid_lineplot": False,
-        # "B_fieldgrid_scatterplot": False,
+        "b_components": False,
+
+        "autorotate": False,
     },
+    "c3d_autorotate_angle": -0.25,
     "c3d_tail_length": [3, 6, 9, 12, 15, 18, 21, 24],
+    "c3d_satellite_model": {
+        "x_dim": 0.1,
+        "y_dim": 0.1,
+        "z_dim": 0.2,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+    },
 
     # ==== Orbital generator options ====
     "eotc_order": 12,                       # Default order to use for the Equation of the Centre approximation
@@ -263,8 +253,8 @@ config = {
         "date0": 2024.0,  # [decimal date]
 
         # Simulation settings
-        "n_orbit_subs": 256,  # [-] <positive int>
-        "n_step": 1024,  # [-] <positive int>
+        "n_orbit_subs": 512,  # [-] <positive int>
+        "n_step": 4096,  # [-] <positive int>
         "time_speed_factor": 1.0  # [-] <positive float>
     },
 
@@ -366,32 +356,32 @@ config = {
             "checkable": True,
             "icon": "./assets/icons/orbitB.svg"
         },
+        # 3: {
+        #     "name": "OrbitDesignWindow",
+        #     "checkable": True,
+        #     "icon": "./assets/icons/orbitB.svg"
+        # },
         3: {
-            "name": "OrbitDesignWindow",
-            "checkable": True,
-            "icon": "./assets/icons/orbitB.svg"
-        },
-        4: {
             "name": "GeneratorWindow",
             "checkable": True,
             "icon": "./assets/icons/feather/activity.svg"
         },
-        5: {
+        4: {
             "name": "WebcamWindow",
             "checkable": True,
             "icon": "./assets/icons/feather/video.svg"
         },
-        6: {
+        5: {
             "name": "ControlWindow",
             "checkable": True,
             "icon": "./assets/icons/feather/sliders.svg"
         },
-        7: {
+        6: {
             "name": "Tab 6",
             "checkable": True,
             "icon": "./assets/icons/feather/box.svg"
         },
-        8: {
+        7: {
             "name": "Tab 7",
             "checkable": True,
             "icon": "./assets/icons/feather/info.svg"

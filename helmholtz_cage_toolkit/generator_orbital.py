@@ -269,8 +269,8 @@ def generator_orbital2(generation_parameters, datapool, timing=False):
     if timing:
         t3 = time()
 
-    print("DEBUG!!!")
-    print(datapool.config)
+    # print("DEBUG!!!")
+    # print(datapool.config)
 
     # Invoke the draw() function in Orbit class to generate orbit points.
     simdata["xyz"], simdata["v_xyz"], simdata["ma"], \

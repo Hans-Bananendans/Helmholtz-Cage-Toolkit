@@ -173,6 +173,7 @@ class PGFrame3D:
         return output
 
 # ==== OpenGL PyQtGraph plotting functions
+# TODO?
 def plotgrid(pgwindow, plotscale=1, gridspacing_div=10,
              hexcolour="ffffff", alpha=0.1, depth=20, antialias=True):
     grid_plotitem = gl.GLGridItem(
@@ -194,6 +195,7 @@ def plotgrid(pgwindow, plotscale=1, gridspacing_div=10,
 
     pgwindow.addItem(grid_plotitem)
     return grid_plotitem
+
 
 def plotpoint(point: PGPoint3D, pgwindow, depth=10, hexcolour="ffff00",
               alpha=1.0, size=6):
