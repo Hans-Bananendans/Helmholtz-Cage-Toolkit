@@ -405,15 +405,18 @@ def generator_orbital2(generation_parameters, datapool, timing=False):
         print(f"[DEBUG] g): {round(t7g * 1E6, 1)} us")
         print(f"[DEBUG] generator_orbital2() TOTAL:       {round((t7 - t0) * 1E6, 1)} us")
 
-    return simdata
+    datapool.simdata = simdata
+
+    return simdata["t"], simdata["B_B"].transpose()
+    # return simdata
 
 
 orbital_generation_parameters = {
     # Orbital elements
     "orbit_eccentricity": 0.2,  # [-]
     "orbit_inclination": 54,  # [deg]
-    "orbit_pericentre_altitude": 400E3,  # [m]
-    "orbit_RAAN": 0,  # [deg]
+    "orbit_pericentre_altitude": 350E3,  # [m]
+    "orbit_RAAN": 24,  # [deg]
     "orbit_argp": 0,  # [deg]
     "orbit_ma0": 0,  # [deg]
 
@@ -421,19 +424,19 @@ orbital_generation_parameters = {
     "angle_body_x_0": 0,  # [deg]
     "angle_body_y_0": 0,  # [deg]
     "angle_body_z_0": 0,  # [deg]
-    "rate_body_x": 0,  # [deg/s]
+    "rate_body_x": 0.1,  # [deg/s]
     "rate_body_y": 0,  # [deg/s]
-    "rate_body_z": 0,  # [deg/s]
+    "rate_body_z": -0.1,  # [deg/s]
 
     # Various
     "earth_zero_datum": 0,  # [deg]
     "date0": 2024.0,  # [decimal date]
 
     # Simulation settings
-    "n_orbit_subs": 256,  # [-] <positive int>
-    "n_step": 1024,  # [-] <positive int>
+    "n_orbit_subs": 512,  # [-] <positive int>
+    "n_step": 4096,  # [-] <positive int>
     # "interpolation_factor": 1,          # [-] <positive int>
-    "time_speed_factor": 1.0            # [-] <positive float>
+    "time_speed_factor": 10.0            # [-] <positive float>
 }
 
 # ============================================================================

@@ -22,7 +22,7 @@ import numpy as np # TODO REMOVE
 
 from helmholtz_cage_toolkit import *
 
-from helmholtz_cage_toolkit.schedule_player import SchedulePlayer
+from helmholtz_cage_toolkit.schedule_player import SchedulePlayer, PlayerControls
 from helmholtz_cage_toolkit.utilities import tB_to_schedule
 from helmholtz_cage_toolkit.generator_cyclics import (
     # generator_cyclics_single,
@@ -434,9 +434,9 @@ class OrbitalInput(QGroupBox):
         6. Flood to datapool.schedule, datapool.generation_parameters
         7. Schedule changed -> self.datapool.refresh()
         """
-        # print("[DEBUG] generate()")
+        print("[DEBUG] orbital.generate()")
         generation_parameters = self.slurp_orbital()
-        t, B = generator_orbital2(generation_parameters, datapool)
+        t, B = generator_orbital2(generation_parameters, self.datapool)
 
         interpolation_parameters = self.slurp_interpolation_parameters()
 
@@ -449,7 +449,8 @@ class OrbitalInput(QGroupBox):
         self.datapool.generation_parameters_orbital = generation_parameters
         self.datapool.interpolation_parameters = interpolation_parameters
 
-        self.datapool.refresh()
+        print("[DEBUG] orbital.generate() HERE!")
+        self.datapool.refresh(source="orbital")
 
 
 class OrbitalVisualizer(QGroupBox):
@@ -487,7 +488,8 @@ class OrbitalVisualizer(QGroupBox):
 
         # TODO REMOVE DEBUG
         genparams = self.datapool.config["orbital_default_generation_parameters"]
-        self.datapool.simdata = generator_orbital2(genparams, datapool)
+        generator_orbital2(genparams, datapool)
+        # self.datapool.simdata = generator_orbital2(genparams, datapool)
 
         # # Writes B_B to a file in np.array format
         # f = open("b_dump.txt", "w")
@@ -548,7 +550,22 @@ class OrbitalVisualizer(QGroupBox):
         self.group_cage3d.setLayout(self.layout_cage3d)
 
 
-        self.group_playcontrols = QLabel("SCHEDULE PLAYER CONTROLS HERE")
+
+        # Define subclassed SchedulePlayer object (does not have a UI)
+        self.scheduleplayer = SchedulePlayerOrbital(
+            self.widget_orbitalplot, self.widget_cage3d, self.datapool)
+        # Pass reference to datapool for reference
+        self.datapool.orbital_scheduleplayer = self.scheduleplayer
+        # Set playback multiplier
+        self.mult = 1
+
+        # Create PlayerControl widget
+        self.group_playcontrols = PlayerControls(
+            self.datapool, self.scheduleplayer
+        )
+
+
+        # self.group_playcontrols = QLabel("SCHEDULE PLAYER CONTROLS HERE")
         self.group_playcontrols.setMaximumHeight(48)
 
 
@@ -568,34 +585,33 @@ class OrbitalVisualizer(QGroupBox):
 
         # Timer
         self.i_step = 0
-        self.play_timer = QTimer()
-        self.play_timer.timeout.connect(self.update_plots)
-        self.play_timer.start(50)  # TODO
+        self.autorotate_timer = QTimer()
+        self.autorotate_timer.timeout.connect(self.autorotate)
+        self.autorotate_timer.start(50)
 
-    def update_plots(self):
-        self.update_orbital_plot()
-        self.update_cage3d_plot()
-        self.i_step = (self.i_step + 1) % len(self.datapool.simdata["i_step"])
+    # def update_plots(self):
+    #     self.update_orbital_plot()
+    #     self.update_cage3d_plot()
+    #     self.i_step = (self.i_step + 1) % len(self.datapool.simdata["i_step"])
 
-    def update_orbital_plot(self, timing=False):
-        # print(f"[NEW] [{self.i_step}] B={self.datapool.simdata['B_ECI'][self.i_step].round()} |B|={round(np.linalg.norm(self.datapool.simdata['B_ECI'][self.i_step]))}")
-        if timing:
-            t0 = time()
-        self.widget_orbitalplot.draw_step(self.i_step)
-        if timing:
-            t = round((time()-t0)*1000, 3)
-            print(f"update_orbital_plot(): i_step {self.i_step} - time: {t} ms")
-
-    def update_cage3d_plot(self, timing=False):
-        # print(f"[NEW] [{self.i_step}] B={self.datapool.simdata['B_ECI'][self.i_step].round()} |B|={round(np.linalg.norm(self.datapool.simdata['B_ECI'][self.i_step]))}")
-        if timing:
-            t0 = time()
-        self.widget_cage3d.draw_step(self.i_step)
-        # self.i_step = (self.i_step + 1) % len(self.datapool.simdata["i_step"])
-        if timing:
-            t = round((time()-t0)*1000, 3)
-            print(f"update_cage3d_plot(): i_step {self.i_step} - time: {t} ms")
-
+    # def update_orbital_plot(self, timing=False):
+    #     # print(f"[NEW] [{self.i_step}] B={self.datapool.simdata['B_ECI'][self.i_step].round()} |B|={round(np.linalg.norm(self.datapool.simdata['B_ECI'][self.i_step]))}")
+    #     if timing:
+    #         t0 = time()
+    #     self.widget_orbitalplot.draw_step(self.i_step)
+    #     if timing:
+    #         t = round((time()-t0)*1000, 3)
+    #         print(f"update_orbital_plot(): i_step {self.i_step} - time: {t} ms")
+    #
+    # def update_cage3d_plot(self, timing=False):
+    #     # print(f"[NEW] [{self.i_step}] B={self.datapool.simdata['B_ECI'][self.i_step].round()} |B|={round(np.linalg.norm(self.datapool.simdata['B_ECI'][self.i_step]))}")
+    #     if timing:
+    #         t0 = time()
+    #     self.widget_cage3d.draw_step(self.i_step)
+    #     # self.i_step = (self.i_step + 1) % len(self.datapool.simdata["i_step"])
+    #     if timing:
+    #         t = round((time()-t0)*1000, 3)
+    #         print(f"update_cage3d_plot(): i_step {self.i_step} - time: {t} ms")
 
     def refresh(self):
         """When the schedule, or other parameters relevant to the
@@ -608,22 +624,31 @@ class OrbitalVisualizer(QGroupBox):
         """
         # First clear data previously plotted:
         # XYZ lines in envelope plot
-        for item in self.widget_envelopeplot.plot_obj.dataItems:
-            item.clear()
-        # Ghosts in HHC plots:
-        for item in [self.hhcplot_yz.plot_obj.dataItems[-1],
-                     self.hhcplot_mxy.plot_obj.dataItems[-1]]:
-            item.clear()
+        self.widget_orbitalplot.clear()
+        self.widget_orbitalplot.draw_statics()
+        self.widget_orbitalplot.draw_simdata()
 
-        # Refresh envelope plot
-        self.widget_envelopeplot.generate_envelope_plot()
-
-        # Refresh path ghosts on HHC plots
-        self.plot_ghosts()
+        self.widget_cage3d.clear()
+        self.widget_cage3d.draw_statics()
+        self.widget_cage3d.draw_simdata()
 
         # Refresh play controls
         self.scheduleplayer.init_values()
         self.group_playcontrols.refresh()
+
+    def autorotate(self):
+
+        if self.datapool.config["ov_draw"]["autorotate"]:
+            angle = self.datapool.config["ov_autorotate_angle"]
+            self.widget_orbitalplot.setCameraPosition(
+                azimuth=(self.widget_orbitalplot.opts["azimuth"] + angle) % 360
+            )
+        if self.datapool.config["c3d_draw"]["autorotate"]:
+            angle = self.datapool.config["c3d_autorotate_angle"]
+            self.widget_cage3d.setCameraPosition(
+                azimuth=(self.widget_cage3d.opts["azimuth"] + angle) % 360
+            )
+
 
     # def plot_ghosts(self):
     #     """Plots hazy, dotted paths indicating the magnetic field vector
@@ -978,187 +1003,203 @@ class OrbitalVisualizer(QGroupBox):
 #         # print(f"{round((t6-t5)*1E6)} us", end=" ")
 #         # print(f"T: {round((t6-t0)*1E6)} us")
 
+#
+# class PlayerControls(QGroupBox):
+#     """Defines a set of UI elements for playback control. It is linked to an
+#     instance to the SchedulePlayer class, which handles the actual playback."""
+#     def __init__(self, datapool, scheduleplayer, label_update_interval=30) -> None:
+#         super().__init__()
+#
+#         self.datapool = datapool
+#         self.setStyleSheet(
+#             self.datapool.config["stylesheet_groupbox_smallmargins_notitle"]
+#         )
+#
+#         self.scheduleplayer = scheduleplayer
+#
+#         # Speed at which labels will update themselves. Slave the act of
+#         # performing the update to a QTimer.
+#         self.label_update_interval = label_update_interval
+#         self.label_update_timer = QTimer()
+#         self.label_update_timer.timeout.connect(self.update_labels)
+#
+#         # To keep overhead on the update_label() function minimal, already
+#         # generate the strings of the total schedule duration and steps
+#         self.str_step_prev = 0
+#         self.str_duration = "/{:.3f}".format(round(self.datapool.get_schedule_duration(), 3))
+#         self.str_steps = "/{}".format(self.datapool.get_schedule_steps())
+#
+#         # Main layout
+#         layout0 = QHBoxLayout()
+#
+#         # Generate and configure playback buttons
+#         self.button_play = QPushButton()
+#         self.button_play.setIcon(QIcon("./assets/icons/feather/play.svg"))
+#         self.button_play.toggled.connect(self.toggle_play)
+#         self.button_play.setCheckable(True)
+#
+#         self.button_reset = QPushButton()
+#         self.button_reset.setIcon(QIcon("./assets/icons/feather/rotate-ccw.svg"))
+#         self.button_reset.clicked.connect(self.toggle_reset)
+#
+#         self.button_mult10 = QPushButton()
+#         self.button_mult10.setIcon(QIcon("./assets/icons/x10.svg"))
+#         self.button_mult10.toggled.connect(self.toggle_mult10)
+#         self.button_mult10.setCheckable(True)
+#
+#         self.button_mult100 = QPushButton()
+#         self.button_mult100.setIcon(QIcon("./assets/icons/x100.svg"))
+#         self.button_mult100.toggled.connect(self.toggle_mult100)
+#         self.button_mult100.setCheckable(True)
+#
+#         self.button_mult1000 = QPushButton()
+#         self.button_mult1000.setIcon(QIcon("./assets/icons/x1000.svg"))
+#         self.button_mult1000.toggled.connect(self.toggle_mult1000)
+#         self.button_mult1000.setCheckable(True)
+#
+#         self.buttons_playback = (
+#             self.button_play,
+#             self.button_reset,
+#         )
+#         self.buttons_mult = (
+#             self.button_mult10,
+#             self.button_mult100,
+#             self.button_mult1000,
+#         )
+#
+#         button_size = QSize(32, 32)
+#         button_size_icon = QSize(24, 24)
+#
+#         for button in self.buttons_playback+self.buttons_mult:
+#             button.setFixedSize(button_size)
+#             button.setIconSize(button_size_icon)
+#             layout0.addWidget(button)
+#
+#
+#
+#         # Generate and configure playback labels
+#         self.label_t = QLabel("0.000/0.000")
+#         self.label_t.setMinimumWidth(256)
+#         self.label_step = QLabel("0/0")
+#
+#         self.update_labels()
+#
+#         for label in (self.label_t, self.label_step):
+#             label.setStyleSheet(self.datapool.config["stylesheet_label_timestep"])
+#             label.setAlignment(Qt.AlignRight)
+#             layout0.addWidget(label)
+#
+#         self.setLayout(layout0)
+#
+#
+#     def refresh(self):
+#         # Stops playback when called
+#         self.toggle_reset()
+#         self.button_play.setChecked(False)
+#
+#         self.str_step_prev = 0
+#         self.str_duration = "/{:.3f}".format(round(self.datapool.get_schedule_duration(), 3))
+#         self.str_steps = "/{}".format(self.datapool.get_schedule_steps())
+#         self.update_labels(force_refresh=True)
+#
+#     # def uncheck_buttons(self, buttons_group): # TODO DELETE UNUSED
+#     #     for button in buttons_group:
+#     #         button.setChecked(False)
+#
+#     # @Slot()
+#     def toggle_play(self):
+#         # If user clicked button and playback has to "turn on", start playback
+#         # immediately, start the label update timer, and change the icon to
+#         # indicate it now functions as pause button.
+#         if self.button_play.isChecked():
+#             self.scheduleplayer.start()
+#             self.label_update_timer.start(self.label_update_interval)
+#             self.button_play.setIcon(QIcon("./assets/icons/feather/pause.svg"))
+#
+#         # If user clicked button and playback has to "pause", stop playback
+#         # immediately, stop the label update timer, and change the icon to
+#         # indicate it now functions as play button.
+#         else:
+#             self.scheduleplayer.stop()
+#             self.label_update_timer.stop()
+#             self.button_play.setIcon(QIcon("./assets/icons/feather/play.svg"))
+#
+#     # @Slot()
+#     def toggle_reset(self):
+#         self.scheduleplayer.reset()
+#
+#     def set_mult(self, mult):
+#         # Sets the march multiplier on the SchedulePlayer
+#         self.scheduleplayer.set_march_mult(mult)
+#
+#     def toggle_mult10(self):
+#         # If toggled, uncheck other mult buttons, and set playback to x10
+#         if self.button_mult10.isChecked():
+#             self.button_mult100.setChecked(False)
+#             self.button_mult1000.setChecked(False)
+#             self.set_mult(10)
+#         else:
+#             self.set_mult(1)
+#
+#     # @Slot()
+#     def toggle_mult100(self):
+#         # If toggled, uncheck other mult buttons, and set playback to x100
+#         if self.button_mult100.isChecked():
+#             self.button_mult10.setChecked(False)
+#             self.button_mult1000.setChecked(False)
+#             self.set_mult(100)
+#         else:
+#             self.set_mult(1)
+#
+#     # @Slot()
+#     def toggle_mult1000(self):
+#         # If toggled, uncheck other mult buttons, and set playback to x1000
+#         if self.button_mult1000.isChecked():
+#             self.button_mult10.setChecked(False)
+#             self.button_mult100.setChecked(False)
+#             self.set_mult(1000)
+#         else:
+#             self.set_mult(1)
+#
+#     # @Slot()
+#     def update_labels(self, force_refresh=False):
+#         """ Updates the time and step label.
+#
+#         Optimizations:
+#          - Pre-generate the string with total steps and duration, so they do
+#             not have to be calculated in the loop.
+#          - Replace the only instance of round with a custom 3-digit round that
+#             has ~30 us less overhead.
+#          - Save ~10 us of overhead per cycle by not updating steps label when
+#             step was not updated internally.
+#         Total improvement from ~150 us to ~50 us
+#         """
+#         # t0 = time()  # [TIMING]
+#         self.label_t.setText("{:.3f}".format(
+#                 (self.scheduleplayer.t * 2001) // 2 / 1000) + self.str_duration)
+#         # t1 = time()  # [TIMING]
+#
+#         if self.scheduleplayer.step != self.str_step_prev or force_refresh:
+#             self.label_step.setText(
+#                 str(self.scheduleplayer.step) + self.str_steps
+#             )
+#             self.str_step_prev = self.scheduleplayer.step
+#
+#         # t2 = time()  # [TIMING]
+#         # print(f"[TIMING] update_labels(): {round((t1-t0)*1E6)} us  {round((t2-t1)*1E6)} us")  # [TIMING]
 
-class PlayerControls(QGroupBox):
-    """Defines a set of UI elements for playback control. It is linked to an
-    instance to the SchedulePlayer class, which handles the actual playback."""
-    def __init__(self, datapool, scheduleplayer, label_update_interval=30) -> None:
-        super().__init__()
-
-        self.datapool = datapool
-        self.setStyleSheet(
-            self.datapool.config["stylesheet_groupbox_smallmargins_notitle"]
-        )
-
-        self.scheduleplayer = scheduleplayer
-
-        # Speed at which labels will update themselves. Slave the act of
-        # performing the update to a QTimer.
-        self.label_update_interval = label_update_interval
-        self.label_update_timer = QTimer()
-        self.label_update_timer.timeout.connect(self.update_labels)
-
-        # To keep overhead on the update_label() function minimal, already
-        # generate the strings of the total schedule duration and steps
-        self.str_step_prev = 0
-        self.str_duration = "/{:.3f}".format(round(self.datapool.get_schedule_duration(), 3))
-        self.str_steps = "/{}".format(self.datapool.get_schedule_steps())
-
-        # Main layout
-        layout0 = QHBoxLayout()
-
-        # Generate and configure playback buttons
-        self.button_play = QPushButton()
-        self.button_play.setIcon(QIcon("./assets/icons/feather/play.svg"))
-        self.button_play.toggled.connect(self.toggle_play)
-        self.button_play.setCheckable(True)
-
-        self.button_reset = QPushButton()
-        self.button_reset.setIcon(QIcon("./assets/icons/feather/rotate-ccw.svg"))
-        self.button_reset.clicked.connect(self.toggle_reset)
-
-        self.button_mult10 = QPushButton()
-        self.button_mult10.setIcon(QIcon("./assets/icons/x10.svg"))
-        self.button_mult10.toggled.connect(self.toggle_mult10)
-        self.button_mult10.setCheckable(True)
-
-        self.button_mult100 = QPushButton()
-        self.button_mult100.setIcon(QIcon("./assets/icons/x100.svg"))
-        self.button_mult100.toggled.connect(self.toggle_mult100)
-        self.button_mult100.setCheckable(True)
-
-        self.button_mult1000 = QPushButton()
-        self.button_mult1000.setIcon(QIcon("./assets/icons/x1000.svg"))
-        self.button_mult1000.toggled.connect(self.toggle_mult1000)
-        self.button_mult1000.setCheckable(True)
-
-        self.buttons_playback = (
-            self.button_play,
-            self.button_reset,
-        )
-        self.buttons_mult = (
-            self.button_mult10,
-            self.button_mult100,
-            self.button_mult1000,
-        )
-
-        button_size = QSize(32, 32)
-        button_size_icon = QSize(24, 24)
-
-        for button in self.buttons_playback+self.buttons_mult:
-            button.setFixedSize(button_size)
-            button.setIconSize(button_size_icon)
-            layout0.addWidget(button)
 
 
+class SchedulePlayerOrbital(SchedulePlayer):
+    def __init__(self, orbitalplot, cage3dplot, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-        # Generate and configure playback labels
-        self.label_t = QLabel("0.000/0.000")
-        self.label_t.setMinimumWidth(256)
-        self.label_step = QLabel("0/0")
-
-        self.update_labels()
-
-        for label in (self.label_t, self.label_step):
-            label.setStyleSheet(self.datapool.config["stylesheet_label_timestep"])
-            label.setAlignment(Qt.AlignRight)
-            layout0.addWidget(label)
-
-        self.setLayout(layout0)
+        # External variables: self.datapool.get_schedule_steps()
+        self.orbitalplot = orbitalplot
+        self.cage3dplot = cage3dplot
 
 
-    def refresh(self):
-        # Stops playback when called
-        self.toggle_reset()
-        self.button_play.setChecked(False)
-
-        self.str_step_prev = 0
-        self.str_duration = "/{:.3f}".format(round(self.datapool.get_schedule_duration(), 3))
-        self.str_steps = "/{}".format(self.datapool.get_schedule_steps())
-        self.update_labels(force_refresh=True)
-
-    # def uncheck_buttons(self, buttons_group): # TODO DELETE UNUSED
-    #     for button in buttons_group:
-    #         button.setChecked(False)
-
-    # @Slot()
-    def toggle_play(self):
-        # If user clicked button and playback has to "turn on", start playback
-        # immediately, start the label update timer, and change the icon to
-        # indicate it now functions as pause button.
-        if self.button_play.isChecked():
-            self.scheduleplayer.start()
-            self.label_update_timer.start(self.label_update_interval)
-            self.button_play.setIcon(QIcon("./assets/icons/feather/pause.svg"))
-
-        # If user clicked button and playback has to "pause", stop playback
-        # immediately, stop the label update timer, and change the icon to
-        # indicate it now functions as play button.
-        else:
-            self.scheduleplayer.stop()
-            self.label_update_timer.stop()
-            self.button_play.setIcon(QIcon("./assets/icons/feather/play.svg"))
-
-    # @Slot()
-    def toggle_reset(self):
-        self.scheduleplayer.reset()
-
-    def set_mult(self, mult):
-        # Sets the march multiplier on the SchedulePlayer
-        self.scheduleplayer.set_march_mult(mult)
-
-    def toggle_mult10(self):
-        # If toggled, uncheck other mult buttons, and set playback to x10
-        if self.button_mult10.isChecked():
-            self.button_mult100.setChecked(False)
-            self.button_mult1000.setChecked(False)
-            self.set_mult(10)
-        else:
-            self.set_mult(1)
-
-    # @Slot()
-    def toggle_mult100(self):
-        # If toggled, uncheck other mult buttons, and set playback to x100
-        if self.button_mult100.isChecked():
-            self.button_mult10.setChecked(False)
-            self.button_mult1000.setChecked(False)
-            self.set_mult(100)
-        else:
-            self.set_mult(1)
-
-    # @Slot()
-    def toggle_mult1000(self):
-        # If toggled, uncheck other mult buttons, and set playback to x1000
-        if self.button_mult1000.isChecked():
-            self.button_mult10.setChecked(False)
-            self.button_mult100.setChecked(False)
-            self.set_mult(1000)
-        else:
-            self.set_mult(1)
-
-    # @Slot()
-    def update_labels(self, force_refresh=False):
-        """ Updates the time and step label.
-
-        Optimizations:
-         - Pre-generate the string with total steps and duration, so they do
-            not have to be calculated in the loop.
-         - Replace the only instance of round with a custom 3-digit round that
-            has ~30 us less overhead.
-         - Save ~10 us of overhead per cycle by not updating steps label when
-            step was not updated internally.
-        Total improvement from ~150 us to ~50 us
-        """
-        # t0 = time()  # [TIMING]
-        self.label_t.setText("{:.3f}".format(
-                (self.scheduleplayer.t * 2001) // 2 / 1000) + self.str_duration)
-        # t1 = time()  # [TIMING]
-
-        if self.scheduleplayer.step != self.str_step_prev or force_refresh:
-            self.label_step.setText(
-                str(self.scheduleplayer.step) + self.str_steps
-            )
-            self.str_step_prev = self.scheduleplayer.step
-
-        # t2 = time()  # [TIMING]
-        # print(f"[TIMING] update_labels(): {round((t1-t0)*1E6)} us  {round((t2-t1)*1E6)} us")  # [TIMING]
+    def update(self):
+        # t0 = time()  # [TIMING] ~4 us
+        self.orbitalplot.draw_step(self.step)
+        self.cage3dplot.draw_step(self.step)

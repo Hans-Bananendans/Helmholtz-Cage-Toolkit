@@ -65,8 +65,8 @@ class MainWindow(QMainWindow):
 
     # @Slot()
     def load(self):
-        load_file(self.datapool)
-        self.datapool.refresh()
+        gen = load_file(self.datapool)
+        self.datapool.refresh(source=gen)
 
     # @Slot()
     def save(self):
@@ -78,7 +78,7 @@ class MainWindow(QMainWindow):
         if out == 1:
             print("[DEBUG] Started new file")
             self.datapool.init_schedule()
-            self.datapool.refresh()
+            self.datapool.refresh(source="orbital")
             self.datapool.set_window_title()
 
 

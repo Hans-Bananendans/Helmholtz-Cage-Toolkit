@@ -266,6 +266,7 @@ def load_file(datapool):
 
     # self.timer1.start(int(1000/self.data.config["visualizer_updaterate"]))
     # self.timer1.start(self.march_interval)  # TODO
+    return generator
 
 
 

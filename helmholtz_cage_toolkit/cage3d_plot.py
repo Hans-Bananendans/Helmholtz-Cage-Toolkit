@@ -186,12 +186,12 @@ class Cage3DPlot(GLViewWidget):
                 coil.setData(color=colours[int(i/2)])
 
 
-
-        if self.data.config["c3d_draw"]["autorotate"]:
-            angle = self.data.config["c3d_autorotate_angle"]
-            self.setCameraPosition(
-                azimuth=(self.opts["azimuth"] + angle) % 360
-            )
+        # # MOVED TO WINDOW LEVEL ON SEPARATE TIMER
+        # if self.data.config["c3d_draw"]["autorotate"]:
+        #     angle = self.data.config["c3d_autorotate_angle"]
+        #     self.setCameraPosition(
+        #         azimuth=(self.opts["azimuth"] + angle) % 360
+        #     )
 
 
     def make_xy_grid(self):
@@ -521,7 +521,7 @@ class Cage3DPlotButtons(QGroupBox):
         self.buttons = []
 
         # Generate buttons
-        self.button_xy_grid = QPushButton(QIcon("./assets/icons/feather/grid.svg"), "")
+        self.button_xy_grid = QPushButton(QIcon("./assets/icons/grid2.svg"), "")
         self.setup(self.button_xy_grid, "xy_grid", label="XY")
         self.button_xy_grid.toggled.connect(self.toggle_xy_grid)
 
@@ -533,11 +533,11 @@ class Cage3DPlotButtons(QGroupBox):
         self.setup(self.button_cage_structure, "tripod_b")
         self.button_cage_structure.toggled.connect(self.toggle_cage_structure)
 
-        self.button_cage_illumination = QPushButton(QIcon("./assets/icons/cage_i.svg"), "")
+        self.button_cage_illumination = QPushButton(QIcon("./assets/icons/cage_i2.svg"), "")
         self.setup(self.button_cage_illumination, "cage_illumination")
         self.button_cage_illumination.toggled.connect(self.toggle_cage_illumination)
 
-        self.button_satellite_model = QPushButton(QIcon("./assets/icons/feather/box.svg"), "")
+        self.button_satellite_model = QPushButton(QIcon("./assets/icons/satellite.svg"), "")
         self.setup(self.button_satellite_model, "satellite_model")
         self.button_satellite_model.toggled.connect(self.toggle_satellite_model)
 
@@ -545,11 +545,11 @@ class Cage3DPlotButtons(QGroupBox):
         self.setup(self.button_b_dot, "b_dot")
         self.button_b_dot.toggled.connect(self.toggle_b_dot)
 
-        self.button_b_vector = QPushButton(QIcon("./assets/icons/feather/arrow-up-right.svg"), "")
+        self.button_b_vector = QPushButton(QIcon("./assets/icons/vector_b.svg"), "")
         self.setup(self.button_b_vector, "b_vector")
         self.button_b_vector.toggled.connect(self.toggle_b_vector)
 
-        self.button_b_tail = QPushButton(QIcon("./assets/icons/tail.svg"), "")
+        self.button_b_tail = QPushButton(QIcon("./assets/icons/tail2.svg"), "")
         self.setup(self.button_b_tail, "b_tail")
         self.button_b_tail.toggled.connect(self.toggle_b_tail)
 
@@ -557,15 +557,15 @@ class Cage3DPlotButtons(QGroupBox):
         self.setup(self.button_b_components, "b_components")
         self.button_b_components.toggled.connect(self.toggle_b_components)
 
-        self.button_lineplot = QPushButton(QIcon("./assets/icons/wave.svg"), "")
+        self.button_lineplot = QPushButton(QIcon("./assets/icons/lineplot.svg"), "")
         self.setup(self.button_lineplot, "lineplot")
         self.button_lineplot.toggled.connect(self.toggle_lineplot)
 
-        self.button_linespokes = QPushButton(QIcon("./assets/icons/spokes.svg"), "")
+        self.button_linespokes = QPushButton(QIcon("./assets/icons/lineplot_spokes.svg"), "")
         self.setup(self.button_linespokes, "linespokes")
         self.button_linespokes.toggled.connect(self.toggle_linespokes)
 
-        self.button_autorotate = QPushButton(QIcon("./assets/icons/feather/rotate-ccw.svg"), "")
+        self.button_autorotate = QPushButton(QIcon("./assets/icons/autorotate.svg"), "")
         self.setup(self.button_autorotate, "autorotate")
         self.button_autorotate.toggled.connect(self.toggle_autorotate)
 

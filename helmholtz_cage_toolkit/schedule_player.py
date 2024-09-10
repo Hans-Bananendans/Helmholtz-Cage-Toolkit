@@ -118,3 +118,188 @@ class SchedulePlayer:
     def update(self):
         """Method to overload."""
         pass
+
+
+class PlayerControls(QGroupBox):
+    """Defines a set of UI elements for playback control. It is linked to an
+    instance to the SchedulePlayer class, which handles the actual playback."""
+    def __init__(self, datapool, scheduleplayer, label_update_interval=30) -> None:
+        super().__init__()
+
+        self.datapool = datapool
+        self.setStyleSheet(
+            self.datapool.config["stylesheet_groupbox_smallmargins_notitle"]
+        )
+
+        self.scheduleplayer = scheduleplayer
+
+        # Speed at which labels will update themselves. Slave the act of
+        # performing the update to a QTimer.
+        self.label_update_interval = label_update_interval
+        self.label_update_timer = QTimer()
+        self.label_update_timer.timeout.connect(self.update_labels)
+
+        # To keep overhead on the update_label() function minimal, already
+        # generate the strings of the total schedule duration and steps
+        self.str_step_prev = 0
+        self.str_duration = "/{:.3f}".format(round(self.datapool.get_schedule_duration(), 3))
+        self.str_steps = "/{}".format(self.datapool.get_schedule_steps())
+
+        # Main layout
+        layout0 = QHBoxLayout()
+
+        # Generate and configure playback buttons
+        self.button_play = QPushButton()
+        self.button_play.setIcon(QIcon("./assets/icons/feather/play.svg"))
+        self.button_play.toggled.connect(self.toggle_play)
+        self.button_play.setCheckable(True)
+
+        self.button_reset = QPushButton()
+        self.button_reset.setIcon(QIcon("./assets/icons/feather/rotate-ccw.svg"))
+        self.button_reset.clicked.connect(self.toggle_reset)
+
+        self.button_mult10 = QPushButton()
+        self.button_mult10.setIcon(QIcon("./assets/icons/x10.svg"))
+        self.button_mult10.toggled.connect(self.toggle_mult10)
+        self.button_mult10.setCheckable(True)
+
+        self.button_mult100 = QPushButton()
+        self.button_mult100.setIcon(QIcon("./assets/icons/x100.svg"))
+        self.button_mult100.toggled.connect(self.toggle_mult100)
+        self.button_mult100.setCheckable(True)
+
+        self.button_mult1000 = QPushButton()
+        self.button_mult1000.setIcon(QIcon("./assets/icons/x1000.svg"))
+        self.button_mult1000.toggled.connect(self.toggle_mult1000)
+        self.button_mult1000.setCheckable(True)
+
+        self.buttons_playback = (
+            self.button_play,
+            self.button_reset,
+        )
+        self.buttons_mult = (
+            self.button_mult10,
+            self.button_mult100,
+            self.button_mult1000,
+        )
+
+        button_size = QSize(32, 32)
+        button_size_icon = QSize(24, 24)
+
+        for button in self.buttons_playback+self.buttons_mult:
+            button.setFixedSize(button_size)
+            button.setIconSize(button_size_icon)
+            layout0.addWidget(button)
+
+
+
+        # Generate and configure playback labels
+        self.label_t = QLabel("0.000/0.000")
+        self.label_t.setMinimumWidth(256)
+        self.label_step = QLabel("0/0")
+
+        self.update_labels()
+
+        for label in (self.label_t, self.label_step):
+            label.setStyleSheet(self.datapool.config["stylesheet_label_timestep"])
+            label.setAlignment(Qt.AlignRight)
+            layout0.addWidget(label)
+
+        self.setLayout(layout0)
+
+
+    def refresh(self):
+        # Stops playback when called
+        self.toggle_reset()
+        self.button_play.setChecked(False)
+
+        self.str_step_prev = 0
+        self.str_duration = "/{:.3f}".format(round(self.datapool.get_schedule_duration(), 3))
+        self.str_steps = "/{}".format(self.datapool.get_schedule_steps())
+        self.update_labels(force_refresh=True)
+
+    # def uncheck_buttons(self, buttons_group): # TODO DELETE UNUSED
+    #     for button in buttons_group:
+    #         button.setChecked(False)
+
+    # @Slot()
+    def toggle_play(self):
+        # If user clicked button and playback has to "turn on", start playback
+        # immediately, start the label update timer, and change the icon to
+        # indicate it now functions as pause button.
+        if self.button_play.isChecked():
+            self.scheduleplayer.start()
+            self.label_update_timer.start(self.label_update_interval)
+            self.button_play.setIcon(QIcon("./assets/icons/feather/pause.svg"))
+
+        # If user clicked button and playback has to "pause", stop playback
+        # immediately, stop the label update timer, and change the icon to
+        # indicate it now functions as play button.
+        else:
+            self.scheduleplayer.stop()
+            self.label_update_timer.stop()
+            self.button_play.setIcon(QIcon("./assets/icons/feather/play.svg"))
+
+    # @Slot()
+    def toggle_reset(self):
+        self.scheduleplayer.reset()
+
+    def set_mult(self, mult):
+        # Sets the march multiplier on the SchedulePlayer
+        self.scheduleplayer.set_march_mult(mult)
+
+    def toggle_mult10(self):
+        # If toggled, uncheck other mult buttons, and set playback to x10
+        if self.button_mult10.isChecked():
+            self.button_mult100.setChecked(False)
+            self.button_mult1000.setChecked(False)
+            self.set_mult(10)
+        else:
+            self.set_mult(1)
+
+    # @Slot()
+    def toggle_mult100(self):
+        # If toggled, uncheck other mult buttons, and set playback to x100
+        if self.button_mult100.isChecked():
+            self.button_mult10.setChecked(False)
+            self.button_mult1000.setChecked(False)
+            self.set_mult(100)
+        else:
+            self.set_mult(1)
+
+    # @Slot()
+    def toggle_mult1000(self):
+        # If toggled, uncheck other mult buttons, and set playback to x1000
+        if self.button_mult1000.isChecked():
+            self.button_mult10.setChecked(False)
+            self.button_mult100.setChecked(False)
+            self.set_mult(1000)
+        else:
+            self.set_mult(1)
+
+    # @Slot()
+    def update_labels(self, force_refresh=False):
+        """ Updates the time and step label.
+
+        Optimizations:
+         - Pre-generate the string with total steps and duration, so they do
+            not have to be calculated in the loop.
+         - Replace the only instance of round with a custom 3-digit round that
+            has ~30 us less overhead.
+         - Save ~10 us of overhead per cycle by not updating steps label when
+            step was not updated internally.
+        Total improvement from ~150 us to ~50 us
+        """
+        # t0 = time()  # [TIMING]
+        self.label_t.setText("{:.3f}".format(
+                (self.scheduleplayer.t * 2001) // 2 / 1000) + self.str_duration)
+        # t1 = time()  # [TIMING]
+
+        if self.scheduleplayer.step != self.str_step_prev or force_refresh:
+            self.label_step.setText(
+                str(self.scheduleplayer.step) + self.str_steps
+            )
+            self.str_step_prev = self.scheduleplayer.step
+
+        # t2 = time()  # [TIMING]
+        # print(f"[TIMING] update_labels(): {round((t1-t0)*1E6)} us  {round((t2-t1)*1E6)} us")  # [TIMING]

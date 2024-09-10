@@ -6,7 +6,7 @@ config = {
     # ==== General settings ====
     "verbosity": 1,
     "use_dummies": True,
-    "default_windowsize": (1280, 860),
+    "default_windowsize": (1280, 900),
 
     # ==== TCP connection settings ====
     "server_address": "127.0.0.1",
@@ -143,6 +143,7 @@ config = {
             "green3": "#20c700",
             "test": "#ff0000",
         },
+    "ov_satellite_model_scale": 0.1,
 
     "ov_draw": {
         "xy_grid": True,
@@ -154,6 +155,7 @@ config = {
         "earth_model": True,
         "satellite": True,
         "satellite_helpers": True,
+        "satellite_model": True,
         "position_vector": False,
         "orbit_lineplot": True,
         "orbit_scatterplot": False,
@@ -165,21 +167,8 @@ config = {
         "b_linespokes": False,
         "b_fieldgrid": False,
         "autorotate": False,
-        # "B_fieldgrid_lineplot": False,
-        # "B_fieldgrid_scatterplot": False,
     },
-    # "ov_anim": {
-    #     "tripod_ECEF": True,
-    #     "tripod_NED": True,
-    #     "tripod_SI": True,
-    #     "tripod_B": True,
-    #     "earth_model": True,
-    #     "satellite": True,
-    #     "satellite_helpers": True,
-    #     "position_vector": True,
-    #     "velocity_vector": True,
-    #     "B_vector": True,
-    #     },
+
     "ov_rotate_earth": True,
     "ov_earth_model_smoothing": True,
     "ov_use_antialiasing": True,
@@ -207,7 +196,6 @@ config = {
         "satellite_model": False,
         "lineplot": True,
         "linespokes": True,
-
         "b_vector": True,
         "b_dot": True,
         "b_tail": True,
@@ -302,6 +290,7 @@ config = {
     "theme": "dark_teal",  # <- Write key from "available_themes" here
 
     "available_themes": {
+        # "dark_orange": "dark_orange.xml",
         "dark_amber": "dark_amber.xml",
         "dark_blue": "dark_blue.xml",
         "dark_cyan": "dark_cyan.xml",

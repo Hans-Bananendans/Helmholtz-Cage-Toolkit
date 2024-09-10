@@ -134,6 +134,7 @@ class OrbitalPlot(GLViewWidget):
         # Draw representation of satellite, including highlighted helpers
         self.make_satellite()
         self.make_satellite_helpers()
+        self.make_satellite_model()
 
         # Draw angular momentum unit vector
         self.make_angular_momentum_vector()
@@ -224,6 +225,10 @@ class OrbitalPlot(GLViewWidget):
             self.satellite_helpers[0].setData(pos=[xy0i, xyzi])
             self.satellite_helpers[1].setData(pos=xy0i)
 
+        if self.data.config["ov_draw"]["satellite_model"]:
+            model_points = self.satellite_model_points0 @ Ri_ECI_B + xyzi
+            self.satellite_model.setData(pos=model_points)
+
         if self.data.config["ov_draw"]["position_vector"]:
             self.position_vector.setData(pos=[array([0, 0, 0]), xyzi])
 
@@ -243,12 +248,12 @@ class OrbitalPlot(GLViewWidget):
             rotangle = (self.th_Ei-th_Ei_1) * 180 / pi
             self.earth_model.rotate(rotangle, 0, 0, 1, local=False)
 
-        # ==== AUTO ROTATION
-        if self.data.config["ov_draw"]["autorotate"]:
-            angle = self.data.config["ov_autorotate_angle"]
-            self.setCameraPosition(
-                azimuth=(self.opts["azimuth"] + angle) % 360
-            )
+        # # ==== AUTO ROTATION -> MOVED TO WINDOW LEVEL
+        # if self.data.config["ov_draw"]["autorotate"]:
+        #     angle = self.data.config["ov_autorotate_angle"]
+        #     self.setCameraPosition(
+        #         azimuth=(self.opts["azimuth"] + angle) % 360
+        #     )
 
 
     def make_tripod_ECI(self):
@@ -532,6 +537,54 @@ class OrbitalPlot(GLViewWidget):
             for item in self.satellite_helpers:
                 self.addItem(item)
 
+    def make_satellite_model(self):
+        scale = self.data.config["ov_satellite_model_scale"]
+        [x_dim, y_dim, z_dim] = [scale / 2, scale / 2, scale]
+
+        corners = array([
+            [ x_dim / 2,  y_dim / 2, -z_dim / 2],
+            [ x_dim / 2, -y_dim / 2, -z_dim / 2],
+            [-x_dim / 2, -y_dim / 2, -z_dim / 2],
+            [-x_dim / 2,  y_dim / 2, -z_dim / 2],
+            [ x_dim / 2,  y_dim / 2,  z_dim / 2],
+            [ x_dim / 2, -y_dim / 2,  z_dim / 2],
+            [-x_dim / 2, -y_dim / 2,  z_dim / 2],
+            [-x_dim / 2,  y_dim / 2,  z_dim / 2],
+        ]) * self.ps
+
+        points = []
+        for i in range(8):
+            points.append(corners[i])
+            points.append(corners[(i+4) % 8])
+            points.append(corners[i])
+            if i == 3:
+                points.append(corners[0])
+            if i == 7:
+                points.append(corners[4])
+
+        points = array(points)
+
+        self.satellite_model_points0 = points * 1
+
+        for i, point in enumerate(points):
+            points[i] = point + self.data.simdata["xyz"][self.i_step]
+        #
+        # # Offset all the data for plotting purposes
+        # for i in range(len(points)):
+        #     points[i][2] = points[i][2]+self.zo
+
+        self.satellite_model = GLLinePlotItem(
+            pos=points,
+            # color=self.c[self.data.config["c3d_preferred_colour"]],
+            color=(1.0, 0.5, 0.0, 0.4),
+            width=3,
+            antialias=self.data.config["ov_use_antialiasing"]
+        )
+        self.satellite_model.setDepthValue(0)
+
+        if self.data.config["ov_draw"]["satellite_model"]:
+            self.addItem(self.satellite_model)
+
     def make_angular_momentum_vector(self):
         self.huv_scale = 8E6
         # base = self.data.simdata["xyz"][self.i_step]
@@ -640,7 +693,7 @@ class OrbitalPlot(GLViewWidget):
 
         self.b_linespokes = GLLinePlotItem(
             pos=points,
-            color=(0.5, 0.5, 0.5, 0.2),
+            color=(0.8, 0.8, 0.8, 0.05),
             antialias=self.data.config["ov_use_antialiasing"],
             width=1)
         self.b_linespokes.setDepthValue(0)
@@ -762,7 +815,7 @@ class OrbitalPlotButtons(QGroupBox):
         self.setup(self.button_tripod_B, "tripod_B", label="B")
         self.button_tripod_B.toggled.connect(self.toggle_tripod_B)
 
-        self.button_xy_grid = QPushButton(QIcon("./assets/icons/feather/grid.svg"), "")
+        self.button_xy_grid = QPushButton(QIcon("./assets/icons/grid2.svg"), "")
         self.setup(self.button_xy_grid, "xy_grid", label="XY")
         self.button_xy_grid.toggled.connect(self.toggle_xy_grid)
 
@@ -778,7 +831,7 @@ class OrbitalPlotButtons(QGroupBox):
         self.setup(self.button_orbit_scatterplot, "orbit_scatterplot")
         self.button_orbit_scatterplot.toggled.connect(self.toggle_orbit_scatterplot)
 
-        self.button_orbit_helpers = QPushButton(QIcon("./assets/icons/feather/bar-chart.svg"), "")
+        self.button_orbit_helpers = QPushButton(QIcon("./assets/icons/orbit_spokes.svg"), "")
         self.setup(self.button_orbit_helpers, "orbit_helpers")
         self.button_orbit_helpers.toggled.connect(self.toggle_orbit_helpers)
 
@@ -786,31 +839,35 @@ class OrbitalPlotButtons(QGroupBox):
         self.setup(self.button_satellite, "satellite")
         self.button_satellite.toggled.connect(self.toggle_satellite)
 
-        self.button_satellite_helpers = QPushButton(QIcon("./assets/icons/feather/bar-chart.svg"), "")
+        self.button_satellite_helpers = QPushButton(QIcon("./assets/icons/components.svg"), "")
         self.setup(self.button_satellite_helpers, "satellite_helpers")
         self.button_satellite_helpers.toggled.connect(self.toggle_satellite_helpers)
 
-        self.button_position_vector = QPushButton(QIcon("./assets/icons/feather/help-circle.svg"), "")
-        self.setup(self.button_position_vector, "position_vector", label="r")
+        self.button_satellite_model = QPushButton(QIcon("./assets/icons/satellite.svg"), "")
+        self.setup(self.button_satellite_model, "satellite_model")
+        self.button_satellite_model.toggled.connect(self.toggle_satellite_model)
+
+        self.button_position_vector = QPushButton(QIcon("./assets/icons/vector_r.svg"), "")
+        self.setup(self.button_position_vector, "position_vector")
         self.button_position_vector.toggled.connect(self.toggle_position_vector)
 
-        self.button_velocity_vector = QPushButton(QIcon("./assets/icons/feather/help-circle.svg"), "")
-        self.setup(self.button_velocity_vector, "velocity_vector", label="V")
+        self.button_velocity_vector = QPushButton(QIcon("./assets/icons/vector_v.svg"), "")
+        self.setup(self.button_velocity_vector, "velocity_vector")
         self.button_velocity_vector.toggled.connect(self.toggle_velocity_vector)
 
-        self.button_angular_momentum_vector = QPushButton(QIcon("./assets/icons/feather/help-circle.svg"), "")
-        self.setup(self.button_angular_momentum_vector, "angular_momentum_vector", label="H")
+        self.button_angular_momentum_vector = QPushButton(QIcon("./assets/icons/vector_h.svg"), "")
+        self.setup(self.button_angular_momentum_vector, "angular_momentum_vector")
         self.button_angular_momentum_vector.toggled.connect(self.toggle_angular_momentum_vector)
 
-        self.button_b_vector = QPushButton(QIcon("./assets/icons/feather/help-circle.svg"), "")
-        self.setup(self.button_b_vector, "b_vector", label="B")
+        self.button_b_vector = QPushButton(QIcon("./assets/icons/vector_b.svg"), "")
+        self.setup(self.button_b_vector, "b_vector")
         self.button_b_vector.toggled.connect(self.toggle_b_vector)
 
-        self.button_b_lineplot = QPushButton(QIcon("./assets/icons/field_lines.svg"), "")
+        self.button_b_lineplot = QPushButton(QIcon("./assets/icons/lineplot.svg"), "")
         self.setup(self.button_b_lineplot, "b_lineplot")
         self.button_b_lineplot.toggled.connect(self.toggle_b_lineplot)
 
-        self.button_b_linespokes = QPushButton(QIcon("./assets/icons/spokes2.svg"), "")
+        self.button_b_linespokes = QPushButton(QIcon("./assets/icons/lineplot_spokes.svg"), "")
         self.setup(self.button_b_linespokes, "b_linespokes")
         self.button_b_linespokes.toggled.connect(self.toggle_b_linespokes)
 
@@ -818,7 +875,7 @@ class OrbitalPlotButtons(QGroupBox):
         self.setup(self.button_b_fieldgrid, "b_fieldgrid")
         self.button_b_fieldgrid.toggled.connect(self.toggle_b_fieldgrid)
 
-        self.button_autorotate = QPushButton(QIcon("./assets/icons/feather/rotate-ccw.svg"), "")
+        self.button_autorotate = QPushButton(QIcon("./assets/icons/autorotate.svg"), "")
         self.setup(self.button_autorotate, "autorotate")
         self.button_autorotate.toggled.connect(self.toggle_autorotate)
 
@@ -951,6 +1008,14 @@ class OrbitalPlotButtons(QGroupBox):
             self.data.config["ov_draw"]["satellite_helpers"] = False
             for item in self.orbitalplot.satellite_helpers:
                 self.orbitalplot.removeItem(item)
+
+    def toggle_satellite_model(self):
+        if self.button_satellite_model.isChecked():
+            self.data.config["ov_draw"]["satellite_model"] = True
+            self.orbitalplot.make_satellite_model()
+        else:
+            self.data.config["ov_draw"]["satellite_model"] = False
+            self.orbitalplot.removeItem(self.orbitalplot.satellite_model)
 
     def toggle_position_vector(self):
         if self.button_position_vector.isChecked():

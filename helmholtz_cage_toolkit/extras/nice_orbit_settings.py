@@ -96,4 +96,34 @@ a = {
         "time_speed_factor": 1.0  # [-] <positive float>
     },
 
+
+    # Helix extraordinaire!
+    # ==== Orbital_default_parameters ====
+    "orbital_default_generation_parameters": {
+        # Orbital elements
+        "orbit_eccentricity": 0.2,  # [-]
+        "orbit_inclination": 54,  # [deg]
+        "orbit_pericentre_altitude": 4600E3,  # [m]
+        "orbit_RAAN": 0,  # [deg]
+        "orbit_argp": 0.,  # [deg]
+        "orbit_ma0": 0.,  # [deg]
+
+        # Body configuration
+        "angle_body_x_0": 0.,  # [deg]
+        "angle_body_y_0": 90.,  # [deg]
+        "angle_body_z_0": 0.,  # [deg]
+        "rate_body_x": 0.,  # [deg/s]
+        "rate_body_y": 0.,  # [deg/s]
+        "rate_body_z": 0.1,  # [deg/s]
+
+        # Various
+        "earth_zero_datum": 0,  # [deg]
+        "date0": 2024.0,  # [decimal date]
+
+        # Simulation settings
+        "n_orbit_subs": 512,  # [-] <positive int>
+        "n_step": 4096,  # [-] <positive int>
+        "time_speed_factor": 200.0  # [-] <positive float>
+    },
+
 }

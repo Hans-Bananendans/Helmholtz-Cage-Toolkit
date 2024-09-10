@@ -29,6 +29,7 @@ class DataPool:
 
         # self.cyclics_plot = None
         # self.cyclics_scheduleplayer = None
+        self.orbital_scheduleplayer = None
 
         # self.window_title_base = self.config["APPNAME"]
         # self.software_version = self.config["VERSION"]
