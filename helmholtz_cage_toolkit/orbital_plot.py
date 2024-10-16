@@ -70,8 +70,6 @@ class OrbitalPlot(GLViewWidget):
             - Earth model
         """
 
-        # print("[DEBUG] OrbitalPlot.draw_statics() called")
-
         # Generate grid
         self.make_xy_grid()
 

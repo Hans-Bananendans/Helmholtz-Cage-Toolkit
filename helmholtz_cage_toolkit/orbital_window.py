@@ -187,7 +187,7 @@ class OrbitalInput(QGroupBox):
         }
 
         self.interpolation_ui_elements = {
-            "cb_items": ["none", "linear", "spline"],  # TODO: Expand with cubic, spline, etc.
+            "cb_items": ["none", "linear", "spline"],
             "label_function": QLabel("Function:"),
             "function": QComboBox(),
             "label_factor": QLabel("Factor:"),
@@ -333,7 +333,7 @@ class OrbitalInput(QGroupBox):
         print("[DEBUG] slurp_orbital()")
 
         # Load defaults as template (to overwrite next)
-        inputs = orbital_generation_parameters
+        inputs = self.datapool.config["orbital_default_generation_parameters"]
 
         # First fill inputs with generation parameters already in datapool:
         for key, val in self.datapool.generation_parameters_orbital.items():
@@ -346,6 +346,8 @@ class OrbitalInput(QGroupBox):
                     if key in inputs.keys() and val.text() != "":
                         if key in ("n_step", "n_orbit_subs"):
                             inputs[key] = int(float(val.text()))
+                        elif key in ("orbit_pericentre_altitude",):
+                            inputs[key] = int(float(val.text()) * 1000)
                         else:
                             inputs[key] = float(val.text())
                 elif type(val) == QComboBox:
@@ -400,7 +402,10 @@ class OrbitalInput(QGroupBox):
         for prop, elements in self.ui_elements.items():
             for key, val in elements.items():
                 if type(val) == QLineEdit:
-                    val.setPlaceholderText(str(contents[key]))
+                    if key in ("orbit_pericentre_altitude",):
+                        val.setPlaceholderText(str(contents[key]/1000)) # Convert [m] to [km]
+                    else:
+                        val.setPlaceholderText(str(contents[key]))
                 elif type(val) == QComboBox:
                     val.setCurrentIndex(elements["cb_items"].index(contents[key]))
 
@@ -435,6 +440,10 @@ class OrbitalInput(QGroupBox):
         7. Schedule changed -> self.datapool.refresh()
         """
         print("[DEBUG] orbital.generate()")
+        t_start = time()
+
+        self.datapool.status_bar.showMessage("Generating orbit...")
+
         generation_parameters = self.slurp_orbital()
         t, B = generator_orbital2(generation_parameters, self.datapool)
 
@@ -451,6 +460,10 @@ class OrbitalInput(QGroupBox):
 
         print("[DEBUG] orbital.generate() HERE!")
         self.datapool.refresh(source="orbital")
+
+        self.datapool.status_bar.showMessage(
+            f"Generated orbit successfully in {round(time()-t_start, 3)} s"
+        )
 
 
 class OrbitalVisualizer(QGroupBox):

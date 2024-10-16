@@ -72,9 +72,13 @@ class SchedulePlayer:
         """
         # t0 = time()  # [TIMING]
 
-        # print(f"[DEBUG] t.= {round(self.t, 1)}/{round(self.datapool.get_schedule_duration(), 1)}", end=" ")
+        # print(f"\n[DEBUG] t.= {round(self.t, 1)}/{round(self.datapool.get_schedule_duration(), 1)}", end=" ")
         # print(f"tnext.= {round(self.t_next, 1)}", end=" ")
         # print(f"step.= {self.step}/{self.datapool.get_schedule_steps()}", end=" ")
+        if self.step >= self.datapool.get_schedule_steps():
+            self.t = 0.0
+            self.step = 0
+
         if self.t >= self.t_next:
             for d in range(1, self.maxskips+1):
                 if self.t >= self.datapool.schedule[2][
@@ -86,13 +90,9 @@ class SchedulePlayer:
             # print(f"d. = {d}")
 
             # Check for end-of-schedule
-            # TODO Using -2 instead of -1 to fix a bug that prevents the if
-            # TODO from triggering for high playback speeds.
-            # TODO This is a stupid fix and introduces other bugs (schedules
-            # TODO of length 1!), but for now it works
             # if self.step + d >= self.datapool.get_schedule_steps()-1:
-            if self.step + d >= self.datapool.get_schedule_steps()-2:
-                # print("[DEBUG] END OF SCHEDULE")
+            if self.step + d >= self.datapool.get_schedule_steps()-d:
+                # print("\n[DEBUG] END OF SCHEDULE")
                 self.t = 0.0
                 self.step = 0
             else:

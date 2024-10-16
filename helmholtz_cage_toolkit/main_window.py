@@ -13,7 +13,7 @@ from helmholtz_cage_toolkit.cyclics_window import CyclicsWindow
 from helmholtz_cage_toolkit.orbital_window import OrbitalWindow
 from helmholtz_cage_toolkit.connection_window import ConnectionWindow
 from helmholtz_cage_toolkit.webcam_window import WebcamWindow
-from helmholtz_cage_toolkit.command_window import CommandWindow
+from helmholtz_cage_toolkit.command_window import CommandWindow, CommandWindowOld
 from helmholtz_cage_toolkit.orbit_design_window import OrbitDesignWindow
 from helmholtz_cage_toolkit.file_handling import load_file, save_file, NewFileDialog
 
@@ -36,6 +36,8 @@ class MainWindow(QMainWindow):
 
         # Create the global instance of DataPool
         self.datapool = DataPool(self, config)
+
+        self.setWindowIcon(QIcon("./assets/icons/icon2c.png"))
 
         # Main window options
         self.resize(config["default_windowsize"][0],
@@ -303,7 +305,10 @@ class MainWindow(QMainWindow):
             if i == 0:
                 self.tabcontainer.addWidget(ConnectionWindow(self.config, self.datapool))
             elif i == 1:
-                self.tabcontainer.addWidget(CommandWindow(self.config, self.datapool))
+                if self.datapool.config["use_legacy_command_window"]:
+                    self.tabcontainer.addWidget(CommandWindowOld(self.config, self.datapool))
+                else:
+                    self.tabcontainer.addWidget(CommandWindow(self.config, self.datapool))
             elif i == 2:
                 self.tabcontainer.addWidget(OrbitalWindow(self.config, self.datapool))
             # elif i == 3:

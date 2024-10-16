@@ -24,13 +24,15 @@ config = {
     # ==== Data acquisition ====
     "telemetry_polling_rate": 30,   # [S/s] How frequently Bm is polled
 
-    "CW_HHCPlots_refresh_rate": 30,
+    "CW_HHCPlots_refresh_rate": 30, # TODO DEPRECATED
+    "CW_Cage3DPlot_refresh_rate": 30,
     "CW_values_refresh_rate": 30,
 
     "tracking_timer_period": 10,
 
     "enable_arrow_tips": True,  # Whether to plot vectors with tips (substantial overhead)
 
+    "use_legacy_command_window": True,  # TODO DEPRECATED
 
     # ==== Local ====
     # In the GUI application, you can choose to automatically reject (negate)
@@ -132,7 +134,7 @@ config = {
     "ov_preferred_colour": 1,
     # "ov_draw_B_vector": True,
     "ov_plotscale": 1E7,
-    "ov_autorotate_angle": -0.25,
+    "ov_autorotate_angle": -0.15,
     "ov_earth_model_resolution": (16, 24),
     "ov_earth_model_colours": {
             "ocean": "#002bff",
@@ -203,7 +205,7 @@ config = {
 
         "autorotate": False,
     },
-    "c3d_autorotate_angle": -0.25,
+    "c3d_autorotate_angle": -0.15,
     "c3d_tail_length": [3, 6, 9, 12, 15, 18, 21, 24],
     "c3d_satellite_model": {
         "x_dim": 0.1,
@@ -243,7 +245,7 @@ config = {
         # Simulation settings
         "n_orbit_subs": 512,  # [-] <positive int>
         "n_step": 4096,  # [-] <positive int>
-        "time_speed_factor": 1.0  # [-] <positive float>
+        "time_speed_factor": 500.0  # [-] <positive float>
     },
 
 
