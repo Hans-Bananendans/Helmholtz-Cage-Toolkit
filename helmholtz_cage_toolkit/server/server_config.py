@@ -42,6 +42,7 @@ server_config = {
     "pin_adc_channel_imz": 2,
 
     "pin_adc_board_power": 3,
+    "pin_adc_aux": 7,
 
     "pin_dac_supply_x_act": 10,
     "pin_dac_supply_x_vcc": 3,
@@ -57,6 +58,16 @@ server_config = {
     "pin_dac_supply_z_vcc": 11,
     "pin_dac_supply_z_vvc": 9,
     "pin_dac_supply_z_pol": 8,
+    
+    "pin_dac_aux1": 2,
+    "pin_dac_aux2": 6,
+    "pin_dac_aux3": 13,
+    "pin_dac_aux4": 15,
+    # "pin_dac_aux5": ,
+    # "pin_dac_aux6": ,
+
+
+
 
     # "pin_dac_supply_x_act": 0,
     # "pin_dac_supply_x_vcc": 2,
