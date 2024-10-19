@@ -2,6 +2,7 @@ import sys
 
 from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.server.server_config import server_config as config
+from helmholtz_cage_toolkit.server.control_lib import *
 
 
 # Helper subclasses for QLabel to facilitate neat one-liners later on
@@ -40,7 +41,6 @@ class QLabelRightB(QLabel):
 class QLabelLeftB(QLabel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setAlignment(Qt.AlignLeft)
         self.setStyleSheet("QLabel {font-weight: bold;}")
 
 
@@ -76,8 +76,7 @@ class DebugWindow(QMainWindow):
 
         # ==== TIMERS
         self.timer_update = QTimer()
-        self.timer_update.timeout.connect(self.read_adcdac)
-
+        self.timer_update.timeout.connect(self.update)
 
         # Make a menu bar (must be made after layout generation and timers)
         menubar = self.make_menubar()
@@ -164,9 +163,9 @@ class DebugWindow(QMainWindow):
         act_update_30.triggered.connect(lambda: self.set_update_rate(30))
         menu_settings.addAction(act_update_30)
 
-        # Default
-        act_update_01.setChecked(True)
-        self.set_update_rate(0.1)
+        # Default: 1 Hz rate
+        act_update_1.setChecked(True)
+        self.set_update_rate(1)
 
         return menubar
 
@@ -179,6 +178,7 @@ class DebugWindow(QMainWindow):
 
         self.button_reset = QPushButton("RESET ALL")
         self.button_reset.setStyleSheet("""QPushButton {font-size: 24px;}""")
+        self.button_reset.clicked.connect(self.reset)
         layout_inputs.addWidget(self.button_reset, 0, 0, 1, 7)
 
 
@@ -239,8 +239,6 @@ class DebugWindow(QMainWindow):
         self.button_set_i.clicked.connect(self.set_i)
         layout_inputs.addWidget(self.button_set_i, 4, 3, 1, 2)
 
-
-
         return layout_inputs
 
 
@@ -252,7 +250,7 @@ class DebugWindow(QMainWindow):
         layout_pinout.addWidget(QLabelCenterB("ADC"), 0, 8, 1, 2)
 
         for i in (1, 4, 7, 10):
-            layout_pinout.addWidget(QLabelCenter("     [V]     "), 0, i)
+            layout_pinout.addWidget(QLabelCenter("     [mV]     "), 0, i)
 
         self.adc_vallabels = []
         self.dac_vallabels = []
@@ -329,8 +327,6 @@ class DebugWindow(QMainWindow):
         layout_pinout.setVerticalSpacing(2)
         layout_pinout.setHorizontalSpacing(2)
 
-
-
         return layout_pinout
 
 
@@ -347,7 +343,10 @@ class DebugWindow(QMainWindow):
         layout_biv = QGridLayout()
 
 
-        self.labels_biv = [[0,]*3,]*6
+        # self.labels_biv = [[0,]*3,]*6
+        self.labels_biv = [
+            [0.,0.,0.], [0.,0.,0.], [0.,0.,0.], [0.,0.,0.], [0.,0.,0.], [0.,0.,0.]
+            ]
 
         print(self.labels_biv)
 
@@ -378,12 +377,15 @@ class DebugWindow(QMainWindow):
         for i, stretch in enumerate((1, 1, 1, 1, 1, 1, 1, 2)):
             layout_biv.setColumnStretch(i, stretch)
 
+        # print(self.labels_biv)
+        # print(type(self.labels_biv[1][1]))
+
         return layout_biv
 
 
     def map_config_pinnames_dict(self):
         """ Helper function that takes config entries with keys 'pin_adc_' and
-        'pin_adc_', and maps the names of these pins onto a dict that has the
+        'pin_dac_', and maps the names of these pins onto a dict that has the
         board pin numbers as keys, and the assigned pin names as values.
         """
 
@@ -406,7 +408,7 @@ class DebugWindow(QMainWindow):
 
         # Make a larger dict for board pin numbers
         pinnames_board = dict([
-            ("dac", {i: "" for i in range(0, 30)}),
+            ("dac", {i: "" for i in range(0, 30)}) ,
             ("adc", {i: "" for i in range(0, 30)})
         ])
 
@@ -456,22 +458,208 @@ class DebugWindow(QMainWindow):
             raise ValueError(
                 f"Given style variable '{style}'. Allowed: 'adcdac', 'board'")
 
-    def read_adcdac(self):
-        print("[DEBUG] read_adcdac()") # TODO IMPLEMENT
+    def update(self):
+        # t0 = time()
+
+        # Read DAC outputs
+        dac_outputs, timestamp = dac_get_voltage(self.dac_channels)
+        # t1 = time()
+        # Read ADC inputs
+        adc_inputs, _ = adc_measurement(self.adc_channels)
+        # t2 = time()
+        for i, value in enumerate(dac_outputs):
+            self.dac_vallabels[i].setText(str(int(dac_outputs[i])))
+
+        # t3 = time()
+        for i, value in enumerate(adc_inputs):
+            self.adc_vallabels[2*i].setText("{:.3f}".format(adc_inputs[i]))
+        # t4 = time()
+
+
+        vvc_vals = [dac_outputs[config["pin_dac_supply_x_vvc"]]/1000, 
+                    dac_outputs[config["pin_dac_supply_y_vvc"]]/1000, 
+                    dac_outputs[config["pin_dac_supply_z_vvc"]]/1000]
+
+        vcc_vals = [dac_outputs[config["pin_dac_supply_x_vcc"]]/1000, 
+                    dac_outputs[config["pin_dac_supply_y_vcc"]]/1000, 
+                    dac_outputs[config["pin_dac_supply_z_vcc"]]/1000]
+
+        vc_vals = [0., 0., 0.]
+        cc_vals = [0., 0., 0.]
+        
+        for i in range(3):
+            vc_vals[i] = self.supplies[i].params_tf_vc[0]*vvc_vals[i] + self.supplies[i].params_tf_vc[1]
+            cc_vals[i] = self.supplies[i].params_tf_cc[0]*vcc_vals[i] + self.supplies[i].params_tf_cc[1]
+            if vc_vals[i] < 0:
+                vc_vals[i] = 0.0
+            if cc_vals[i] < 0:
+                cc_vals[i] = 0.0
+
+        # print("vvc_vals:", vvc_vals)
+        # print("vc_vals:", vc_vals)
+        # print("vcc_vals:", vcc_vals)
+        # print("cc_vals:", cc_vals)
+
+        for i in range(3):
+            self.labels_biv[0][i].setText("{:.3f}".format(vvc_vals[i]))
+            self.labels_biv[1][i].setText("{:.3f}".format(vc_vals[i]))
+            self.labels_biv[2][i].setText("{:.3f}".format(vcc_vals[i]))
+            self.labels_biv[3][i].setText("{:.3f}".format(cc_vals[i]))
+
+            self.labels_biv[4][i].setText("TODO")
+
+
+        # mV:mG to V:uT -> multiply by 100
+        bvals = [adc_inputs[config["pin_adc_channel_bmx"]]*100, 
+                 adc_inputs[config["pin_adc_channel_bmy"]]*100, 
+                 adc_inputs[config["pin_adc_channel_bmz"]]*100]
+        
+        for i, bval in enumerate([bvals[0], bvals[1], bvals[2]]):
+            self.labels_biv[5][i].setText("{:.2f}".format(bval))
+
+        bnorm = (bvals[0]**2 + bvals[1]**2 + bvals[2]**2)**0.5
+        self.label_b.setText("{:.2f}".format(bnorm))
+
+        # print("update(): {} {} {} {} = {} ms".format(
+        #     round((t1-t0)*1000, 1),
+        #     round((t2-t1)*1000, 1),
+        #     round((t3-t2)*1000, 1),
+        #     round((t4-t3)*1000, 1),
+        #     round((t4-t0)*1000, 1)
+        # ))
+
+
+    # def read_adcdac(self):
+    #     # t0 = time()
+
+    #     # Read DAC outputs
+    #     dac_outputs, timestamp = dac_get_voltage(self.dac_channels)
+    #     # t1 = time()
+    #     # Read ADC inputs
+    #     adc_inputs, _ = adc_measurement(self.adc_channels)
+    #     # t2 = time()
+    #     for i, value in enumerate(dac_outputs):
+    #         self.dac_vallabels[i].setText(str(int(dac_outputs[i])))
+
+    #     # t3 = time()
+    #     for i, value in enumerate(adc_inputs):
+    #         self.adc_vallabels[2*i].setText("{:.5f}".format(adc_inputs[i]))
+    #     # t4 = time()
+
+    #     # print("read_adcdac(): {} {} {} {} = {} ms".format(
+    #     #     round((t1-t0)*1000, 1),
+    #     #     round((t2-t1)*1000, 1),
+    #     #     round((t3-t2)*1000, 1),
+    #     #     round((t4-t3)*1000, 1),
+    #     #     round((t4-t0)*1000, 1)
+    #     # ))
+
+
+    # def update_biv(self):
+
+    #     bvals = [adc_inputs["pin_adc_channel_bmx"], adc_inputs["pin_adc_channel_bmx"], 
+    #              self.adc_inputs["pin_adc_channel_bmx"]]
+    #     for bval in []:
+
+    #     self.labels_biv
+
+    def reset(self):
+        print("[DEBUG] read_reset()")
+        for supply in (self.supply_x, self.supply_y, self.supply_z):
+            supply.set_zero_output(verbose=6)
+        for button in (self.button_polx, self.button_poly, self.button_polz):
+            button.setChecked(False)
+        print("SUCCESS")
+
 
     def initialize_devices(self):
-        print("[DEBUG] read_adcdac()") # TODO IMPLEMENT
+        print("[DEBUG] initialize_devices()")
+
+        _VERBOSE = 6
+        self.cn0554_object = cn0554_setup()
+
+        self.adc_channels = adc_channel_setup(self.cn0554_object, verbose=_VERBOSE)
+        self.dac_channels = dac_channel_setup(self.cn0554_object, verbose=_VERBOSE)
+
+        self.supply_x = PowerSupply(self.dac_channels[config["pin_dac_supply_x_act"]], 
+                                    self.dac_channels[config["pin_dac_supply_x_vvc"]], 
+                                    self.dac_channels[config["pin_dac_supply_x_vcc"]],
+                                    self.dac_channels[config["pin_dac_supply_x_pol"]],
+                                    vmax=config["vmax_supply"],
+                                    imax=config["imax_supply"],
+                                    vpol=config["vlevel_pol"],
+                                    params_tf_vc=config["params_tf_vc_x"],
+                                    params_tf_cc=config["params_tf_cc_x"],
+                                    verbose=_VERBOSE)
+
+        self.supply_y = PowerSupply(self.dac_channels[config["pin_dac_supply_y_act"]], 
+                                    self.dac_channels[config["pin_dac_supply_y_vvc"]], 
+                                    self.dac_channels[config["pin_dac_supply_y_vcc"]],
+                                    self.dac_channels[config["pin_dac_supply_y_pol"]],
+                                    vmax=config["vmax_supply"],
+                                    imax=config["imax_supply"],
+                                    vpol=config["vlevel_pol"],
+                                    params_tf_vc=config["params_tf_vc_y"],
+                                    params_tf_cc=config["params_tf_cc_y"],
+                                    verbose=_VERBOSE)
+
+        self.supply_z = PowerSupply(self.dac_channels[config["pin_dac_supply_z_act"]], 
+                                    self.dac_channels[config["pin_dac_supply_z_vvc"]], 
+                                    self.dac_channels[config["pin_dac_supply_z_vcc"]],
+                                    self.dac_channels[config["pin_dac_supply_z_pol"]],
+                                    vmax=config["vmax_supply"],
+                                    imax=config["imax_supply"],
+                                    vpol=config["vlevel_pol"],
+                                    params_tf_vc=config["params_tf_vc_z"],
+                                    params_tf_cc=config["params_tf_cc_z"],
+                                    verbose=_VERBOSE)
+        self.supplies = (self.supply_x, self.supply_y, self.supply_z)
 
     def set_v(self):
-        print(f"[DEBUG] set_v()") # TODO IMPLEMENT
+        print(f"[DEBUG] set_v()")
+
+        for i, le in enumerate([self.le_vx, self.le_vy, self.le_vz]):
+            try:
+                v_val = float(le.text())
+            except:
+                print(f"Error: Input '{le.text()}' could not be interpreted as float.")
+                v_val = 0.0
+            self.supplies[i].set_voltage_out(v_val)
 
     def set_i(self):
-        print(f"[DEBUG] set_i()") # TODO IMPLEMENT
+        print(f"[DEBUG] set_i()")
+        
+        for i, le in enumerate([self.le_ix, self.le_iy, self.le_iz]):
+            try:
+                i_val = float(le.text())/1000
+            except:
+                print(f"Error: Input '{le.text()}' could not be interpreted as float.")
+                i_val = 0.0
+            
+            # Clip if value is too high
+            if i_val > config["imax_supply"]:
+                i_val = config["imax_supply"]
+
+            self.supplies[i].set_current_out(i_val)
 
     def set_polarity(self, axis):
-        print(f"[DEBUG] set_polarity({axis})") # TODO IMPLEMENT
+        print(f"[DEBUG] set_polarity({axis})")
 
-        # DISTINGUISH BETWEEN CLICKED STATE
+        lookup = {
+            "x": (self.supply_x, self.button_polx),
+            "y": (self.supply_y, self.button_poly),
+            "z": (self.supply_z, self.button_polz),
+            }
+        
+        if axis not in ("x", "y", "z"):
+            raise ValueError(f"Invalid axis '{axis}' given!")
+        
+        supply, button = lookup[axis]
+
+        if button.isChecked() is True:
+            supply.reverse_polarity(True)
+        else:
+            supply.reverse_polarity(False)
 
 
 if __name__ == "__main__":
