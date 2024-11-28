@@ -57,35 +57,35 @@ config = {
                         [-0.39073, 0.92050, 0],
                         [       0,        0, 1]],
 
-    # ==== ADC settings ====
-    "adc_pollrate": 30,  # TODO STALE
+    # # ==== ADC settings ====
+    # "adc_pollrate": 30,  # TODO STALE
 
 
-    # ==== DAC settings ====
-    "vmax_dac": 5.0,  # VDC  # TODO STALE
+    # # ==== DAC settings ====
+    # "vmax_dac": 5.0,  # VDC  # TODO STALE
+    #
+    #
+    # # ==== Power supply settings ====
+    # "vmax_supply": 60.0,  # VDC  # TODO STALE
+    # "imax_supply": 5.0,  # A  # TODO STALE
 
 
-    # ==== Power supply settings ====
-    "vmax_supply": 60.0,  # VDC  # TODO STALE
-    "imax_supply": 5.0,  # A  # TODO STALE
-
-
-    # ==== Hardware and cable routing ====
-    "adc_channel_bx": 0,  # TODO STALE
-    "adc_channel_by": 1,  # TODO STALE
-    "adc_channel_bz": 2,  # TODO STALE
-
-    "dac_supply1_act": 0,  # TODO STALE
-    "dac_supply1_cc": 2,  # TODO STALE
-    "dac_supply1_vc": 4,  # TODO STALE
-
-    "dac_supply2_act": 1,  # TODO STALE
-    "dac_supply2_cc": 3,  # TODO STALE
-    "dac_supply2_vc": 5,  # TODO STALE
-
-    "dac_supply3_act": 8,  # TODO STALE
-    "dac_supply3_cc": 10,  # TODO STALE
-    "dac_supply3_vc": 12,  # TODO STALE
+    # # ==== Hardware and cable routing ====
+    # "adc_channel_bx": 0,  # TODO STALE
+    # "adc_channel_by": 1,  # TODO STALE
+    # "adc_channel_bz": 2,  # TODO STALE
+    #
+    # "dac_supply1_act": 0,  # TODO STALE
+    # "dac_supply1_cc": 2,  # TODO STALE
+    # "dac_supply1_vc": 4,  # TODO STALE
+    #
+    # "dac_supply2_act": 1,  # TODO STALE
+    # "dac_supply2_cc": 3,  # TODO STALE
+    # "dac_supply2_vc": 5,  # TODO STALE
+    #
+    # "dac_supply3_act": 8,  # TODO STALE
+    # "dac_supply3_cc": 10,  # TODO STALE
+    # "dac_supply3_vc": 12,  # TODO STALE
 
 
     # ==== Plotwindow settings ====
@@ -100,32 +100,32 @@ config = {
     "plotcolor_Bo": "#ff00ff",  # magenta
 
 
-    # ==== LCD box styling ==== # TODO STALE
-    "lcd_maxdigits": 8,
-    "stylesheet_lcd_red":
-        """QLCDNumber {
-        color: rgba(244, 67, 54, 255);
-        background-color: rgba(244, 67, 54, 26);
-        border-color: rgba(244, 67, 54, 77);
-        }""",
-    "stylesheet_lcd_green":
-        """QLCDNumber {
-        color: rgba(50, 255, 50, 255);
-        background-color: rgba(50, 255, 50, 26);
-        border-color: rgba(50, 255, 50, 77);
-        }""",
-    "stylesheet_lcd_blue":
-        """QLCDNumber {
-        color: rgba(0, 146, 255, 255);
-        background-color: rgba(0, 146, 255, 26);
-        border-color: rgba(0, 146, 255, 77);
-        }""",
-    "stylesheet_lcd_white":
-        """QLCDNumber {
-        color: rgba(255, 255, 255, 255);
-        background-color: rgba(255, 255, 255, 26);
-        border-color: rgba(255, 255, 255, 77);
-        }""",
+    # # ==== LCD box styling ==== # TODO STALE
+    # "lcd_maxdigits": 8,
+    # "stylesheet_lcd_red":
+    #     """QLCDNumber {
+    #     color: rgba(244, 67, 54, 255);
+    #     background-color: rgba(244, 67, 54, 26);
+    #     border-color: rgba(244, 67, 54, 77);
+    #     }""",
+    # "stylesheet_lcd_green":
+    #     """QLCDNumber {
+    #     color: rgba(50, 255, 50, 255);
+    #     background-color: rgba(50, 255, 50, 26);
+    #     border-color: rgba(50, 255, 50, 77);
+    #     }""",
+    # "stylesheet_lcd_blue":
+    #     """QLCDNumber {
+    #     color: rgba(0, 146, 255, 255);
+    #     background-color: rgba(0, 146, 255, 26);
+    #     border-color: rgba(0, 146, 255, 77);
+    #     }""",
+    # "stylesheet_lcd_white":
+    #     """QLCDNumber {
+    #     color: rgba(255, 255, 255, 255);
+    #     background-color: rgba(255, 255, 255, 26);
+    #     border-color: rgba(255, 255, 255, 77);
+    #     }""",
 
     "show_plot_visibility_tabs": True,
 
