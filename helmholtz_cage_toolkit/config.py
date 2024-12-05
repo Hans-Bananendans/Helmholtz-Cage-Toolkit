@@ -32,7 +32,7 @@ config = {
 
     "enable_arrow_tips": True,  # Whether to plot vectors with tips (substantial overhead)
 
-    "use_legacy_command_window": True,  # TODO DEPRECATED
+    "use_legacy_command_window": False,  # TODO DEPRECATED
 
     # ==== Local ====
     # In the GUI application, you can choose to automatically reject (negate)

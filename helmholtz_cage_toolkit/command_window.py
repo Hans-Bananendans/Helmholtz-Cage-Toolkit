@@ -140,9 +140,10 @@ class CommandWindow(QWidget):
         self.layout_cage3d.addWidget(self.widget_cage3d)
         self.layout_cage3d.addWidget(self.widget_cage3d_buttons)
 
+        layout_right.addLayout(self.layout_cage3d)
 
         # Create a grid layout for the HHCPlots
-        self.layout_hhcplots = QGridLayout()
+        # self.layout_hhcplots = QGridLayout()
 
         # Constructing two instances of HHCPlots. First look in config to see
         # if arrow tips should be plotted (disabled gives better performance)
@@ -178,13 +179,13 @@ class CommandWindow(QWidget):
 
         # self.layout_hhcplots.sizeHint(QSize(720, 360))
         # Add to parent layout
-        layout_right.addLayout(self.layout_hhcplots)
+        # layout_right.addLayout(self.layout_hhcplots)
 
         # Debug operations # TODO CLEAN UP
-        breset = [[0., ]*3, ]*4
+        # breset = [[0., ]*3, ]*4
 
-        self.hhcplot_yz.update_arrows(breset)
-        self.hhcplot_xy.update_arrows(breset)
+        # self.hhcplot_yz.update_arrows(breset)
+        # self.hhcplot_xy.update_arrows(breset)
 
         # btests = [[[10_000, 90_000, 10_000, ], [-10_000, -90_000, -10_000, ], ],
         #           [[20_000, 80_000, 20_000, ], [-20_000, -80_000, -20_000, ], ],
@@ -753,6 +754,8 @@ class CommandWindow(QWidget):
 
 
     def do_on_connected(self):
+        return
+
         print("[DEBUG] do_on_connected()")
 
         for group in self.groups_to_enable_on_connect:
@@ -768,6 +771,8 @@ class CommandWindow(QWidget):
         self.do_select_mode("manual")
 
     def do_on_disconnected(self):
+        return
+
         print("[DEBUG] do_on_disconnected()")
 
         self.timer_values_refresh.stop()
@@ -1681,11 +1686,11 @@ class Cage3DPlotCW(Cage3DPlot):
         # Generate grid
         self.make_xy_grid()
 
-        # Generate ECI-frame tripod_components
-        self.make_tripod_ECI()
-
-        # Draw Earth meshitem
-        self.make_earth_model()
+        # # Generate ECI-frame tripod_components
+        # self.make_tripod_ECI()
+        #
+        # # Draw Earth meshitem
+        # self.make_earth_model()
 
     def draw_vectors(self):
         pass
@@ -1694,6 +1699,193 @@ class Cage3DPlotCW(Cage3DPlot):
         # Draw a ghostly outline of the schedule
         pass
 
+
+class Cage3DPlotButtonsCW(QGroupBox):
+    """Description"""
+    def __init__(self, cage3dplot, datapool) -> None:
+        super().__init__()
+
+        self.cage3dplot = cage3dplot
+        self.data = datapool
+
+        self.layout0 = QGridLayout()
+        self.buttons = []
+
+        # Generate buttons
+        self.button_xy_grid = QPushButton(QIcon("./assets/icons/grid2.svg"), "")
+        self.setup(self.button_xy_grid, "xy_grid", label="XY")
+        self.button_xy_grid.toggled.connect(self.toggle_xy_grid)
+
+        self.button_tripod_b = QPushButton(QIcon("./assets/icons/tripod.svg"), "")
+        self.setup(self.button_tripod_b, "tripod_b", label="B")
+        self.button_tripod_b.toggled.connect(self.toggle_tripod_b)
+
+        self.button_cage_structure = QPushButton(QIcon("./assets/icons/cage.svg"), "")
+        self.setup(self.button_cage_structure, "tripod_b")
+        self.button_cage_structure.toggled.connect(self.toggle_cage_structure)
+
+        self.button_cage_illumination = QPushButton(QIcon("./assets/icons/cage_i2.svg"), "")
+        self.setup(self.button_cage_illumination, "cage_illumination")
+        self.button_cage_illumination.toggled.connect(self.toggle_cage_illumination)
+
+        self.button_satellite_model = QPushButton(QIcon("./assets/icons/satellite.svg"), "")
+        self.setup(self.button_satellite_model, "satellite_model")
+        self.button_satellite_model.toggled.connect(self.toggle_satellite_model)
+
+        self.button_b_dot = QPushButton(QIcon("./assets/icons/dot.svg"), "")
+        self.setup(self.button_b_dot, "b_dot")
+        self.button_b_dot.toggled.connect(self.toggle_b_dot)
+
+        self.button_b_vector = QPushButton(QIcon("./assets/icons/vector_b.svg"), "")
+        self.setup(self.button_b_vector, "b_vector")
+        self.button_b_vector.toggled.connect(self.toggle_b_vector)
+
+        self.button_b_tail = QPushButton(QIcon("./assets/icons/tail2.svg"), "")
+        self.setup(self.button_b_tail, "b_tail")
+        self.button_b_tail.toggled.connect(self.toggle_b_tail)
+
+        self.button_b_components = QPushButton(QIcon("./assets/icons/components.svg"), "")
+        self.setup(self.button_b_components, "b_components")
+        self.button_b_components.toggled.connect(self.toggle_b_components)
+
+        self.button_lineplot = QPushButton(QIcon("./assets/icons/lineplot.svg"), "")
+        self.setup(self.button_lineplot, "lineplot")
+        self.button_lineplot.toggled.connect(self.toggle_lineplot)
+
+        self.button_linespokes = QPushButton(QIcon("./assets/icons/lineplot_spokes.svg"), "")
+        self.setup(self.button_linespokes, "linespokes")
+        self.button_linespokes.toggled.connect(self.toggle_linespokes)
+
+        self.button_autorotate = QPushButton(QIcon("./assets/icons/autorotate.svg"), "")
+        self.setup(self.button_autorotate, "autorotate")
+        self.button_autorotate.toggled.connect(self.toggle_autorotate)
+
+        # self.setStyleSheet(self.data.config["stylesheet_groupbox_smallmargins_notitle"])
+        self.setLayout(self.layout0)
+        self.layout0.setSizeConstraint(QLayout.SetMinimumSize)
+        self.setMaximumSize(32, 320)
+        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.layout0.setVerticalSpacing(1)
+        self.layout0.setColumnStretch(0, 0)
+        self.layout0.setColumnStretch(1, 0)
+
+
+    def setup(self, button, reference: str, label=""):
+        """A shorthand function to inherit the 'checked' properties based on
+        the visibility of various plot items as defined in the config file.
+        This must be done before the toggled() action is connected, in order
+        to prevent the toggled () action being triggered and causing plot
+        elements to be redrawn unnecessarily.
+        """
+        button.setCheckable(True)
+        if self.data.config["c3d_draw"][reference] is True:
+            button.setChecked(True)
+        button.setFixedSize(QSize(32, 32))
+        button.setIconSize(QSize(24, 24))
+        self.layout0.addWidget(button, len(self.buttons), 0)
+        self.layout0.addWidget(QLabel(label), len(self.buttons), 1)
+        self.buttons.append(button)
+
+
+    def toggle_xy_grid(self):
+        if self.button_xy_grid.isChecked():
+            self.data.config["c3d_draw"]["xy_grid"] = True
+            self.cage3dplot.make_xy_grid()
+        else:
+            self.data.config["c3d_draw"]["xy_grid"] = False
+            self.cage3dplot.removeItem(self.cage3dplot.xy_grid)
+
+    def toggle_tripod_b(self):
+        if self.button_tripod_b.isChecked():
+            self.data.config["c3d_draw"]["tripod_b"] = True
+            self.cage3dplot.make_tripod_b()
+        else:
+            self.data.config["c3d_draw"]["tripod_b"] = False
+            for item in self.cage3dplot.tripod_b:
+                self.cage3dplot.removeItem(item)
+
+    def toggle_cage_structure(self):
+        if self.button_cage_structure.isChecked():
+            self.data.config["c3d_draw"]["cage_structure"] = True
+            self.cage3dplot.make_cage_structure()
+        else:
+            self.data.config["c3d_draw"]["cage_structure"] = False
+            for item in self.cage3dplot.cage_structure:
+                self.cage3dplot.removeItem(item)
+
+    def toggle_satellite_model(self):
+        if self.button_satellite_model.isChecked():
+            self.data.config["c3d_draw"]["satellite_model"] = True
+            self.cage3dplot.make_satellite_model()
+        else:
+            self.data.config["c3d_draw"]["satellite_model"] = False
+            self.cage3dplot.removeItem(self.cage3dplot.satellite_model)
+
+    def toggle_b_dot(self):
+        if self.button_b_dot.isChecked():
+            self.data.config["c3d_draw"]["b_dot"] = True
+            self.cage3dplot.make_b_dot()
+        else:
+            self.data.config["c3d_draw"]["b_dot"] = False
+            self.cage3dplot.removeItem(self.cage3dplot.b_dot_plotitem)
+
+    def toggle_lineplot(self):
+        if self.button_lineplot.isChecked():
+            self.data.config["c3d_draw"]["lineplot"] = True
+            self.cage3dplot.make_lineplot()
+        else:
+            self.data.config["c3d_draw"]["lineplot"] = False
+            self.cage3dplot.removeItem(self.cage3dplot.lineplot)
+
+    def toggle_linespokes(self):
+        if self.button_linespokes.isChecked():
+            self.data.config["c3d_draw"]["linespokes"] = True
+            self.cage3dplot.make_linespokes()
+        else:
+            self.data.config["c3d_draw"]["linespokes"] = False
+            self.cage3dplot.removeItem(self.cage3dplot.linespokes)
+
+    def toggle_b_vector(self):
+        if self.button_b_vector.isChecked():
+            self.data.config["c3d_draw"]["b_vector"] = True
+            self.cage3dplot.make_b_vector()
+        else:
+            self.data.config["c3d_draw"]["b_vector"] = False
+            self.cage3dplot.removeItem(self.cage3dplot.b_vector_plotitem)
+
+    def toggle_b_tail(self):
+        if self.button_b_tail.isChecked():
+            self.data.config["c3d_draw"]["b_tail"] = True
+            self.cage3dplot.make_b_tail()
+        else:
+            self.data.config["c3d_draw"]["b_tail"] = False
+            for item in self.cage3dplot.b_tail_plotitems:
+                self.cage3dplot.removeItem(item)
+
+    def toggle_b_components(self):
+        if self.button_b_components.isChecked():
+            self.data.config["c3d_draw"]["b_components"] = True
+            self.cage3dplot.make_b_components()
+        else:
+            self.data.config["c3d_draw"]["b_components"] = False
+            for item in self.cage3dplot.b_components:
+                self.cage3dplot.removeItem(item)
+
+    def toggle_autorotate(self):
+        if self.button_autorotate.isChecked():
+            self.data.config["c3d_draw"]["autorotate"] = True
+        else:
+            self.data.config["c3d_draw"]["autorotate"] = False
+
+    def toggle_cage_illumination(self):
+        if self.button_cage_illumination.isChecked():
+            self.data.config["c3d_draw"]["cage_illumination"] = True
+        else:
+            self.data.config["c3d_draw"]["cage_illumination"] = False
+            if self.data.config["c3d_draw"]["cage_structure"] is True:
+                for item in self.cage3dplot.cage_structure:
+                    self.cage3dplot.removeItem(item)
+                self.cage3dplot.make_cage_structure()
 
 class Cage3DPlotButtonsCW(QGroupBox):
     """Description"""
