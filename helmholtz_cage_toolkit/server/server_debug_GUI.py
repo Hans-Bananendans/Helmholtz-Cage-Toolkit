@@ -239,6 +239,12 @@ class DebugWindow(QMainWindow):
         self.button_set_i.clicked.connect(self.set_i)
         layout_inputs.addWidget(self.button_set_i, 4, 3, 1, 2)
 
+        self.button_psu_enable = QPushButton("PSU enable")
+        self.button_psu_enable.clicked.connect(self.enable_psu)
+        self.button_psu_enable.setCheckable(True)
+        self.button_psu_enable.setChecked(False)
+        layout_inputs.addWidget(self.button_psu_enable, 4, 6)
+
         return layout_inputs
 
 
@@ -581,39 +587,50 @@ class DebugWindow(QMainWindow):
         self.adc_channels = adc_channel_setup(self.cn0554_object, verbose=_VERBOSE)
         self.dac_channels = dac_channel_setup(self.cn0554_object, verbose=_VERBOSE)
 
-        self.supply_x = PowerSupply(self.dac_channels[config["pin_dac_supply_x_act"]], 
-                                    self.dac_channels[config["pin_dac_supply_x_vvc"]], 
+        self.supply_x = PowerSupply(self.dac_channels[config["pin_dac_supply_x_vvc"]], 
                                     self.dac_channels[config["pin_dac_supply_x_vcc"]],
                                     self.dac_channels[config["pin_dac_supply_x_pol"]],
                                     vmax=config["vmax_supply"],
                                     imax=config["imax_supply"],
                                     vpol=config["vlevel_pol"],
+                                    r_load=config["r_load"],
+                                    v_above=config["v_above"],
+                                    i_above=config["i_above"],
                                     params_tf_vc=config["params_tf_vc_x"],
                                     params_tf_cc=config["params_tf_cc_x"],
                                     verbose=_VERBOSE)
 
-        self.supply_y = PowerSupply(self.dac_channels[config["pin_dac_supply_y_act"]], 
-                                    self.dac_channels[config["pin_dac_supply_y_vvc"]], 
+        self.supply_y = PowerSupply(self.dac_channels[config["pin_dac_supply_y_vvc"]], 
                                     self.dac_channels[config["pin_dac_supply_y_vcc"]],
                                     self.dac_channels[config["pin_dac_supply_y_pol"]],
                                     vmax=config["vmax_supply"],
                                     imax=config["imax_supply"],
                                     vpol=config["vlevel_pol"],
+                                    r_load=config["r_load"],
+                                    v_above=config["v_above"],
+                                    i_above=config["i_above"],
                                     params_tf_vc=config["params_tf_vc_y"],
                                     params_tf_cc=config["params_tf_cc_y"],
                                     verbose=_VERBOSE)
 
-        self.supply_z = PowerSupply(self.dac_channels[config["pin_dac_supply_z_act"]], 
-                                    self.dac_channels[config["pin_dac_supply_z_vvc"]], 
+        self.supply_z = PowerSupply(self.dac_channels[config["pin_dac_supply_z_vvc"]], 
                                     self.dac_channels[config["pin_dac_supply_z_vcc"]],
                                     self.dac_channels[config["pin_dac_supply_z_pol"]],
                                     vmax=config["vmax_supply"],
                                     imax=config["imax_supply"],
                                     vpol=config["vlevel_pol"],
+                                    r_load=config["r_load"],
+                                    v_above=config["v_above"],
+                                    i_above=config["i_above"],
                                     params_tf_vc=config["params_tf_vc_z"],
                                     params_tf_cc=config["params_tf_cc_z"],
                                     verbose=_VERBOSE)
         self.supplies = (self.supply_x, self.supply_y, self.supply_z)
+
+        self.psu_enable_pin = PSU_ENABLE(self.dac_channels[config["pin_dac_psu_enable"]],
+                                         config["v_psu_enable"],
+                                         verbose=_VERBOSE)
+
 
     def set_v(self):
         print(f"[DEBUG] set_v()")
@@ -642,6 +659,12 @@ class DebugWindow(QMainWindow):
 
             self.supplies[i].set_current_out(i_val)
 
+    def enable_psu(self):
+        if self.button_psu_enable.isChecked() is True:
+            self.psu_enable_pin.set(1)
+        else:
+            self.psu_enable_pin.set(0)
+    
     def set_polarity(self, axis):
         print(f"[DEBUG] set_polarity({axis})")
 

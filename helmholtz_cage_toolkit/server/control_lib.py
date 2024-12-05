@@ -187,17 +187,21 @@ def cn0554_setup():
 
 class PowerSupply:
     """
-    Class for abstracting the configuration of a BK Precision 1685B power supply 
-    through three LMC2688 DAC channels.
+    Class for abstracting the configuration of a current and voltage programmable
+    power supply through three LMC2688 DAC channels.
     """
-    def __init__(self, channel_activate, channel_vc, channel_cc, channel_polarity, 
-                 vmax=60.0, imax=5.0, vpol=5.0, 
+    def __init__(self, channel_vc, channel_cc, channel_polarity, 
+                 vmax=30.0, imax=5.0, vpol=5.0, 
+                 r_load=10.0, v_above=2.0, i_above = 0.2,
                  params_tf_vc=[1, 0], params_tf_cc=[1, 0], 
                  verbose=0):
-        self.channel_activate = channel_activate
         self.channel_vc = channel_vc
         self.channel_cc = channel_cc
         self.channel_polarity = channel_polarity
+        self.r_load = r_load    # Resistive impedance of load (Ohms)
+        self.v_above = v_above  # In I-control, how much higher to set V
+        self.i_above = i_above  # In V-control, how much higher to set I
+
         self.params_tf_vc = params_tf_vc
         self.params_tf_cc = params_tf_cc
 
@@ -205,11 +209,39 @@ class PowerSupply:
         self.imax = imax    # Maximum current output of power supply
         self.vpol = vpol    # Voltage level of reverse_polarity signal
 
-        # Provide power to the internal +5VDC pin on the power supply
-        self.activate(verbose=verbose)
+        self.v = 0
+        self.i = 0
+        self.pol = 1
 
         # Always set channels to zero at the start
         self.set_zero_output(verbose=verbose)
+
+
+    def v_compliance(self, i):
+        """
+        When setting a certain target current, the power supply must have its 
+        voltage limit set high enough so that the current can be delivered. 
+        This function computes that voltage, based on the values of r_load and
+        v_above set during initialization.
+
+        r_load is used to compute the required voltage based on Ohm's law
+        v_above is the amount of voltage margin above that (to ensure that the
+        supply is never voltage limiting).
+        """
+        return i*self.r_load + self.v_above
+
+    def i_compliance(self, v):
+        """
+        When setting a certain target voltage, the power supply must have its 
+        current limit set high enough so that the voltage can be established. 
+        This function computes that current, based on the values of r_load and
+        i_above set during initialization.
+
+        r_load is used to compute the required current based on Ohm's law
+        i_above is the amount of current margin above that (to ensure that the
+        supply is never current limiting).
+        """
+        return v/self.r_load + self.i_above 
 
 
     def tf_cc_inv(self, i):
@@ -268,60 +300,48 @@ class PowerSupply:
             return self.imax
         else:
             return i_val
-        
-    def activate(self, verbose=0):
-        """
-        Activates control of the given power supply through the activation
-        DAC channel.
-        """
 
-        dac_set_voltage(self.channel_activate, 5.0, verbose=verbose)
-
-        if verbose >= 1:
-            print("activate(): Activated power supply", self)
-
-    def deactivate(self, verbose=0):
-        """
-        Deactivates control of the given power supply through the activation
-        DAC channel.
-        """
-
-        # First set outputs to zero
-        self.set_zero_output(verbose=verbose)
-        
-        # Then set internal +5VDC channel to zero
-        dac_set_voltage(self.channel_activate, 0.0, verbose=verbose)
-
-        if verbose >= 1:
-            print("deactivate(): Deactivated power supply", self)
-        pass
 
     def set_zero_output(self, verbose=0):
         dac_set_channels_zero([self.channel_vc, self.channel_cc, self.channel_polarity], verbose=verbose)   
+        self.v = 0
+        self.i = 0
+        self.pol = 1
 
-    def set_current_out(self, current_out, timeout=0, verbose=0):
+    def set_current_out(self, current_out, verbose=0):
         """
         Sets a specific output current on the power supply using the current
-        control channel. The output voltage limit is set to maximum, so that 
-        the power supply itself picks the appropriate voltage to achieve the 
-        desired output current.
+        control channel. The output voltage limit is set appropriately high, 
+        so that the power supply itself picks the appropriate voltage to 
+        achieve the desired output current.
         
         current_out         Desired output current in [A]
-        timeout             Specify a time [s] after which the set current
-                            returns to zero. If set to 0, timeout is disabled.
+        """
+        self.v = self.vlimit(self.v_compliance(current_out))
+        self.i = self.ilimit(current_out)
+
+        dac_set_voltage(self.channel_vc, self.tf_vc_inv(self.v), verbose=verbose)
+        dac_set_voltage(self.channel_cc, self.tf_cc_inv(self.i), verbose=verbose)
+
+
+    def set_voltage_out(self, voltage_out, verbose=0):
+        """
+        Sets a specific output voltage on the power supply using the voltage
+        control channel. The output current limit is set appropriately high, 
+        so that the power supply itself picks the appropriate current to 
+        achieve the desired output voltage.
+        voltage_out         Desired output voltage in [V]
         """
 
-        dac_set_voltage(self.channel_vc, self.tf_vc_inv(self.vmax), verbose=verbose)
-        dac_set_voltage(self.channel_cc, self.tf_cc_inv(self.ilimit(current_out)), verbose=verbose)
+        self.v = self.vlimit(voltage_out)
+        self.i = self.ilimit(self.i_compliance(voltage_out))
 
-        # TODO: Remove timeout functionality in favour of an application-driven
-        # threaded alternative (non-blocking alternatives to sleep()).
-        if timeout > 0:
-            sleep(timeout)
-            dac_set_voltage(self.channel_vc, 0, verbose=0)
-            dac_set_voltage(self.channel_cc, 0, verbose=0)
-            if verbose >= 2:
-                print("Timed shut-off after", timeout, "s")
+
+        dac_set_voltage([self.channel_vc], 
+                        self.tf_vc_inv(self.v), 
+                        verbose=verbose)
+        dac_set_voltage([self.channel_cc], self.tf_cc_inv(self.i), verbose=verbose)
+
 
     def reverse_polarity(self, bool_reverse: bool):
         """
@@ -335,34 +355,50 @@ class PowerSupply:
         """
         if bool_reverse is True:
             dac_set_voltage(self.channel_polarity, self.vpol)
+            self.pol = -1
         else:
             dac_set_channels_zero([self.channel_polarity])
+            self.pol = 1
             # dac_set_voltage(self.channel_polarity, 5.0)
 
 
-    def set_voltage_out(self, voltage_out, timeout=0, verbose=0):
-        """
-        Sets a specific output voltage on the power supply using the voltage
-        control channel. The output current limit is set to maximum, so that 
-        the power supply itself picks the appropriate current to achieve the 
-        desired output voltage.
-        
-        voltage_out         Desired output voltage in [V]
-        timeout             Specify a time [s] after which the set current
-                            returns to zero. If set to 0, timeout is disabled.
-        """
+# ===== Magnetometer class ============
 
-        dac_set_voltage([self.channel_vc], 
-                        self.tf_vc_inv(self.vlimit(voltage_out)), 
-                        verbose=verbose)
-        dac_set_voltage([self.channel_cc], self.tf_cc_inv(self.imax), verbose=verbose)
+class Magnetometer:
+    """
+    Class for abstracting the configuration of a generic tri-axial magnetometer 
+    through three AD7124 ADC channels.
+    """
+    def __init__(self, channel_x, channel_y, channel_z, verbose=0):
+        self.channel_x = channel_x
+        self.channel_y = channel_y
+        self.channel_z = channel_z
 
-        # TODO: Remove timeout functionality in favour of an application-driven
-        # threaded alternative (non-blocking alternatives to sleep()).
-        if timeout > 0:
-            sleep(timeout)
-            dac_set_voltage(self.channel_vc, 0, verbose=0)
-            dac_set_voltage(self.channel_cc, 0, verbose=0)
-            if verbose >= 2:
-                print("Timed shut-off after", timeout, "s")
 
+    def read_B(self, verbose=0):
+        Bm, _ = adc_measurement([
+            self.channel_x,
+            self.channel_y,
+            self.channel_z,
+        ])
+
+        return Bm
+
+class PSU_ENABLE:
+    """
+    Class that makes the PSU enable pin behave like a device.
+    """
+    def __init__(self, psu_enable_channel, v_psu_enable, verbose=0):
+        self.psu_enable_channel = psu_enable_channel
+        self.v_psu_enable = v_psu_enable
+        self.verbose = verbose
+
+        self.set(0)
+
+    def set(self, status: bool):
+        if status:
+            dac_set_voltage(self.psu_enable_channel, self.v_psu_enable)
+        elif not status:
+            dac_set_voltage(self.psu_enable_channel, 0.0)
+        if self.verbose > 1:
+            print(f"[DEBUG] PSU_ENABLE.set(): Power supplies {['ENABLED', 'DISABLED'][int(status)]}.")
