@@ -77,8 +77,6 @@ packet, and this is to force a degree of consistency across implementations.
 Users desiring additional functionality are advised to subclass SCC instead.
 """
 
-# from numpy import float64
-
 
 packet_size = 256   # Referable packet length for buffer size configuration
 _pad = "#"          # Packet padding character (cannot be @)
@@ -107,11 +105,164 @@ def packet_type(packet):
 
 
 
+def encode_bpacket(tm, Bm):
+    """ Encodes a b_packet, which has the following anatomy:
+    b (1 B)    UNIX_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
+
+    Optimization:
+    3750 ns/encode (FX-8350)
+         ns/encode (Raspberry Pi 4)
+    """
+    return "b{:0<20.20}{:0<16.16}{:0<16.16}{:0<16.16}{}".format(
+        str(tm),
+        str(Bm[0]),
+        str(Bm[1]),
+        str(Bm[2]),
+        _pad*187).encode()
+
+def decode_bpacket(b_packet):
+    """ Decodes a b_packet, which has the following anatomy:
+    b (1 B)    UNIX_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
+
+    Efficiency by virtue of the KISS principle:
+    1780 ns/decode (FX-8350)
+         ns/encode (Raspberry Pi 4)
+    """
+    b_decoded = b_packet.decode()
+    return [
+        float(b_decoded[1:21]),
+        float(b_decoded[21:37]),
+        float(b_decoded[37:53]),
+        float(b_decoded[53:69])]
+
+
+
+def encode_cpacket(Bc):
+    """ Encodes a c_packet, which has the following anatomy:
+    c (1 B)    Bc_X (16 B)    Bc_Y (16 B)    Bc_Z (16 B)
+
+    Optimization:
+    2750 ns/encode (FX-8350)
+         ns/encode (Raspberry Pi 4)
+    """
+    return "c{:0<16.16}{:0<16.16}{:0<16.16}{}".format(
+        str(Bc[0]),
+        str(Bc[1]),
+        str(Bc[2]),
+        _pad*207).encode()
+
+def decode_cpacket(c_packet):
+    """ Decodes a c_packet, which has the following anatomy:
+    c (1 B)    Bc_X (16 B)    Bc_Y (16 B)    Bc_Z (16 B)
+
+    Efficiency by virtue of the KISS principle:
+    1160 ns/decode (FX-8350)
+         ns/encode (Raspberry Pi 4)
+    """
+    c_decoded = c_packet.decode()
+    return [
+        float(c_decoded[1:17]),
+        float(c_decoded[17:33]),
+        float(c_decoded[33:49])]
+
+
+# TODO Remove e-packet and use m-packet for echo functionality
+def encode_epacket(msg: str):
+    """ Encodes an e_packet, which has the following anatomy:
+    e (1 B)    msg (n B)
+    """
+    return ("e"+msg[:255]+_pad*(packet_size-len(msg)-1)).encode()
+
+def decode_epacket(e_packet):
+    """ Encodes an e_packet, which has the following anatomy:
+    e (1 B)    msg (n B)
+    """
+    # return e_packet.decode()[1:].rstrip(_pad)
+    e_packet_decoded = e_packet.decode()
+    return e_packet_decoded[1:e_packet_decoded.find(_pad)]
+
+
+def encode_mpacket(msg: str):
+    """ Encodes an m_packet, which has the following anatomy:
+    m (1 B)    msg (n B)
+
+    The allowed length of msg is equal to packet_size-1
+
+    TODO RE-BENCHMARK
+    Optimization:
+    480 ns/encode (FX-8350)
+     ns/encode (Raspberry Pi 4)
+    """
+    return ("m"+msg[:255]+_pad*(packet_size-len(msg)-1)).encode()
+
+def decode_mpacket(m_packet):
+    """ Encodes an m_packet, which has the following anatomy:
+    m (1 B)    msg (n B)
+
+    The allowed length of msg is equal to packet_size-1
+
+    Optimization:
+    400 ns/encode (FX-8350)
+     ns/encode (Raspberry Pi 4)
+    """
+    return m_packet.decode()[1:].rstrip(_pad)
+
+
+
+def encode_spacket(
+    i_seg: int,
+    n_seg: int,
+    t_seg: float,
+    Bx_seg: float,
+    By_seg: float,
+    Bz_seg: float):
+    """ Encodes an s_packet, which has the following anatomy:
+    s (1 B)    segment number (32 B)    number of segments (32 B)
+        segment_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
+
+    Optimization:
+    4160 ns/encode (FX-8350)
+     ns/encode (Raspberry Pi 4)
+    """
+    return "s{:0>32.32}{:0>32.32}{:0<20.20}{:0<16.16}{:0<16.16}{:0<16.16}{}".format(
+        str(i_seg),
+        str(n_seg),
+        str(t_seg),
+        str(Bx_seg),
+        str(By_seg),
+        str(Bz_seg),
+        _pad*123).encode()
+
+def decode_spacket(s_packet):
+    """ Decodes an s_packet, which has the following anatomy:
+    s (1 B)    segment number (32 B)    number of segments (32 B)
+        segment_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
+
+    to segment values.
+
+    Optimization:
+    2280 ns/encode (FX-8350)
+     ns/encode (Raspberry Pi 4)
+    """
+    s_decoded = s_packet.decode()
+    return [
+        int(float(s_decoded[1:33])),
+        int(float(s_decoded[33:65])),
+        float(s_decoded[65:85]),
+        float(s_decoded[85:101]),
+        float(s_decoded[101:117]),
+        float(s_decoded[117:133])
+    ]
+
+
+
 def encode_tpacket(tm, i_step, Im, Bm, Bc):
     """ Encodes a t_packet, which has the following anatomy:
     b (1 B)    UNIX_time (20 B)    i_step (32 B)    Im (3x12 B)
                Bm (3x16 B)         Bc (3x16 B)      padding (71 B)
-    Optimization: 9398 ns/encode (FX-8350)
+    Optimization:
+    12000 ns/encode (FX-8350)
+     ns/encode (Raspberry Pi 4)
     """
     output = [str(tm), str(i_step), ]
     for par in (Im, Bm, Bc):
@@ -124,7 +275,9 @@ def decode_tpacket(t_packet):
     """ Decodes a t_packet, which has the following anatomy:
     b (1 B)    UNIX_time (20 B)    i_step (32 B)    Im (3x12 B)
                Bm (3x16 B)         Bc (3x16 B)      padding (71 B)
-    Optimization: 3597 ns/encode (FX-8350)
+    Optimization:
+    4450 ns/encode (FX-8350)
+     ns/encode (Raspberry Pi 4)
     """
     t_decoded = t_packet.decode()
     return float(t_decoded[1:21]), \
@@ -145,106 +298,6 @@ def decode_tpacket(t_packet):
 
 
 
-def encode_bpacket(tm, Bm):
-    """ Encodes a b_packet, which has the following anatomy:
-    b (1 B)    UNIX_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
-
-    Optimization: ~~3800~~ ns/encode
-    """
-    # TODO: Re-benchmark
-    return "b{:0<20.20}{:0<16.16}{:0<16.16}{:0<16.16}{}".format(
-        str(tm),
-        str(Bm[0]),
-        str(Bm[1]),
-        str(Bm[2]),
-        _pad*187).encode()
-
-
-
-def decode_bpacket(b_packet):
-    """ Decodes a b_packet, which has the following anatomy:
-    b (1 B)    UNIX_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
-
-    Efficiency by virtue of the KISS principle: ~1750 ns/decode (FX-8350)
-    """
-    b_decoded = b_packet.decode()
-    return [
-        float(b_decoded[1:21]),
-        float(b_decoded[21:37]),
-        float(b_decoded[37:53]),
-        float(b_decoded[53:69])]
-
-
-
-def encode_cpacket(Bc):
-    """ Encodes a c_packet, which has the following anatomy:
-    c (1 B)    Bc_X (16 B)    Bc_Y (16 B)    Bc_Z (16 B)
-    TODO: Re-benchmark performance
-    Optimization: ~~3000~~ ns/encode
-    """
-    return "c{:0<16.16}{:0<16.16}{:0<16.16}{}".format(
-        str(Bc[0]),
-        str(Bc[1]),
-        str(Bc[2]),
-        _pad*207).encode()
-
-
-
-def decode_cpacket(c_packet):
-    """ Decodes a c_packet, which has the following anatomy:
-    c (1 B)    Bc_X (16 B)    Bc_Y (16 B)    Bc_Z (16 B)
-
-    Efficiency by virtue of the KISS principle: ~1060 ns/decode (FX-8350)
-    """
-    c_decoded = c_packet.decode()
-    return [
-        float(c_decoded[1:17]),
-        float(c_decoded[17:33]),
-        float(c_decoded[33:49])]
-
-
-def encode_mpacket(msg: str):
-    """ Encodes an m_packet, which has the following anatomy:
-    m (1 B)    msg (n B)
-
-    The allowed length of msg is equal to packet_size-1
-
-    TODO RE-BENCHMARK
-    Optimization: ~~390~~ ns/encode
-    """
-    return ("m"+msg[:255]+_pad*(packet_size-len(msg)-1)).encode()
-
-
-def decode_mpacket(m_packet):
-    """ Encodes an m_packet, which has the following anatomy:
-    m (1 B)    msg (n B)
-
-    The allowed length of msg is equal to packet_size-1
-
-    Optimization: ~360 ns/encode
-    """
-    return m_packet.decode()[1:].rstrip(_pad)
-
-
-
-def encode_epacket(msg: str):
-    """ Encodes an e_packet, which has the following anatomy:
-    e (1 B)    msg (n B)
-    """
-    return ("e"+msg[:255]+_pad*(packet_size-len(msg)-1)).encode()
-
-
-
-def decode_epacket(e_packet):
-    """ Encodes an e_packet, which has the following anatomy:
-    e (1 B)    msg (n B)
-    """
-    # return e_packet.decode()[1:].rstrip(_pad)
-    e_packet_decoded = e_packet.decode()
-    return e_packet_decoded[1:e_packet_decoded.find(_pad)]
-
-
-
 def encode_xpacket(cmd: str, *args):
     """ Encodes an x_packet, which has the following anatomy:
     x (1 B)    cmd (32 B)    n_args(6 B)    type_id , arg (1+23 B each)
@@ -253,7 +306,9 @@ def encode_xpacket(cmd: str, *args):
     an arg_type_id ('s', 'i', 'f', 'b' for string, integer, float, and
     boolean respectively), followed by 23 bytes of encoded value.
 
-    Unoptimized as of 25-01-2024. ~10000-20000 ns/encode (FX-8350)
+    Unoptimized as of 25-01-2024:
+    ~10000-20000 ns/encode (FX-8350)
+     ns/encode (Raspberry Pi 4)
     """
     recognized_types = (int, float, str, bool)
 
@@ -285,19 +340,17 @@ def encode_xpacket(cmd: str, *args):
         xpacket_unencoded += "{}".format(_pad*(packet_size-len(xpacket_unencoded)))
         return xpacket_unencoded.encode()
 
-
-
 def decode_xpacket(x_packet):
     """ Decodes a c_packet, which has the following anatomy:
     x (1 B)    cmd (32 B)    n_args(6 B)    type_id , arg (1+23 B each)
 
-    Unoptimized as of 15-01-2024. ~5000-10000 ns/decode (FX-8350)
+    Unoptimized as of 15-01-2024.
+    ~5000-11000 ns/encode (FX-8350)
+     ns/encode (Raspberry Pi 4)
     """
 
     xpacket_decoded = x_packet.decode().rstrip(_pad)
 
-    # print(xpacket_decoded[1:32])  # TODO: Remove debug comments once done testing
-    # print(xpacket_decoded[32:40])
     cmd_name = xpacket_decoded[1:33].strip("@")
     n_args = int(xpacket_decoded[33:39])
 
@@ -323,59 +376,3 @@ def decode_xpacket(x_packet):
         # print(f"{args[i_seg]} ({type(args[i_seg])})")
 
     return cmd_name, args
-
-
-
-# Obsolete
-# def vals_to_segment(i_seg: int, n_seg: int, t_seg: float, Bc_seg: [float]):
-#     """Encodes engineering values to a segment string. ~1250 ns/encode"""
-#     return f"{i_seg} {n_seg} {t_seg} {Bc_seg[0]} {Bc_seg[1]} {Bc_seg[2]}"
-#
-#
-# def segment_to_vals(segment: str):
-#     """Decodes a segment string into engineering values. ~1150 ns/encode"""
-#     i_seg, n_seg, t_seg, BcX, BcY, BcZ = segment.split(" ")
-#     return int(i_seg), int(n_seg), float(t_seg), [float(BcX), float(BcY), float(BcZ)]
-
-
-def encode_spacket(
-    i_seg: int,
-    n_seg: int,
-    t_seg: float,
-    Bx_seg: float,
-    By_seg: float,
-    Bz_seg: float):
-    """ Encodes an s_packet, which has the following anatomy:
-    s (1 B)    segment number (32 B)    number of segments (32 B)
-        segment_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
-    TODO: Re-benchmark performance
-    Optimization: ~~4400~~ ns/encode
-    """
-    return "s{:0>32.32}{:0>32.32}{:0<20.20}{:0<16.16}{:0<16.16}{:0<16.16}{}".format(
-        str(i_seg),
-        str(n_seg),
-        str(t_seg),
-        str(Bx_seg),
-        str(By_seg),
-        str(Bz_seg),
-        _pad*123).encode()
-
-
-def decode_spacket(s_packet):
-    """ Decodes an s_packet, which has the following anatomy:
-    s (1 B)    segment number (32 B)    number of segments (32 B)
-        segment_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
-
-    to segment values.
-    # TODO: Re-benchmark performance after adding extra float() calls
-    Optimization: 2150 ns/decode (FX-8350)
-    """
-    s_decoded = s_packet.decode()
-    return [
-        int(float(s_decoded[1:33])),
-        int(float(s_decoded[33:65])),
-        float(s_decoded[65:85]),
-        float(s_decoded[85:101]),
-        float(s_decoded[101:117]),
-        float(s_decoded[117:133])
-    ]

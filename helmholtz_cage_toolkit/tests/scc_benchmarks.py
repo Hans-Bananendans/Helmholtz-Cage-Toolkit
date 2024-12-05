@@ -4,8 +4,8 @@ to be run on different hardware."""
 from timeit import timeit
 
 
-tmult = int(1E6)    # 1E3 / 1E6 / 1E9 for ms / us / ns respectively
-N = int(1E5)        # Generic number of tests
+tmult = int(1E6)    # 1 / 1E3 / 1E6 / 1E9 for s / ms / us / ns respectively
+N = int(1E6)        # Generic number of tests
 
 if tmult == 1:
     t_unit = "s"
@@ -72,7 +72,6 @@ xpacket_bool_str = codec.encode_xpacket(*input_bool_str)
 
 
 
-
 print("\n ==== LENGTH CHECKS ====")
 length_checks = {
     "bpacket": len(codec.encode_bpacket(*Bm_test)),
@@ -133,9 +132,6 @@ else:
     print("tpacket : FAIL")
     print("PRE  :", list(input_t.values()))
     print("POST :", list(t_packet_decoded))
-
-
-
 
 
 
