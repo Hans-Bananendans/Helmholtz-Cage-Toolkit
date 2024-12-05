@@ -4,7 +4,7 @@ from time import time, sleep
 from hashlib import blake2b
 
 from helmholtz_cage_toolkit import *
-import helmholtz_cage_toolkit.codec.scc2q as scc
+import helmholtz_cage_toolkit.scc.scc2q as scc
 import helmholtz_cage_toolkit.client_functions as cf
 
 """

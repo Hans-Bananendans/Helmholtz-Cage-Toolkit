@@ -12,7 +12,7 @@ config = {
     "server_address": "127.0.0.1",
     # "server_address": "169.254.241.64",
     "server_port": 7777,
-    # "buffer_size": 1024,  # Specified by codec instead
+
 
     "connect_on_startup": False,
     "connect_on_startup_delay": 3000,
@@ -23,6 +23,7 @@ config = {
 
     # ==== Data acquisition ====
     "telemetry_polling_rate": 30,   # [S/s] How frequently Bm is polled
+    "buffer_size": 64,              # Size of the buffer for acquired data
 
     "CW_HHCPlots_refresh_rate": 30, # TODO DEPRECATED
     "CW_Cage3DPlot_refresh_rate": 30,
@@ -362,17 +363,17 @@ config = {
             "checkable": True,
             "icon": "./assets/icons/feather/video.svg"
         },
+        # 5: {
+        #     "name": "ControlWindow",
+        #     "checkable": True,
+        #     "icon": "./assets/icons/feather/sliders.svg"
+        # },
         5: {
-            "name": "ControlWindow",
-            "checkable": True,
-            "icon": "./assets/icons/feather/sliders.svg"
-        },
-        6: {
             "name": "Tab 6",
             "checkable": True,
             "icon": "./assets/icons/feather/box.svg"
         },
-        7: {
+        6: {
             "name": "Tab 7",
             "checkable": True,
             "icon": "./assets/icons/feather/info.svg"

@@ -1,10 +1,19 @@
 """
-Simple Command Codec - iteration 2 (SCC2) - Qt compatible edition
+Simple Command Codec - iteration 3 (SCC3)
 
 Code implementation to facilitate command and message serialization
 over a point-to-point TCP/IP connection.
 
-SSC2 comes with six packet types:
+Author: Johan Monster
+
+
+SSC3 comes with seven packet types. Two of these, the m_packet and x_packet are
+best suited for general-purpose, non-time-critical applications. The other
+packets are more specialized and designed with a specific purpose in mind, such
+as reduction of overhead.
+
+
+Packet types in SSC3:
 
 Message packet      m_packet    Packets meant for sending long <str> messages
 
@@ -19,14 +28,33 @@ Control packet      c_packet    Packet meant to control the power supplies to
                                 proportional to a magnetic field strength.
                                 Packet contains 3 signed <float> values in nT
 
+Telemetry packet    t_packet    Packet containing telemetry in the form of many
+                                measured parameters. Mainly used to get as much
+                                useful data from the server to a client in a
+                                single package. Contains a 20 B UNIX timestamp,
+                                and tri-axial values of Bm, Im, Ic, Vc, Vvc,
+                                and Vcc. Bm values are 16 bytes, the others all
+                                12 byte.
+
 B-sample packet     b_packet    Packet containing a single measurement of the
                                 triaxial magnetometer. Contains a 20 B UNIX
-                                timestamp and 16 B signed float value in nT
-                                for each axis.
+                                timestamp and 16 B signed float value in nT for
+                                each axis. Preferred over t_packet if only Bm
+                                data is needed and speed is critical:
+                                Encoding + decoding b_packet:   5.55 us
+                                Encoding + decoding t_packet:  18.75 us
+
+                                Full in-the-loop test on 03-02-2024:
+                                1E5 b-packets exchanged + processed: 57.6 us/p
+                                1E5 t-packets exchanged + processed: 81.1 us/p
+                                Conclusion: the additional encoding, decoding,
+                                and server-side processing of t-packets result
+                                in an absolute average overhead of 23.5 us per
+                                package compared to b-packets.
 
 Execution packet    x_packet    Packets meant for sending commands, taking
                                 a <str> command name, and then any number of
-                                arguments. The codec keeps track of the type
+                                arguments. The scc keeps track of the type
                                 of each argument, with the following types
                                 currently supported: <str>, <int>, <float>,
                                 <bool>.
@@ -41,7 +69,7 @@ B-schedule segment  s_packet    Packets containing a single line of a
 
 Each packet starts with a single character type_id, which can be used to
 identify an incoming packet even if only a single byte has arrived. The
-encoding and decoding functions in the codec automatically take care of these,
+encoding and decoding functions in the scc automatically take care of these,
 and the packet_type() function can be used on an encoded packet to find its
 type.
 
@@ -58,7 +86,7 @@ _pad = "#"          # Packet padding character (cannot be @)
 # _xps = "@"          # (now hardcoded!) Internal separator used for x-packets
 
 
-def packet_type(packet):  # Q Compatible (no change)
+def packet_type(packet):
     """ Returns the first character of the packet, which is the type
     identifier.
 
@@ -79,17 +107,74 @@ def packet_type(packet):  # Q Compatible (no change)
     return packet[0:1].decode()
 
 
+
+def encode_tpacket(tm, Bm, Im, Ic, Vc, Vvc, Vcc):
+    """ Encodes a t_packet, which has the following anatomy:
+    b (1 B)    UNIX_time (20 B)    Bm (3x16 B)    Im (3x12 B)    Ic (3x12 B)
+               Vc (3x12 B)         Vvc (3x12 B)   Vcc (3x12 B)   padding (7 B)
+    TODO RE-BENCHMARK
+    Optimization: ~~13250~~ ns/encode
+    """
+    output = [str(tm), ]
+    for par in (Bm, Im, Ic, Vc, Vvc, Vcc):
+        output += [str(par[0]), str(par[1]), str(par[2])]
+    return ("t{:0<20.20}"+"{:0<16.16}"*3+"{:0<12.12}"*15+"#"*7).format(
+        *output).encode()
+
+
+
+
+def decode_tpacket(t_packet):
+    """ Decodes a t_packet, which has the following anatomy:
+    b (1 B)    UNIX_time (20 B)    Bm (3x16 B)    Im (3x12 B)    Ic (3x12 B)
+               Vc (3x12 B)         Vvc (3x12 B)   Vcc (3x12 B)   padding (7 B)
+
+    Optimization: ~5500 ns/decode (FX-8350)
+    """
+    t_decoded = t_packet.decode()
+    return float(t_decoded[1:21]), \
+        [
+            float(t_decoded[21:37]),        # \
+            float(t_decoded[37:53]),        # Bm
+            float(t_decoded[53:69]),        # /
+        ], [
+            float(t_decoded[69:81]),        # \
+            float(t_decoded[81:93]),        # Im
+            float(t_decoded[93:105]),       # /
+        ], [
+            float(t_decoded[105:117]),      # \
+            float(t_decoded[117:129]),      # Ic
+            float(t_decoded[129:141]),      # /
+        ], [
+            float(t_decoded[141:153]),      # \
+            float(t_decoded[153:165]),      # Vc
+            float(t_decoded[165:177]),      # /
+        ], [
+            float(t_decoded[177:189]),       # \
+            float(t_decoded[189:201]),       # Vvc
+            float(t_decoded[201:213]),       # /
+        ], [
+            float(t_decoded[213:225]),       # \
+            float(t_decoded[225:237]),       # Vcc
+            float(t_decoded[237:249]),       # /
+        ]
+
+
+
+
+
 def encode_bpacket(tm, Bm):  # Q Compatible
     """ Encodes a b_packet, which has the following anatomy:
     b (1 B)    UNIX_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
 
-    Optimization: ~3800 ns/encode
+    Optimization: ~~3800~~ ns/encode
     """
-    return "b{:0<20}{:0<16}{:0<16}{:0<16}{}".format(
-        str(tm)[:20],
-        str(Bm[0])[:20],
-        str(Bm[1])[:20],
-        str(Bm[2])[:20],
+    # TODO: Re-benchmark
+    return "b{:0<20.20}{:0<16.16}{:0<16.16}{:0<16.16}{}".format(
+        str(tm),
+        str(Bm[0]),
+        str(Bm[1]),
+        str(Bm[2]),
         _pad*187).encode()
 
 
@@ -112,13 +197,13 @@ def decode_bpacket(b_packet):  # Q Compatible (no change)
 def encode_cpacket(Bc):  # Q Compatible
     """ Encodes a c_packet, which has the following anatomy:
     c (1 B)    Bc_X (16 B)    Bc_Y (16 B)    Bc_Z (16 B)
-
-    Optimization: ~3000 ns/encode
+    TODO: Re-benchmark performance
+    Optimization: ~~3000~~ ns/encode
     """
-    return "c{:0<16}{:0<16}{:0<16}{}".format(
-        str(Bc[0])[:16],
-        str(Bc[1])[:16],
-        str(Bc[2])[:16],
+    return "c{:0<16.16}{:0<16.16}{:0<16.16}{}".format(
+        str(Bc[0]),
+        str(Bc[1]),
+        str(Bc[2]),
         _pad*207).encode()
 
 
@@ -142,9 +227,10 @@ def encode_mpacket(msg: str):  # Q Compatible
 
     The allowed length of msg is equal to packet_size-1
 
-    Optimization: ~390 ns/encode
+    TODO RE-BENCHMARK
+    Optimization: ~~390~~ ns/encode
     """
-    return ("m"+msg+_pad*(packet_size-len(msg)-1)).encode()
+    return ("m"+msg[:255]+_pad*(packet_size-len(msg)-1)).encode()
 
 
 def decode_mpacket(m_packet):  # Q Compatible
@@ -163,7 +249,7 @@ def encode_epacket(msg: str):  # Q Compatible
     """ Encodes an e_packet, which has the following anatomy:
     e (1 B)    msg (n B)
     """
-    return ("e"+str(msg)+_pad*(packet_size-len(msg)-1)).encode()
+    return ("e"+msg[:255]+_pad*(packet_size-len(msg)-1)).encode()
 
 
 
@@ -257,6 +343,7 @@ def decode_xpacket(x_packet):  # Q Compatible
     return cmd_name, args
 
 
+
 # Obsolete
 # def vals_to_segment(i_seg: int, n_seg: int, t_seg: float, Bc_seg: [float]):
 #     """Encodes engineering values to a segment string. ~1250 ns/encode"""
@@ -279,16 +366,16 @@ def encode_spacket(
     """ Encodes an s_packet, which has the following anatomy:
     s (1 B)    segment number (32 B)    number of segments (32 B)
         segment_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
-
-    Optimization: ~4400 ns/encode
+    TODO: Re-benchmark performance
+    Optimization: ~~4400~~ ns/encode
     """
-    return "s{:0>32}{:0>32}{:0<20}{:0<16}{:0<16}{:0<16}{}".format(
-        str(i_seg)[:16],
-        str(n_seg)[:16],
-        str(t_seg)[:16],
-        str(Bx_seg)[:16],
-        str(By_seg)[:16],
-        str(Bz_seg)[:16],
+    return "s{:0>32.32}{:0>32.32}{:0<20.20}{:0<16.16}{:0<16.16}{:0<16.16}{}".format(
+        str(i_seg),
+        str(n_seg),
+        str(t_seg),
+        str(Bx_seg),
+        str(By_seg),
+        str(Bz_seg),
         _pad*123).encode()
 
 

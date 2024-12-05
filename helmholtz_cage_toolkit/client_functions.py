@@ -3,13 +3,13 @@ from socket import socket
 from hashlib import blake2b
 
 from helmholtz_cage_toolkit import *
-import helmholtz_cage_toolkit.codec.scc3 as scc
+import helmholtz_cage_toolkit.scc.scc4 as codec
 
 
 def send_and_receive(packet,
                      socket_obj,
                      datastream: QDataStream = None,
-                     buffer_size: int = scc.packet_size,
+                     buffer_size: int = codec.packet_size,
                      timeout_ms: int = 1000):
     """Wrapper for sequentially sending and receiving a packet over TCP, with
     built-in support for the standard `socket` library backend, as well as the
@@ -73,7 +73,7 @@ def ping(socket, datastream: QDataStream = None):
     QDataStream object to substantially increase performance.
     """
     # Assemble packet before starting timer
-    packet_out = scc.encode_epacket("")  # Packet will be 0x65 + n * 0x23
+    packet_out = codec.encode_epacket("")  # Packet will be 0x65 + n * 0x23
 
     tstart = time()
     packet_in = send_and_receive(packet_out, socket, datastream=datastream)
@@ -81,7 +81,7 @@ def ping(socket, datastream: QDataStream = None):
 
     # Verification
     # print("[DEBUG] packet_in:", packet_in)  # TODO REMOVE
-    response = scc.decode_epacket(packet_in)
+    response = codec.decode_epacket(packet_in)
     if response == "":
         return tend - tstart
     else:
@@ -98,14 +98,14 @@ def ping_n(socket, n=8, datastream: QDataStream = None):
     times = [0.]*n
 
     for i in range(n):
-        packet_out = scc.encode_epacket("")  # Packet will be 0x65 + n * 0x23
+        packet_out = codec.encode_epacket("")  # Packet will be 0x65 + n * 0x23
 
         tstart = time()
         packet_in = send_and_receive(packet_out, socket, datastream=datastream)
         tend = time()
 
         # Verification
-        response = scc.decode_epacket(packet_in)
+        response = codec.decode_epacket(packet_in)
         if response != "":
             return -1
         else:
@@ -127,9 +127,9 @@ def echo(socket,
     if timing:
         tstart = time()
 
-    response = scc.decode_epacket(
+    response = codec.decode_epacket(
         send_and_receive(
-            scc.encode_epacket(str(msg)),
+            codec.encode_epacket(str(msg)),
             socket,
             datastream=datastream
         )
@@ -157,9 +157,9 @@ def echo_alt(socket,
     if timing:
         tstart = time()
 
-    response = scc.decode_epacket(
+    response = codec.decode_epacket(
         send_and_receive(
-            scc.encode_xpacket("echo", str(msg)),
+            codec.encode_xpacket("echo", str(msg)),
             socket,
             datastream=datastream
         )
@@ -196,9 +196,9 @@ def get_server_uptime(socket,
     if timing:
         tstart = time()
 
-    server_uptime = scc.decode_mpacket(
+    server_uptime = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("get_server_uptime"),
+            codec.encode_xpacket("get_server_uptime"),
             socket,
             datastream=datastream
         )
@@ -223,9 +223,9 @@ def get_socket_uptime(socket,
     if timing:
         tstart = time()
 
-    socket_uptime = scc.decode_mpacket(
+    socket_uptime = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("get_socket_uptime"),
+            codec.encode_xpacket("get_socket_uptime"),
             socket,
             datastream=datastream
         )
@@ -259,9 +259,9 @@ def message(socket,
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    confirm = scc.decode_mpacket(
+    confirm = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_mpacket(str(msg)),
+            codec.encode_mpacket(str(msg)),
             socket,
             datastream=datastream
         )
@@ -285,9 +285,9 @@ def get_control_vals(socket,
     if timing:
         tstart = time()
 
-    control_vals_string = scc.decode_mpacket(
+    control_vals_string = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("get_control_vals"),
+            codec.encode_xpacket("get_control_vals"),
             socket,
             datastream=datastream
         )
@@ -345,9 +345,9 @@ def set_Bc(socket,
     if timing:
         tstart = time()
 
-    confirm = scc.decode_mpacket(
+    confirm = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_cpacket(Bc),
+            codec.encode_cpacket(Bc),
             socket,
             datastream=datastream
         )
@@ -432,20 +432,20 @@ def get_Bm(socket,  # TODO STALE - Succeeded by d-packet implementation
     if timing:
         tstart = time()
 
-    Bm = scc.decode_bpacket(
+    Bm = codec.decode_bpacket(
         send_and_receive(
-            scc.encode_bpacket(0., [0.]*3),
+            codec.encode_bpacket(0., [0.]*3),
             socket,
             datastream=datastream
         )
     )
     # packet_in = send_and_receive(
-    #     scc.encode_bpacket(0., [0.]*3),
+    #     codec.encode_bpacket(0., [0.]*3),
     #     socket,
     #     datastream=datastream
     # )
     # print(packet_in)
-    # Bm = scc.decode_bpacket(packet_in)
+    # Bm = codec.decode_bpacket(packet_in)
 
     if timing:
         tend = time()
@@ -461,9 +461,9 @@ def get_telemetry(socket,
     TODO UPDATE DESCRIPTION
 
     Telemetry can also be requested using:
-        tm, Bm, Im, Ic, Vc, Vvc, Vcc = scc.decode_tpacket(
+        tm, Bm, Im, Ic, Vc, Vvc, Vcc = codec.decode_tpacket(
         send_and_receive(
-            scc.encode_xpacket("get_telemetry"),
+            codec.encode_xpacket("get_telemetry"),
             socket,
             datastream=datastream
         )
@@ -477,14 +477,14 @@ def get_telemetry(socket,
     QDataStream object to substantially increase performance.
     """
 
-    tm, Bm, Im, Ic, Vc, Vvc, Vcc = scc.decode_tpacket(
+    tm, i_step, Im, Bm, Bc = codec.decode_tpacket(
         send_and_receive(
-            scc.encode_tpacket(0., *[[0.]*3]*6),
+            codec.encode_tpacket(0., *[[0.]*3]*6),
             socket,
             datastream=datastream
         )
     )
-    return tm, Bm, Im, Ic, Vc, Vvc, Vcc
+    return tm, i_step, Im, Bm, Bc
 
 
 # ==== SCHEDULE ====
@@ -497,9 +497,9 @@ def print_schedule_info(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    confirm = scc.decode_mpacket(
+    confirm = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("print_schedule_info"),
+            codec.encode_xpacket("print_schedule_info"),
             socket,
             datastream=datastream
         )
@@ -517,9 +517,9 @@ def print_schedule(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    confirm = scc.decode_mpacket(
+    confirm = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("print_schedule", max_entries),
+            codec.encode_xpacket("print_schedule", max_entries),
             socket,
             datastream=datastream
         )
@@ -536,9 +536,9 @@ def get_schedule_info(
     QDataStream object to substantially increase performance.
     """
 
-    name, length_string, duration_string = scc.decode_mpacket(
+    name, length_string, duration_string = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("get_schedule_info"),
+            codec.encode_xpacket("get_schedule_info"),
             socket,
             datastream=datastream
         )
@@ -561,9 +561,9 @@ def get_schedule_hash(
     QDataStream object to substantially increase performance.
     """
 
-    hash_string = scc.decode_mpacket(
+    hash_string = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("get_schedule_hash"),
+            codec.encode_xpacket("get_schedule_hash"),
             socket,
             datastream=datastream,
             timeout_ms=timeout_ms,
@@ -583,9 +583,9 @@ def initialize_schedule(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    confirm = scc.decode_mpacket(
+    confirm = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("initialize_schedule"),
+            codec.encode_xpacket("initialize_schedule"),
             socket,
             datastream=datastream
         )
@@ -614,12 +614,12 @@ def allocate_schedule(
     """
     print(f"[DEBUG] allocate_schedule(): {socket}, {name}({type(name)}), {n_seg}({type(n_seg)}), {float(duration)}({type(float(duration))})")
     packet_in = send_and_receive(
-        scc.encode_xpacket("allocate_schedule", name, n_seg, float(duration)),
+        codec.encode_xpacket("allocate_schedule", name, n_seg, float(duration)),
         socket,
         datastream=datastream
     )
     print(f"[DEBUG] allocate_schedule(): packet_in: {packet_in}")
-    confirm = scc.decode_mpacket(packet_in)
+    confirm = codec.decode_mpacket(packet_in)
     return int(confirm)
 
 
@@ -635,9 +635,9 @@ def transfer_segment(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    confirm = scc.decode_mpacket(
+    confirm = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_spacket(*segment),
+            codec.encode_spacket(*segment),
             socket,
             datastream=datastream
         )
@@ -696,9 +696,9 @@ def transfer_schedule(  # TODO Incorporate schedule validation tools
 
     # Loop over segments and transfer one by one.
     for i, seg in enumerate(schedule):
-        confirm = scc.decode_mpacket(
+        confirm = codec.decode_mpacket(
             send_and_receive(
-                scc.encode_spacket(*(schedule[i])),
+                codec.encode_spacket(*(schedule[i])),
                 socket,
                 datastream=datastream
             )
@@ -826,9 +826,9 @@ def activate_play_mode(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    confirm = scc.decode_mpacket(
+    confirm = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("activate_play_mode"),
+            codec.encode_xpacket("activate_play_mode"),
             socket,
             datastream=datastream
         )
@@ -844,9 +844,9 @@ def deactivate_play_mode(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    confirm = scc.decode_mpacket(
+    confirm = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("deactivate_play_mode"),
+            codec.encode_xpacket("deactivate_play_mode"),
             socket,
             datastream=datastream
         )
@@ -861,9 +861,9 @@ def play_start(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    confirm = scc.decode_mpacket(
+    confirm = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("play_start"),
+            codec.encode_xpacket("play_start"),
             socket,
             datastream=datastream
         )
@@ -880,9 +880,9 @@ def play_stop(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    confirm = scc.decode_mpacket(
+    confirm = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("play_stop"),
+            codec.encode_xpacket("play_stop"),
             socket,
             datastream=datastream
         )
@@ -907,9 +907,9 @@ def get_current_time_step(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    ts_string = scc.decode_mpacket(
+    ts_string = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("get_current_time_step"),
+            codec.encode_xpacket("get_current_time_step"),
             socket,
             datastream=datastream
         )
@@ -930,9 +930,9 @@ def get_play_mode(
     QDataStream object to substantially increase performance.
     """
 
-    play_mode_string = scc.decode_mpacket(
+    play_mode_string = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("get_play_mode"),
+            codec.encode_xpacket("get_play_mode"),
             socket,
             datastream=datastream
         )
@@ -955,9 +955,9 @@ def get_play_status(
     QDataStream object to substantially increase performance.
     """
 
-    play_status_string = scc.decode_mpacket(
+    play_status_string = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("get_play_status"),
+            codec.encode_xpacket("get_play_status"),
             socket,
             datastream=datastream
         )
@@ -997,9 +997,9 @@ def get_apply_Bc_period(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    period_string = scc.decode_mpacket(
+    period_string = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("get_apply_Bc_period"),
+            codec.encode_xpacket("get_apply_Bc_period"),
             socket,
             datastream=datastream
         )
@@ -1015,9 +1015,9 @@ def set_apply_Bc_period(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    confirm = scc.decode_mpacket(
+    confirm = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("set_apply_Bc_period", period),
+            codec.encode_xpacket("set_apply_Bc_period", period),
             socket,
             datastream=datastream
         )
@@ -1033,9 +1033,9 @@ def get_write_Bm_period( # TODO STALE
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    period_string = scc.decode_mpacket(
+    period_string = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("get_write_Bm_period"),
+            codec.encode_xpacket("get_write_Bm_period"),
             socket,
             datastream=datastream
         )
@@ -1051,9 +1051,9 @@ def set_write_Bm_period( # TODO STALE
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    confirm = scc.decode_mpacket(
+    confirm = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("set_write_Bm_period", period),
+            codec.encode_xpacket("set_write_Bm_period", period),
             socket,
             datastream=datastream
         )
@@ -1069,9 +1069,9 @@ def get_write_tmBmIm_period(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    period_string = scc.decode_mpacket(
+    period_string = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("get_write_tmBmIm_period"),
+            codec.encode_xpacket("get_write_tmBmIm_period"),
             socket,
             datastream=datastream
         )
@@ -1087,9 +1087,9 @@ def set_write_tmBmIm_period( # TODO STALE
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    confirm = scc.decode_mpacket(
+    confirm = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("set_write_tmBmIm_period", period),
+            codec.encode_xpacket("set_write_tmBmIm_period", period),
             socket,
             datastream=datastream
         )
@@ -1109,9 +1109,9 @@ def set_Bm_sim(
     if len(Bm_sim) != 3:
         raise AssertionError(f"Bm_sim given is not length 3 but length {len(Bm_sim)}!")
 
-    confirm = scc.decode_mpacket(
+    confirm = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("set_Bm_sim",
+            codec.encode_xpacket("set_Bm_sim",
                                float(Bm_sim[0]),
                                float(Bm_sim[1]),
                                float(Bm_sim[2])),
@@ -1129,9 +1129,9 @@ def get_Bm_sim(socket,
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    Bm_sim = scc.decode_mpacket(
+    Bm_sim = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("get_Bm_sim"),
+            codec.encode_xpacket("get_Bm_sim"),
             socket,
             datastream=datastream
         )
@@ -1148,9 +1148,9 @@ def get_serveropt_Bm_sim(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    serveropt_Bm_sim = scc.decode_mpacket(
+    serveropt_Bm_sim = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("get_serveropt_Bm_sim"),
+            codec.encode_xpacket("get_serveropt_Bm_sim"),
             socket,
             datastream=datastream
         )
@@ -1173,9 +1173,9 @@ def set_serveropt_Bm_sim(
 
     print(f"[DEBUG] get_serveropt_Bm_sim('{serveropt_Bm_sim}')")
 
-    confirm = scc.decode_mpacket(
+    confirm = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("set_serveropt_Bm_sim", serveropt_Bm_sim),
+            codec.encode_xpacket("set_serveropt_Bm_sim", serveropt_Bm_sim),
             socket,
             datastream=datastream
         )
@@ -1197,9 +1197,9 @@ def set_Br(
     if len(Br) != 3:
         raise AssertionError(f"Br given is not length 3 but length {len(Br)}!")
 
-    confirm = scc.decode_mpacket(
+    confirm = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("set_Br",
+            codec.encode_xpacket("set_Br",
                                float(Br[0]),
                                float(Br[1]),
                                float(Br[2])),
@@ -1217,9 +1217,9 @@ def get_Br(socket,
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    Br = scc.decode_mpacket(
+    Br = codec.decode_mpacket(
         send_and_receive(
-            scc.encode_xpacket("get_Br"),
+            codec.encode_xpacket("get_Br"),
             socket,
             datastream=datastream
         )

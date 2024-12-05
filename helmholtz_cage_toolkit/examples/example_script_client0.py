@@ -4,7 +4,7 @@ from time import time, sleep
 
 
 from helmholtz_cage_toolkit import *
-import helmholtz_cage_toolkit.codec.scc3 as scc
+import helmholtz_cage_toolkit.scc.scc3 as scc
 import helmholtz_cage_toolkit.client_functions as cf
 
 """

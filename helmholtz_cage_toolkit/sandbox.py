@@ -2,11 +2,13 @@ import hashlib
 from numpy import array
 from time import time
 from timeit import timeit
-
-
+import numpy as np
+from collections import deque
 
 tm = 1705321618.6226978
+i_step = 1_234_567_890
 Bm = [-12345.12345, -12345.23456, -12345.34567]
+Bc = [-92345.12345, -82345.23456, -72345.34567]
 Im = [1234.1234, 1234.2345, 1234.3456]
 Ic = [-41.039767666050004, -86.828165545449992, 27.42272022095]
 Vc = [60.11111111111, 60.2222222222222, 60.3333333333333]
@@ -20,149 +22,158 @@ _pad = "#"
 seg_test = [35, 60, 355.932203, -83331.392, -55280.007, 18644.068]
 
 
-def encode_spacket0(
-    i_seg: int,
-    n_seg: int,
-    t_seg: float,
-    Bx_seg: float,
-    By_seg: float,
-    Bz_seg: float):  # Q Compatible
-    """ Encodes an s_packet, which has the following anatomy:
-    s (1 B)    segment number (32 B)    number of segments (32 B)
-        segment_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
+def f1(x, item):
+    return [item] + x[:-1]
 
-    Optimization: ~4400 ns/encode
+def f2(x, item):
+    x.insert(0, item)
+    x.pop()
+    return x
+
+def f3(x, item):
+    x.pop()
+    x.insert(0, item)
+    return x
+
+def f4(x, item):
+    del x[-1]
+    x.insert(0, item)
+    return x
+
+def f5(x, item):
+    x.insert(0, item)
+    del x[-1]
+    return x
+
+def f9(x, item):
+    x.appendleft(item)
+    return x
+
+
+
+# Generate list of lists of random values
+# Bm = ((100*np.random.rand(1024, 3)).round(3)).tolist()
+# Bmdeque = deque(Bm, len(Bm))
+
+
+# print("Bm:")
+# for item in Bm:
+#     print(item)
+
+
+
+item = [1.0, 1.0, 1.0]
+
+# print(f1(Bm, item))
+# print(f2(Bm, item))
+# print(list(f3(Bmdeque, item)))
+# print(return_n(Bm, 4))
+# print(return_n_deque(Bmdeque, 4))
+
+
+
+def encode_tpacket(tm, i_step, Im, Bm, Bc):
+    """ Encodes a t_packet, which has the following anatomy:
+    b (1 B)    UNIX_time (20 B)    i_step (32 B)    Im (3x12 B)
+               Bm (3x16 B)         Bc (3x16 B)      padding (71 B)
+    TODO RE-BENCHMARK
+    Optimization: 9398 ns/encode (FX-8350)
     """
-    return "s{:0>32}{:0>32}{:0<20}{:0<16}{:0<16}{:0<16}{}".format(
-        str(i_seg)[:16],
-        str(n_seg)[:16],
-        str(t_seg)[:16],
-        str(Bx_seg)[:16],
-        str(By_seg)[:16],
-        str(Bz_seg)[:16],
-        _pad*123).encode()
+    output = [str(tm), str(i_step), ]
+    for par in (Im, Bm, Bc):
+        output += [str(par[0]), str(par[1]), str(par[2])]
+    return ("t{:0<20.20}"+"{:0>32.32}"+"{:0<12.12}"*3+"{:0<16.16}"*6+"#"*71
+            ).format(*output).encode()
 
-def encode_spacket1(
-    i_seg: int,
-    n_seg: int,
-    t_seg: float,
-    Bx_seg: float,
-    By_seg: float,
-    Bz_seg: float):  # Q Compatible
-    """ Encodes an s_packet, which has the following anatomy:
-    s (1 B)    segment number (32 B)    number of segments (32 B)
-        segment_time (20 B)    B_X (16 B)    B_Y (16 B)    B_Z (16 B)
-
-    Optimization: ~4400 ns/encode
-    """
-    return "s{:0>32.32}{:0>32.32}{:0<20.20}{:0<16.16}{:0<16.16}{:0<16.16}{}".format(
-        str(i_seg),
-        str(n_seg),
-        str(t_seg),
-        str(Bx_seg),
-        str(By_seg),
-        str(Bz_seg),
-        _pad*123).encode()
 
 def decode_tpacket(t_packet):
     """ Decodes a t_packet, which has the following anatomy:
-    b (1 B)    UNIX_time (20 B)    Bm (3x16 B)    Im (3x12 B)    Ic (3x12 B)
-               Vc (3x12 B)         Vvc (3x12 B)   Vcc (3x12 B)   padding (7 B)
-
-    Optimization: ~5500 ns/decode (FX-8350)
+    b (1 B)    UNIX_time (20 B)    i_step (32 B)    Im (3x12 B)
+               Bm (3x16 B)         Bc (3x16 B)      padding (71 B)
+    Optimization: 3597 ns/encode (FX-8350)
     """
     t_decoded = t_packet.decode()
     return float(t_decoded[1:21]), \
+        int(t_decoded[21:53]), \
         [
-            float(t_decoded[21:37]),        # \
-            float(t_decoded[37:53]),        # Bm
-            float(t_decoded[53:69]),        # /
+            float(t_decoded[53:65]),        # \
+            float(t_decoded[65:77]),        # Im
+            float(t_decoded[77:89]),        # /
         ], [
-            float(t_decoded[69:81]),        # \
-            float(t_decoded[81:93]),        # Im
-            float(t_decoded[93:105]),       # /
+            float(t_decoded[89:105]),        # \
+            float(t_decoded[105:121]),        # Bm
+            float(t_decoded[121:137]),       # /
         ], [
-            float(t_decoded[105:117]),      # \
-            float(t_decoded[117:129]),      # Ic
-            float(t_decoded[129:141]),      # /
-        ], [
-            float(t_decoded[141:153]),      # \
-            float(t_decoded[153:165]),      # Vc
-            float(t_decoded[165:177]),      # /
-        ], [
-            float(t_decoded[177:189]),       # \
-            float(t_decoded[189:201]),       # Vvc
-            float(t_decoded[201:213]),       # /
-        ], [
-            float(t_decoded[213:225]),       # \
-            float(t_decoded[225:237]),       # Vcc
-            float(t_decoded[237:249]),       # /
+            float(t_decoded[137:153]),      # \
+            float(t_decoded[153:169]),      # Bc
+            float(t_decoded[169:185]),      # /
         ]
 
 
-o0 = encode_spacket0(*seg_test)
-o1 = encode_spacket1(*seg_test)
-
-
-# o1 = decode_tpacket(o0)
-
-print(len(o0), o0)
-print(len(o1), o1)
-
-
-# for i in range(7):
-#     if i == 0:
-#         print(str(in0[i]), str(o1[i]))
-#     else:
-#         for j in range(3):
-#             print(str(in0[i][j]), str(o1[i][j]))
-
-
-# o1 = encode_tpacket_1(tm, Bm, Im, Ic, Vc, Vvc, Vcc)
-# o2 = encode_tpacket_2(tm, Bm, Im, Ic, Vc, Vvc, Vcc)
-# o3 = encode_tpacket_3(tm, Bm, Im, Ic, Vc, Vvc, Vcc)
-# o4 = encode_tpacket_3(tm, Bm, Im, Ic, Vc, Vvc, Vcc)
-
-# for thing in (o1, o2, o3, o4, o1 == o2, o2 == o3):
-#     print(thing)
 
 
 
-n = int(1E5)
+t_packet = encode_tpacket(tm, i_step, Im, Bm, Bc)
+
+tm2, i_step2, Im2, Bm2, Bc2 = decode_tpacket(t_packet)
+
+print(t_packet)
+print(len(t_packet))
+
+for pair in [[tm, tm2], [i_step, i_step2], [Im, Im2], [Bm, Bm2], [Bc, Bc2]]:
+    if pair[0] == pair[1]:
+        print("PASS: ", pair[0], pair[1])
+    else:
+        print("FAIL: ", pair[0], pair[1])
+
+
+
+
+n = int(1E6)
 tmult = int(1E6)
+tunit = "us"
 
-# print(f"encode_tpacket0 (n={'{:1.0E}'.format(n)}):",
-#       round(timeit('encode_tpacket0(tm, Bm, Im, Ic, Vc, Vvc, Vcc)',
-#                    globals=globals(), number=n)*tmult/n, 3), "us")
-#
-# print(f"encode_tpacket1 (n={'{:1.0E}'.format(n)}):",
-#       round(timeit('encode_tpacket1(tm, Bm, Im, Ic, Vc, Vvc, Vcc)',
-#                    globals=globals(), number=n)*tmult/n, 3), "us")
-#
-# print(f"encode_tpacket2 (n={'{:1.0E}'.format(n)}):",
-#       round(timeit('encode_tpacket2(tm, Bm, Im, Ic, Vc, Vvc, Vcc)',
-#                    globals=globals(), number=n)*tmult/n, 3), "us")
+# print(f"f1 (n={'{:1.0E}'.format(n)}):",
+#       round(timeit('f1(Bm, item)',
+#                    globals=globals(), number=n)*tmult/n, 3), tunit)
+# print(f"f2 (n={'{:1.0E}'.format(n)}):",
+#       round(timeit('f2(Bm, item)',
+#                    globals=globals(), number=n)*tmult/n, 3), tunit)
+# print(f"f3 (n={'{:1.0E}'.format(n)}):",
+#       round(timeit('f3(Bm, item)',
+#                    globals=globals(), number=n)*tmult/n, 3), tunit)
+# print(f"f4 (n={'{:1.0E}'.format(n)}):",
+#       round(timeit('f4(Bm, item)',
+#                    globals=globals(), number=n)*tmult/n, 3), tunit)
+# print(f"f5 (n={'{:1.0E}'.format(n)}):",
+#       round(timeit('f5(Bm, item)',
+#                    globals=globals(), number=n)*tmult/n, 3), tunit)
+# print(f"f9 (n={'{:1.0E}'.format(n)}):",
+#       round(timeit('f9(Bmdeque, item)',
+#                    globals=globals(), number=n)*tmult/n, 3), tunit)
 
-print(f"encode_spacket0 (n={'{:1.0E}'.format(n)}):",
-      round(timeit('encode_spacket0(*seg_test)',
+
+# print(f"encode_spacket0 (n={'{:1.0E}'.format(n)}):",
+#       round(timeit('encode_spacket0(*seg_test)',
+#                    globals=globals(), number=n)*tmult/n, 3), tunit)
+#
+# print(f"encode_spacket1 (n={'{:1.0E}'.format(n)}):",
+#       round(timeit('encode_spacket1(*seg_test)',
+#                    globals=globals(), number=n)*tmult/n, 3), tunit)
+
+
+
+print(f"encode_tpacket (n={'{:1.0E}'.format(n)}):",
+      round(timeit('encode_tpacket(tm, i_step, Im, Bm, Bc)',
                    globals=globals(), number=n)*tmult/n, 3), "us")
 
-print(f"encode_spacket1 (n={'{:1.0E}'.format(n)}):",
-      round(timeit('encode_spacket1(*seg_test)',
+
+print(f"decode_tpacket (n={'{:1.0E}'.format(n)}):",
+      round(timeit('decode_tpacket(t_packet)',
                    globals=globals(), number=n)*tmult/n, 3), "us")
 
-# print(f"decode_tpacket (n={'{:1.0E}'.format(n)}):",
-#       round(timeit('decode_tpacket(o0)',
-#                    globals=globals(), number=n)*tmult/n, 3), "us")
-#
-# print(f"decode_tpacket_2 (n={'{:1.0E}'.format(n)}):",
-#       round(timeit('decode_tpacket_2(o0)',
-#                    globals=globals(), number=n)*tmult/n, 3), "us")
 
 
-# print(f"encode_tpacket_2 (n={'{:1.0E}'.format(n)}):",
-#       round(timeit('encode_tpacket_2(tm, Bm, Im, Ic, Vc, Vvc, Vcc)',
-#                    globals=globals(), number=n)*tmult/n, 3), "us")
 # print(f"encode_tpacket_3 (n={'{:1.0E}'.format(n)}):",
 #       round(timeit('encode_tpacket_3(tm, Bm, Im, Ic, Vc, Vvc, Vcc)',
 #                    globals=globals(), number=n)*tmult/n, 3), "us")

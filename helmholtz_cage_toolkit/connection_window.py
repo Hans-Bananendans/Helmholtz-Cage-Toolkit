@@ -6,7 +6,7 @@ from threading import Thread
 
 from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.config import config
-import helmholtz_cage_toolkit.codec.scc2q as scc
+import helmholtz_cage_toolkit.scc.scc2q as scc
 import helmholtz_cage_toolkit.client_functions as cf
 
 

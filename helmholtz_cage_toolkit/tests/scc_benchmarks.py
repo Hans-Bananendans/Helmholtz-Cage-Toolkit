@@ -7,31 +7,39 @@ from timeit import timeit
 tmult = int(1E6)    # 1E3 / 1E6 / 1E9 for ms / us / ns respectively
 N = int(1E5)        # Generic number of tests
 
+if tmult == 1:
+    t_unit = "s"
+elif tmult == 1E3:
+    t_unit = "ms"
+elif tmult == 1E6:
+    t_unit = "\u03bcs"
+elif tmult == 1E9:
+    t_unit = "ns"
+else:
+    t_unit = "?s"
+
 print("Running tests with N={:.0E}...".format(N))
 
 # Packet encoding / decoding =================================================
-import helmholtz_cage_toolkit.codec.scc3 as scc   # Import codec
+import helmholtz_cage_toolkit.scc.scc4 as codec   # Import scc
 
-Bm_test = [1705321618.6226978, [278.0, -12.4, -123456.123456789]]
-bpacket_test = b"b1705321618.622697800278.000000000000-12.400000000000-123456.123456789###########################################################################################################################################################################################"
-Bc_test = [123.0, -456.321, -123456.123456789]
+Bm_test = [1705321618.6226978, [278.0, -12.4, -123456.12345678]]
+bpacket_test = b"b1705321618.622697800278.000000000000-12.400000000000-123456.12345678############################################################################################################################################################################################"
+Bc_test = [123.0, -456.321, -123456.12345678]
 cpacket_test = b"c123.000000000000-456.32100000000-123456.12345678###############################################################################################################################################################################################################"
 msg_test = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Tellus elementum sagittis vitae et leo. Quam vulputate dignissim suspendisse in est ante in nibh mauris. Aliquam faucibus purus in "
 mpacket_test = b"mLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Tellus elementum sagittis vitae et leo. Quam vulputate dignissim suspendisse in est ante in nibh mauris. Aliquam faucibus purus in "
 seg_test = [35, 60, 355.932203, -83331.392, -55280.007, 18644.068]
 spacket_test = b"s0000000000000000000000000000003500000000000000000000000000000060355.9322030000000000-83331.392000000-55280.00700000018644.0680000000###########################################################################################################################"
 
-
 input_t = {
     "tm": 1705321618.6226978,
-    "Bm": [-12345.12345, -12345.23456, -12345.34567],
+    "i_step": 1_234_567_890,
     "Im": [1234.1234, 1234.2345, 1234.3456],
-    "Ic": [2345.1234, 2345.2345, 2345.3456],
-    "Vc": [60.1, 60.2, 60.3],
-    "Vvc": [1.101, 1.202, 1.303],
-    "Vcc": [2.101, 2.202, 2.303]
+    "Bm": [-12345.12345, -12345.23456, -12345.34567],
+    "Bc": [-92345.12345, -82345.23456, -72345.34567],
 }
-tpacket_test = b't1705321618.622697800-12345.123450000-12345.234560000-12345.3456700001234.12340001234.23450001234.34560002345.12340002345.23450002345.345600060.10000000060.20000000060.3000000001.10100000001.20200000001.30300000002.10100000002.20200000002.3030000000#######'
+tpacket_test = b't1705321618.622697800000000000000000000000001000000051234.12340001234.23450001234.3456000-12345.123450000-12345.234560000-12345.345670000-92345.123450000-82345.234560000-72345.345670000#######################################################################'
 
 input_int_float = (
     "int_float_test",
@@ -57,69 +65,136 @@ input_bool_str = (
     "@$%^&*()_+=-{}[]'\\/<>`~"          # potentially problematic characters
 )
 
-xpacket_int_float = scc.encode_xpacket(*input_int_float)
-xpacket_bool_str = scc.encode_xpacket(*input_bool_str)
+
+
+xpacket_int_float = codec.encode_xpacket(*input_int_float)
+xpacket_bool_str = codec.encode_xpacket(*input_bool_str)
 
 
 
-# === Length checks:
-print("bpacket:", len(scc.encode_bpacket(*Bm_test)), "B")
-print("tpacket:", len(scc.encode_tpacket(*input_t.values())), "B")
-print("cpacket:", len(scc.encode_cpacket(Bc_test)), "B")
-print("mpacket:", len(scc.encode_mpacket(msg_test)), "B")
-print("spacket:", len(scc.encode_spacket(*seg_test)), "B")
-print("xpacket:", len(scc.encode_xpacket(*input_int_float)), "B")
+
+print("\n ==== LENGTH CHECKS ====")
+length_checks = {
+    "bpacket": len(codec.encode_bpacket(*Bm_test)),
+    "cpacket": len(codec.encode_cpacket(Bc_test)),
+    "mpacket": len(codec.encode_mpacket(msg_test)),
+    "spacket": len(codec.encode_spacket(*seg_test)),
+    "tpacket": len(codec.encode_tpacket(*input_t.values())),
+    "xpacket": len(codec.encode_xpacket(*input_int_float)),
+}
+for key in length_checks.keys():
+    print(key, ":", length_checks[key], "B")
+
+if all(l == codec.packet_size for l in length_checks.values()):
+    print("   PASS")
+else:
+    print("   FAIL")
+
+
+
+print("\n ==== COMMUTATION CHECKS ====")
+b_packet_decoded = codec.decode_bpacket(codec.encode_bpacket(*Bm_test))
+if Bm_test == b_packet_decoded:
+    print("bpacket : PASS")
+else:
+    print("bpacket : FAIL")
+    print("PRE  :", Bm_test)
+    print("POST :", b_packet_decoded)
+
+c_packet_decoded = codec.decode_cpacket(codec.encode_cpacket(Bc_test))
+if Bc_test == c_packet_decoded:
+    print("cpacket : PASS")
+else:
+    print("cpacket : FAIL")
+    print("PRE  :", Bc_test)
+    print("POST :", c_packet_decoded)
+
+m_packet_decoded = codec.decode_mpacket(codec.encode_mpacket(msg_test))
+if msg_test == m_packet_decoded:
+    print("mpacket : PASS")
+else:
+    print("mpacket : FAIL")
+    print("PRE  :", msg_test)
+    print("POST :", m_packet_decoded)
+
+s_packet_decoded = codec.decode_spacket(codec.encode_spacket(*seg_test))
+if seg_test == s_packet_decoded:
+    print("spacket : PASS")
+else:
+    print("spacket : FAIL")
+    print("PRE  :", seg_test)
+    print("POST :", s_packet_decoded)
+
+t_packet = codec.encode_tpacket(*input_t.values())
+t_packet_decoded = list(codec.decode_tpacket(t_packet))
+if list(input_t.values()) == t_packet_decoded:
+    print("tpacket : PASS")
+else:
+    print("tpacket : FAIL")
+    print("PRE  :", list(input_t.values()))
+    print("POST :", list(t_packet_decoded))
+
+
+
+
+
 
 n = N
-print(f"scc.encode_bpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
-      round(timeit('scc.encode_bpacket(*Bm_test)',
-                   globals=globals(), number=n)*tmult/n, 3), "\u03bcs")
+print("\n ==== TIMING BENCHMARKS ====")
+print(f"codec.encode_bpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+      round(timeit('codec.encode_bpacket(*Bm_test)',
+                   globals=globals(), number=n)*tmult/n, 3), t_unit)
 
-print(f"scc.decode_bpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
-      round(timeit('scc.decode_bpacket(bpacket_test)',
-                   globals=globals(), number=n)*tmult/n, 3), "\u03bcs")
+print(f"codec.decode_bpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+      round(timeit('codec.decode_bpacket(bpacket_test)',
+                   globals=globals(), number=n)*tmult/n, 3), t_unit)
 
-print(f"scc.encode_tpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
-      round(timeit('scc.encode_tpacket(*input_t.values())',
-                   globals=globals(), number=n)*tmult/n, 3), "\u03bcs")
 
-print(f"scc.decode_tpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
-      round(timeit('scc.decode_tpacket(tpacket_test)',
-                   globals=globals(), number=n)*tmult/n, 3), "\u03bcs")
+print(f"codec.encode_cpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+      round(timeit('codec.encode_cpacket(Bc_test)',
+                   globals=globals(), number=n)*tmult/n, 3), t_unit)
 
-print(f"scc.encode_cpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
-      round(timeit('scc.encode_cpacket(Bc_test)',
-                   globals=globals(), number=n)*tmult/n, 3), "\u03bcs")
+print(f"codec.decode_cpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+      round(timeit('codec.decode_cpacket(cpacket_test)',
+                   globals=globals(), number=n)*tmult/n, 3), t_unit)
 
-print(f"scc.decode_cpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
-      round(timeit('scc.decode_cpacket(cpacket_test)',
-                   globals=globals(), number=n)*tmult/n, 3), "\u03bcs")
 
-print(f"scc.encode_mpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
-      round(timeit('scc.encode_mpacket(msg_test)',
-                   globals=globals(), number=n)*tmult/n, 3), "\u03bcs")
+print(f"codec.encode_mpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+      round(timeit('codec.encode_mpacket(msg_test)',
+                   globals=globals(), number=n)*tmult/n, 3), t_unit)
 
-print(f"scc.decode_mpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
-      round(timeit('scc.decode_mpacket(mpacket_test)',
-                   globals=globals(), number=n)*tmult/n, 3), "\u03bcs")
+print(f"codec.decode_mpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+      round(timeit('codec.decode_mpacket(mpacket_test)',
+                   globals=globals(), number=n)*tmult/n, 3), t_unit)
 
-print(f"scc.encode_spacket() - t_avg (n={'{:1.0E}'.format(n)}):",
-      round(timeit('scc.encode_spacket(*seg_test)',
-                   globals=globals(), number=n)*tmult/n, 3), "\u03bcs")
 
-print(f"scc.decode_spacket() - t_avg (n={'{:1.0E}'.format(n)}):",
-      round(timeit('scc.decode_spacket(spacket_test)',
-                   globals=globals(), number=n)*tmult/n, 3), "\u03bcs")
+print(f"codec.encode_spacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+      round(timeit('codec.encode_spacket(*seg_test)',
+                   globals=globals(), number=n)*tmult/n, 3), t_unit)
 
-print(f"scc.encode_xpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+print(f"codec.decode_spacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+      round(timeit('codec.decode_spacket(spacket_test)',
+                   globals=globals(), number=n)*tmult/n, 3), t_unit)
+
+
+print(f"codec.encode_tpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+      round(timeit('codec.encode_tpacket(*input_t.values())',
+                   globals=globals(), number=n)*tmult/n, 3), t_unit)
+
+print(f"codec.decode_tpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+      round(timeit('codec.decode_tpacket(tpacket_test)',
+                   globals=globals(), number=n)*tmult/n, 3), t_unit)
+
+
+print(f"codec.encode_xpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
       round((
-                timeit('scc.encode_xpacket(*input_int_float)', globals=globals(), number=int(n/2))
-                + timeit('scc.encode_xpacket(*input_bool_str)', globals=globals(), number=int(n/2))
-            )*tmult/n, 3), "\u03bcs")
+                timeit('codec.encode_xpacket(*input_int_float)', globals=globals(), number=int(n/2))
+                + timeit('codec.encode_xpacket(*input_bool_str)', globals=globals(), number=int(n/2))
+            )*tmult/n, 3), t_unit)
 
-print(f"scc.decode_xpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+print(f"codec.decode_xpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
       round((
-                timeit('scc.decode_xpacket(xpacket_int_float)', globals=globals(), number=int(n/2))
-                + timeit('scc.decode_xpacket(xpacket_bool_str)', globals=globals(), number=int(n/2))
-            )*tmult/n, 3), "\u03bcs")
+                timeit('codec.decode_xpacket(xpacket_int_float)', globals=globals(), number=int(n/2))
+                + timeit('codec.decode_xpacket(xpacket_bool_str)', globals=globals(), number=int(n/2))
+            )*tmult/n, 3), t_unit)
 

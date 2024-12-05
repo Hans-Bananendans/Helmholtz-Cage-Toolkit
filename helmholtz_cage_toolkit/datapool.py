@@ -1,10 +1,12 @@
 import os
 from time import time
+# from numpy import zeros
 
 from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.orbit_visualizer import Orbit, Earth
 import helmholtz_cage_toolkit.client_functions as cf
 # from file_handling import load_file, save_file, NewFileDialog
+import scc.scc4 as codec
 
 class DataPool:
     def __init__(self, parent, config):
@@ -54,19 +56,20 @@ class DataPool:
         self.command_mode = "manual"
 
         # Data buffers
-        self.tm = 0.                    # UNIX time of most recent Bm, Im measurement
-        self.Bm = [0., 0., 0.]          # B vector measured by hardware
-        self.Bc = [0., 0., 0.]          # B vector as commanded by user
-        self.Br = [0., 0., 0.]          # B vector to reject
+        aqs = Aqs(self.config["buffer_size"])
 
-        self.Ic = [0., 0., 0.]          # Coil current commanded by user (calculated by server)
-        self.Im = [0., 0., 0.]          # Coil current as measured by hardware
-
-        self.Vc = [0., 0., 0.]          # Power supply voltage as commanded by user
-
-        self.Vcc = [0., 0., 0.]         # Supply Current Control Voltage [0, 2] VDC
-        self.Vvc = [0., 0., 0.]         # Supply Voltage Control Voltage [0, 2] VDC
-
+        # self.tm = 0.                    # UNIX time of most recent Bm, Im measurement
+        # self.Bm = [0., 0., 0.]          # B vector measured by hardware
+        # self.Bc = [0., 0., 0.]          # B vector as commanded by user
+        # self.Br = [0., 0., 0.]          # B vector to reject
+        #
+        # self.Ic = [0., 0., 0.]          # Coil current commanded by user (calculated by server)
+        # self.Im = [0., 0., 0.]          # Coil current as measured by hardware
+        #
+        # self.Vc = [0., 0., 0.]          # Power supply voltage as commanded by user
+        #
+        # self.Vcc = [0., 0., 0.]         # Supply Current Control Voltage [0, 2] VDC
+        # self.Vvc = [0., 0., 0.]         # Supply Voltage Control Voltage [0, 2] VDC
 
 
         # Devices TODO DEPRECATED
@@ -78,7 +81,7 @@ class DataPool:
         # self.adc_pollrate = self.config["adc_pollrate"]
         # TODO: Revert to 0. 0. 0.
         self.B_m = array([0., 1., 0.])   # B measured by magnetometer
-        self.tBm = 0.0                      # Unix acquisition time of latest measurement
+        self.tBm = 0.0                   # Unix acquisition time of latest measurement
 
         # Command TODO DEPRECATED
         self.B_c = array([0., 0., 0.])   # Commanded (=desired) magnetic field
@@ -458,3 +461,54 @@ class DataPool:
         """Prints string to console when verbosity is above a certain level"""
         if verbosity_level <= self.config["verbosity"]:
             print(string)
+
+
+
+class Aqs:
+    """
+    Buffer class for the data coming from the server device in the form of a
+    t-packet.
+    """
+    def __init__(self, buffer_size):
+        # UNIX time of most recent Bm, Im measurement
+        self.tm = zeros(buffer_size).tolist()
+
+        # B vector measured by hardware (size: <buffer_size> by 3)
+        self.Bm = zeros((buffer_size, 3)).tolist()
+
+        # B vector as commanded by user
+        self.Bc = zeros((buffer_size, 3)).tolist()
+
+        # Coil current as measured by hardware
+        self.Im = zeros((buffer_size, 3)).tolist()
+
+        # Error between Bc and Bm
+        self.E = zeros((buffer_size, 3)).tolist()
+
+        # Index of the schedule step that was commanded
+        self.i_step = zeros(buffer_size, int).tolist()
+
+    def input(self, tm, i_step, Im: list, Bm: list, Bc: list):
+        self.buffer_input(self.tm, tm) # noqa
+        self.buffer_input(self.i_step, i_step) # noqa
+        self.buffer_input(self.Im, Im) # noqa
+        self.buffer_input(self.Bm, Bm) # noqa
+        self.buffer_input(self.Bc, Bc) # noqa
+
+        E_new = [0.0, 0.0, 0.0]
+        for i in range(3):
+            E_new[i] = Bc[i] - Bm[i]
+        self.buffer_input(self.E, E_new) # noqa
+
+
+
+    def input_tpacket(self, tpacket):
+        tm, i_step, Im, Bm, Bc = codec.decode_tpacket(tpacket)
+        self.input(tm, i_step, Im, Bm, Bc)
+
+
+    def buffer_input(self, buffer, item):
+        # Light first-in-last-out pop-and-append function
+        del buffer[-1]
+        buffer.insert(0, item)
+        return buffer

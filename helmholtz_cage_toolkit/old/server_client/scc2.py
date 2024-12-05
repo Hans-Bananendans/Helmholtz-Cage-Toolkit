@@ -26,7 +26,7 @@ B-sample packet     b_packet    Packet containing a single measurement of the
 
 Execution packet    x_packet    Packets meant for sending commands, taking
                                 a <str> command name, and then any number of
-                                arguments. The codec keeps track of the type
+                                arguments. The scc keeps track of the type
                                 of each argument, with the following types
                                 currently supported: <str>, <int>, <float>,
                                 <bool>.
@@ -41,7 +41,7 @@ B-schedule segment  s_packet    Packets containing a single line of a
 
 Each packet starts with a single character type_id, which can be used to
 identify an incoming packet even if only a single byte has arrived. The
-encoding and decoding functions in the codec automatically take care of these,
+encoding and decoding functions in the scc automatically take care of these,
 and the packet_type() function can be used on an encoded packet to find its
 type.
 
@@ -310,7 +310,7 @@ class SCC:
     #     Example: -1234567890.1234567890 (22 B) -> -1234567890.1234 (16 B)
     #
     #     This is deemed acceptable for the application for which it is intended, but
-    #     users aiming to use this codec for other applications should take note.
+    #     users aiming to use this scc for other applications should take note.
     #
     #     Optimization: 1440 ns/encode (FX-8350)
     #     """
