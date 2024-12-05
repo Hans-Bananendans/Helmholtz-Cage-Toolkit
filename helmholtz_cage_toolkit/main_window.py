@@ -317,8 +317,8 @@ class MainWindow(QMainWindow):
                 self.tabcontainer.addWidget(CyclicsWindow(self.config, self.datapool))
             elif i == 4:
                 self.tabcontainer.addWidget(WebcamWindow(self.config, self.datapool))
-            elif i == 5:
-                self.tabcontainer.addWidget(ControlWindow(self.config, self.datapool))
+            # elif i == 5:
+            #     self.tabcontainer.addWidget(ControlWindow(self.config, self.datapool)) # TODO STALE
             else:
                 self.tabcontainer.addWidget(TestTab(attrs["name"]))
 

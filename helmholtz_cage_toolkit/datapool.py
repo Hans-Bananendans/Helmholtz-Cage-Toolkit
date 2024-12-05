@@ -75,7 +75,7 @@ class DataPool:
         self.magnetometer = None
 
         # Measurement TODO DEPRECATED
-        self.adc_pollrate = self.config["adc_pollrate"]
+        # self.adc_pollrate = self.config["adc_pollrate"]
         # TODO: Revert to 0. 0. 0.
         self.B_m = array([0., 1., 0.])   # B measured by magnetometer
         self.tBm = 0.0                      # Unix acquisition time of latest measurement
