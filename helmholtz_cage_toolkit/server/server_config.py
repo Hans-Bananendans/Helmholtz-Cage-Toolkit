@@ -1,7 +1,11 @@
 server_config = {
     # ==== General settings ====
-    # "SERVER_ADDRESS": "127.0.0.1",
+    "SERVER_ADDRESS": "127.0.0.1",
     "SERVER_PORT": 7777,
+
+    # ==== Thread settings ====
+    "threaded_read_ADC_rate": 10,   # S/s
+    "threaded_write_DAC_rate": 10,  # S/s
 
     "verbosity": 6,
     # "verbosity_printtimestamp": True,

@@ -5,18 +5,20 @@ from numpy import array
 from numpy.random import random
 from time import time, sleep
 
-import helmholtz_cage_toolkit.scc.scc4 as scc
+import helmholtz_cage_toolkit.scc.scc4 as codec
+import helmholtz_cage_toolkit.server.server_config as sconfig
 
 
-def threaded_apply_Bc(datapool):
+
+def threaded_write_DAC(datapool):
     """The thread running this function will periodically read the value of
-    Bc from the datapool, and apply it to the actual hardware. It can do so
-    in manual mode, where it applies the value every time Bc is changed, or it
-    can do it in play mode, where it plays the pre-defined schedule stored in
-    datapool.schedule.
+    DAC inputs from the datapool, and apply it to the DAC hardware. It can do
+    so in manual mode, where it applies the value every time a DAC input is
+    changed, or it can do it in play mode, where it plays the pre-defined
+    schedule stored in datapool.schedule.
 
     The basic idea is this:
-    -1. Run until datapool.kill_apply_Bc is set to True, then finish up
+    -1. Run until datapool.kill_threaded_write_DAC is set to True, then finish
     0. Determine if in "play mode" or not ("manual mode" -> default)
     If in "play mode":
         1. Compare current time to the time of next point in schedule
@@ -43,8 +45,9 @@ def threaded_apply_Bc(datapool):
     give this thread a timeout that is larger than the period.
 
     So, in order to gracefully kill the thread you do the following:
-    1. Set datapool.kill_apply_Bc to True
-    2. Join thread with nonzero timeout; e.g. Thread.join(timeout=1.0)
+    1. Set datapool.kill_threaded_write_DAC to True
+    2. This will break the loop, and run a hardware shutdown routine.
+    3. Join thread with nonzero timeout; e.g. Thread.join(timeout=1.0)
     This will end the thread on its next cycle, and should ensure that the
     code is never terminated with a non-zero value on the power supplies.
 
@@ -53,59 +56,153 @@ def threaded_apply_Bc(datapool):
     thread is initiated in the server thread should be changed.
     """
 
-    print(f"Started apply_Bc thread with period {datapool.apply_Bc_period}")
-    datapool.kill_apply_Bc = False
+    print(f"Started 'write DAC' thread with period {datapool.threaded_write_DAC_period}")
+    datapool.kill_threaded_write_DAC = False
 
     Bc_prev = [0., 0., 0.]
 
-    while not datapool.kill_apply_Bc:        # Kill loop when set to True
+    while not datapool.kill_threaded_write_DAC:  # Kills loop when set to True
 
-        # ==== PLAY MODE ====
-        if datapool.play_mode:
-            # Do only if play_status = "play"
-            if datapool.play_status == "play":
-                # Measure current time since start of play
-                datapool.t_current = time()-datapool.t_play
+        # # ==== PLAY MODE ====
+        # if datapool.play_mode:
+        #     # Do only if play_status = "play"
+        #     if datapool.play_status == "play":
+        #         # Measure current time since start of play
+        #         datapool.t_current = time()-datapool.t_play
+        #
+        #         # If it is time, move to the next step, unless end of schedule is reached
+        #         if datapool.t_current >= datapool.t_next:
+        #             if datapool.step_current == datapool.steps - 2:
+        #                 datapool.step_current += 1
+        #                 instruct_DACs(datapool, datapool.schedule[datapool.step_current][3:6])
+        #                 print(f"[DEBUG] Current step: {datapool.step_current}/{datapool.steps} (+{round(datapool.t_current, 3)} s)")
+        #                 print(f"[DEBUG] Reached end of schedule -> STOPPING")
+        #                 confirm = datapool.play_stop()
+        #             else:
+        #                 datapool.step_current += 1
+        #                 instruct_DACs(datapool, datapool.schedule[datapool.step_current][3:6])
+        #                 datapool.t_next = datapool.schedule[datapool.step_current+1][2]
+        #                 print(f"[DEBUG] Current step: {datapool.step_current}/{datapool.steps} (+{round(datapool.t_current, 3)} s)")
+        #
+        #         else:
+        #             sleep(datapool.apply_Bc_period)
+        #
+        #     else:
+        #         sleep(datapool.apply_Bc_period)
 
-                # If it is time, move to the next step, unless end of schedule is reached
-                if datapool.t_current >= datapool.t_next:
-                    if datapool.step_current == datapool.steps - 2:
-                        datapool.step_current += 1
-                        instruct_DACs(datapool, datapool.schedule[datapool.step_current][3:6])
-                        print(f"[DEBUG] Current step: {datapool.step_current}/{datapool.steps} (+{round(datapool.t_current, 3)} s)")
-                        print(f"[DEBUG] Reached end of schedule -> STOPPING")
-                        confirm = datapool.play_stop()
-                    else:
-                        datapool.step_current += 1
-                        instruct_DACs(datapool, datapool.schedule[datapool.step_current][3:6])
-                        datapool.t_next = datapool.schedule[datapool.step_current+1][2]
-                        print(f"[DEBUG] Current step: {datapool.step_current}/{datapool.steps} (+{round(datapool.t_current, 3)} s)")
 
-                else:
-                    sleep(datapool.apply_Bc_period)
-
-            else:
-                sleep(datapool.apply_Bc_period)
-
-
+        # # ==== MANUAL MODE ====
+        # else:
+        #     if not datapool.pause_threaded_write_DAC:  # Pause loop when set to True
+        #         t0 = time()
+        #         Bc_read = datapool.read_Bc()
+        #         if Bc_read == Bc_prev:
+        #             sleep(max(0., datapool.apply_Bc_period - (time() - t0)))
+        #         else:
+        #             # control_vals = instruct_DACs(datapool, Bc_read)
+        #             Bc, Ic, Vc = instruct_DACs(datapool, Bc_read)
+        #             # datapool.write_control_vals(control_vals)
+        #             datapool.write_control_vals(Bc, Ic, Vc)
+        #             Bc_prev = Bc_read
+        #     else:
+        #         sleep(datapool.threaded_write_DAC_period)
 
         # ==== MANUAL MODE ====
-        else:
-            if not datapool.pause_apply_Bc:  # Pause loop when set to True
-                t0 = time()
-                Bc_read = datapool.read_Bc()
-                if Bc_read == Bc_prev:
-                    sleep(max(0., datapool.apply_Bc_period - (time() - t0)))
-                else:
-                    # control_vals = instruct_DACs(datapool, Bc_read)
-                    Bc, Ic, Vc = instruct_DACs(datapool, Bc_read)
-                    # datapool.write_control_vals(control_vals)
-                    datapool.write_control_vals(Bc, Ic, Vc)
-                    Bc_prev = Bc_read
+        if not datapool.pause_threaded_write_DAC:  # Pause loop when set to True
+            t0 = time()
+            Bc_read = datapool.read_Bc()
+            if Bc_read == Bc_prev:
+                sleep(max(0., datapool.apply_Bc_period - (time() - t0)))
             else:
-                sleep(datapool.apply_Bc_period)
+                # control_vals = instruct_DACs(datapool, Bc_read)
+                Bc, Ic, Vc = instruct_DACs(datapool, Bc_read)
+                # datapool.write_control_vals(control_vals)
+                datapool.write_control_vals(Bc, Ic, Vc)
+                Bc_prev = Bc_read
+        else:
+            sleep(datapool.threaded_write_DAC_period)
 
     # When loop is broken, set power supply values to zero.
+    # TODO implement safe shutdown
+    instruct_DACs(datapool, [0., 0., 0.])
+    print(f"Closing apply_Bc thread")
+
+def threaded_read_ADC(datapool):
+    """The thread running this function will periodically read the value of
+    ADC inputs from the hardware, and write them to the datapool.
+
+    The basic idea is this:
+    -1. Run until datapool.kill_threaded_read_ADC is set to True, then finish
+
+
+    So, in order to gracefully kill the thread you do the following:
+    1. Set datapool.kill_threaded_read_ADC to True
+    2. Join thread with nonzero timeout; e.g. Thread.join(timeout=1.0)
+    This will end the thread on its next cycle, and should ensure that the
+    code is never terminated with a non-zero value on the power supplies.
+
+    """
+
+    print(f"Started 'read ADC' thread with rate {1/datapool.threaded_read_ADC_period}")
+    datapool.kill_threaded_read_ADC = False
+
+    Bc_prev = [0., 0., 0.]
+
+    while not datapool.kill_threaded_read_ADC:  # Kills loop when set to True
+
+        # # ==== PLAY MODE ====
+        # if datapool.play_mode:
+        #     # Do only if play_status = "play"
+        #     if datapool.play_status == "play":
+        #         # Measure current time since start of play
+        #         datapool.t_current = time()-datapool.t_play
+        #
+        #         # If it is time, move to the next step, unless end of schedule is reached
+        #         if datapool.t_current >= datapool.t_next:
+        #             if datapool.step_current == datapool.steps - 2:
+        #                 datapool.step_current += 1
+        #                 instruct_DACs(datapool, datapool.schedule[datapool.step_current][3:6])
+        #                 print(f"[DEBUG] Current step: {datapool.step_current}/{datapool.steps} (+{round(datapool.t_current, 3)} s)")
+        #                 print(f"[DEBUG] Reached end of schedule -> STOPPING")
+        #                 confirm = datapool.play_stop()
+        #             else:
+        #                 datapool.step_current += 1
+        #                 instruct_DACs(datapool, datapool.schedule[datapool.step_current][3:6])
+        #                 datapool.t_next = datapool.schedule[datapool.step_current+1][2]
+        #                 print(f"[DEBUG] Current step: {datapool.step_current}/{datapool.steps} (+{round(datapool.t_current, 3)} s)")
+        #
+        #         else:
+        #             sleep(datapool.apply_Bc_period)
+        #
+        #     else:
+        #         sleep(datapool.apply_Bc_period)
+
+
+        # # ==== MANUAL MODE ====
+        # else:
+        #     if not datapool.pause_threaded_write_DAC:  # Pause loop when set to True
+        #         t0 = time()
+        #         Bc_read = datapool.read_Bc()
+        #         if Bc_read == Bc_prev:
+        #             sleep(max(0., datapool.apply_Bc_period - (time() - t0)))
+        #         else:
+        #             # control_vals = instruct_DACs(datapool, Bc_read)
+        #             Bc, Ic, Vc = instruct_DACs(datapool, Bc_read)
+        #             # datapool.write_control_vals(control_vals)
+        #             datapool.write_control_vals(Bc, Ic, Vc)
+        #             Bc_prev = Bc_read
+        #     else:
+        #         sleep(datapool.threaded_write_DAC_period)
+
+        # ==== MANUAL MODE ====
+        if not datapool.pause_threaded_read_ADC:  # Pause loop when set to True
+            t0 = time()
+            # DO READING STUFF
+        else:
+            sleep(datapool.threaded_read_ADC_period)
+
+    # When loop is broken, set power supply values to zero.
+    # TODO implement safe shutdown
     instruct_DACs(datapool, [0., 0., 0.])
     print(f"Closing apply_Bc thread")
 
@@ -114,139 +211,111 @@ def threaded_apply_Bc(datapool):
 class DataPool:
     def __init__(self):
         # Thread controls
-        self._lock_Bc = Lock()
-        # self._lock_Bc_tba = Lock()
-        self._lock_Bm = Lock()
-        self._lock_tmBmIm = Lock()
-        self._lock_control_vals = Lock()  # TODO STALE
+        self._lock_ADC = Lock()
+        self._lock_DAC = Lock()
         self._lock_schedule = Lock()
 
-        self.pause_apply_Bc = False     # Implemented non-thread-safe
-        self.pause_write_Bm = False     # Implemented non-thread-safe TODO STALE
-        self.pause_write_tmBmIm = False     # Implemented non-thread-safe
+        self.pause_threaded_read_ADC = False    # Not thread-safe
+        self.pause_threaded_write_DAC = False   # Not thread-safe
 
-        self.kill_apply_Bc = False      # Implemented non-thread-safe
-        self.kill_write_Bm = False      # Implemented non-thread-safe TODO STALE
-        self.kill_write_tmBmIm = False      # Implemented non-thread-safe
+        self.kill_threaded_read_ADC = False     # Not thread-safe
+        self.kill_threaded_write_DAC = False    # Not thread-safe
 
-        self.apply_Bc_period = 0.1      # Implemented non-thread-safe
-        self.write_Bm_period = 0.1      # Implemented non-thread-safe TODO STALE
-        self.write_tmBmIm_period = 0.1  # Implemented non-thread-safe
+        self.threaded_read_ADC_period = 1/config["threaded_read_ADC_rate"]  # Not thread-safe
+        self.threaded_write_DAC_period = 1/config["threaded_write_DAC_rate"]  # Not thread-safe
 
-        self.serveropt_Bm_sim = "disabled"  # Simulated Bm functionality: "disabled", "constant", "feedback", "mutate"
-        self.serveropt_loopback = False # Loopback functionality    # TODO STALE
-        self.serveropt_use_Bdummy = True  # Makes Bdummy applied to Bm readout # TODO STALE
 
         # Data values
-        # self.Bc_tba = 0.                # Temporary buffer for Bc that is to be applied
         self.tm = 0.                    # Time at which Bm, Im were taken
-        self.Bm = [0., 0., 0.]
+        self.Im = [0., 0., 0.]          # Measured current Im in [A]
+        self.Bm = [0., 0., 0.]          # Measured field Bm in [nT]
         self.Bc = [0., 0., 0.]          # Control vector Bc to be applied [nT]
-        self.control_vals = [           # Control values actually applied to the power supplies
-            [0., 0., 0.],               # Bc_applied [nT]  # TODO STALE
-            [0., 0., 0.],               # Ic_applied [A]  # TODO STALE
-            [0., 0., 0.]]               # Vc_applied [V]  # TODO STALE
 
+        self.output_enable = False
+
+
+
+        self.i_step = 0
         self.Br = [0., 0., 0.]
-        self.Bm_sim = [0., 0., 0.]      # Injection point for spoofing Bm measurements
-        self.Bdummy = [0., 0., 0.]      # TODO STALE
-
-        self.Ic = [-1., -1., -1.]       # TODO DUMMY VALUES FOR NOW
-        self.Im = [0., 0., 0.]
-
-        self.Vc = [0., 0., 0.]
 
         self.Vvc = [0., 0., 0.]
         self.Vcc = [0., 0., 0.]
 
 
-        # Play controls
-        self.play_mode = False          # If False, manual control is enabled, if True,
-        self.play_status = "stop"       # Valid: "play", "stop"
-        self.t_play = 0.0               # UNIX time at which "play" began
-        self.steps = 1
-        self.step_current = 0          # What step the schedule play is on
-        self.t_current = 0.0
-        self.t_next = 0.0
+        # # Play controls
+        # self.play_mode = False          # If False, manual control is enabled, if True,
+        # self.play_status = "stop"       # Valid: "play", "stop"
+        # self.t_play = 0.0               # UNIX time at which "play" began
+        # self.steps = 1
+        # self.step_current = 0          # What step the schedule play is on
+        # self.t_current = 0.0
+        # self.t_next = 0.0
 
         # Initialize schedule
         self.initialize_schedule()
 
-    def activate_play_mode(self):
-        print("[DEBUG] activate_play_mode()")
-        self.play_mode = True
-        instruct_DACs(datapool, [0., 0., 0.])
-        self.steps = len(self.schedule)
-        self.play_status = "stop"
-        self.t_play = 0.0
+    # def activate_play_mode(self):
+    #     print("[DEBUG] activate_play_mode()")
+    #     self.play_mode = True
+    #     instruct_DACs(datapool, [0., 0., 0.])
+    #     self.steps = len(self.schedule)
+    #     self.play_status = "stop"
+    #     self.t_play = 0.0
+    #
+    #     self.t_current = 0.0
+    #     self.step_current = -1
+    #     self.t_next = self.schedule[self.step_current+1][2]
+    #
+    #     return 1
+    #
+    #
+    # def deactivate_play_mode(self):
+    #     print("[DEBUG] deactivate_play_mode()")
+    #     instruct_DACs(datapool, [0., 0., 0.])
+    #     self.play_mode = False
+    #     self.play_status = "stop"
+    #     # self.tstart_play = 0.0
+    #     # self.step_current = -1
+    #     return 1
+    #
+    #
+    # def play_start(self):
+    #     print("[DEBUG] play_start()")
+    #     self.t_play = time()
+    #     self.play_status = "play"
+    #     return 1
+    #
+    #
+    # def play_stop(self):
+    #     print("[DEBUG] play_stop()")
+    #     self.play_status = "stop"
+    #     instruct_DACs(datapool, [0., 0., 0.])  # This essentially causes the last schedule point to be ignored
+    #     self.t_current = 0.0
+    #     self.step_current = -1
+    #     self.t_next = self.schedule[self.step_current+1][2]
+    #     return 1
+    #
+    #
+    # def get_current_time_step(self):
+    #     return self.step_current, self.steps, self.t_current
 
-        self.t_current = 0.0
-        self.step_current = -1
-        self.t_next = self.schedule[self.step_current+1][2]
 
-        return 1
+    # def get_play_mode(self):
+    #     # print("[DEBUG] get_play_mode()")
+    #     return self.play_mode  # Implemented non-thread-safe
+    #
+    # def get_play_status(self):
+    #     # print("[DEBUG] get_play_status()")
+    #     return self.play_status  # Implemented non-thread-safe
 
-
-    def deactivate_play_mode(self):
-        print("[DEBUG] deactivate_play_mode()")
-        instruct_DACs(datapool, [0., 0., 0.])
-        self.play_mode = False
-        self.play_status = "stop"
-        # self.tstart_play = 0.0
-        # self.step_current = -1
-        return 1
-
-
-    def play_start(self):
-        print("[DEBUG] play_start()")
-        self.t_play = time()
-        self.play_status = "play"
-        return 1
-
-
-    def play_stop(self):
-        print("[DEBUG] play_stop()")
-        self.play_status = "stop"
-        instruct_DACs(datapool, [0., 0., 0.])  # This essentially causes the last schedule point to be ignored
-        self.t_current = 0.0
-        self.step_current = -1
-        self.t_next = self.schedule[self.step_current+1][2]
-        return 1
-
-
-    def get_current_time_step(self):
-        return self.step_current, self.steps, self.t_current
-
-    def get_apply_Bc_period(self):  # TODO STALE
-        return datapool.apply_Bc_period  # Implemented non-thread-safe
-
-    def get_write_Bm_period(self):  # TODO STALE
-        return datapool.write_Bm_period  # Implemented non-thread-safe
-
-    def set_apply_Bc_period(self, period):  # TODO STALE
-        datapool.apply_Bc_period = period  # Implemented non-thread-safe
-        return 1
-
-    def set_write_Bm_period(self, period):  # TODO STALE
-        datapool.write_Bm_period = period  # Implemented non-thread-safe
-        return 1
-
-    def get_play_mode(self):
-        # print("[DEBUG] get_play_mode()")
-        return self.play_mode  # Implemented non-thread-safe
-
-    def get_play_status(self):
-        # print("[DEBUG] get_play_status()")
-        return self.play_status  # Implemented non-thread-safe
-
-    def set_schedule_segment(self, segment: list):
-        # print("set_schedule_segment()")
-
-        self._lock_schedule.acquire(timeout=0.001)
-
-        self.schedule[segment[0]] = segment
-
-        self._lock_schedule.release()
+    # def set_schedule_segment(self, segment: list):
+    #     # print("set_schedule_segment()")
+    #
+    #     self._lock_schedule.acquire(timeout=0.001)
+    #
+    #     self.schedule[segment[0]] = segment
+    #
+    #     self._lock_schedule.release()
 
     def initialize_schedule(self):
         print("initialize_schedule()")
@@ -336,127 +405,140 @@ class DataPool:
         return 1
 
 
-    def write_Bm(self, Bm):  # TODO STALE
-        """Thread-safely write Bm to the datapool
-
-        The lock prevents other threads from accessing self.Bm whilst it is
-        being updated. Useful to prevent hard-to-debug race condition bugs.
-        """
-        self._lock_Bm.acquire(timeout=0.001)
-        try:
-            self.Bm = Bm
-        except:  # noqa
-            print("[WARNING] DataPool.write_Bm(): Unable to write to self.Bm!")
-        self._lock_Bm.release()
-
-
-    def write_tmBmIm(self, tm, Bm, Im):
-        """Thread-safely write tm, Bm, and Im to the datapool.
-
-        The lock prevents other threads from accessing self.Bm and self.Im
-        whilst they is being updated. Useful to prevent hard-to-debug race
-        condition bugs.
-        """
-        self._lock_tmBmIm.acquire(timeout=0.001)
-        try:
-            self.tm = tm
-            self.Bm = Bm
-            self.Im = Im
-        except:  # noqa
-            print("[WARNING] DataPool.write_tmBmIm(): Unable to write correctly!")
-        self._lock_tmBmIm.release()
-
-    def read_telemetry(self):
-        """Thread-safely reads the current Bm field from the datapool
-
-        The lock prevents other threads from updating self.Bm whilst it is
-        being read. Useful to prevent hard-to-debug race condition bugs.
-        """
-        self._lock_tmBmIm.acquire(timeout=0.001)
-        try:
-            tm = self.tm
-            Bm = self.Bm
-            Im = self.Im
-            Ic = self.Ic
-            Vc = self.Vc
-            Vvc = self.Vvc
-            Vcc = self.Vcc
-        except:  # noqa
-            print("[WARNING] DataPool.read_telemetry(): Unable to read correctly!")
-        self._lock_tmBmIm.release()
-        return tm, Bm, Im, Ic, Vc, Vvc, Vcc
-
-    def read_Bm(self):
-        """Thread-safely reads the current Bm field from the datapool
-
-        The lock prevents other threads from updating self.Bm whilst it is
-        being read. Useful to prevent hard-to-debug race condition bugs.
-        """
-        self._lock_Bm.acquire(timeout=0.001)
-        try:
-            tm = self.tm
-            Bm = self.Bm
-        except:  # noqa
-            print("[WARNING] DataPool.read_Bm(): Unable to read self.Bm!")
-        self._lock_Bm.release()
-        return tm, Bm
-
-
-    def write_Bc(self, Bc):  # TODO: DUMMY - Implement actual functionality
-        """Thread-safely write Bc to the datapool
-
-        The lock prevents other threads from accessing self.Bc whilst it is
-        being updated. Useful to prevent hard-to-debug race condition bugs.
-        """
-        self._lock_Bc.acquire(timeout=0.001)
-        try:
-            self.Bc = Bc
-        except:  # noqa
-            print("[WARNING] DataPool.write_Bc(): Unable to write to self.Bc!")
-        self._lock_Bc.release()
-
-
-    def read_Bc(self):
-        """Thread-safely reads the current Bc field from the datapool.
-
-        The lock prevents other threads from updating self.Bc whilst it is
-        being read. Useful to prevent hard-to-debug race condition bugs.
-        """
-        self._lock_Bc.acquire(timeout=0.001)
-        try:
-            Bc = self.Bc
-        except:  # noqa
-            print("[WARNING] DataPool.read_Bc(): Unable to read self.Bc!")
-        self._lock_Bc.release()
-        return Bc
-
-
-    def write_control_vals(self, Bc, Ic, Vc):  # TODO STALE
-        """Thread-safely write the control_vals to the datapool
-        """
-        print(f"[DEBUG] write_control_vals({Bc}, {Ic}, {Vc})")
-        self._lock_control_vals.acquire(timeout=0.001)
-        try:
-            # self.Bc = Bc
-            self.Ic = Ic
-            self.Vc = Vc
-            # self.control_vals = control_vals
-        except:  # noqa
-            print("[WARNING] DataPool.write_control_vals(): Unable to write to self.control_vals!")
-        self._lock_control_vals.release()
-
-
-    def read_control_vals(self):  # TODO STALE
-        """Thread-safely reads the applied control_vals from the datapool.
-        """
-        print("[DEBUG] STALE FUNCTION USED: read_control_vals()")
-        self._lock_control_vals.acquire(timeout=0.001)
-        try:
-            control_vals = self.control_vals
-        except:  # noqa
-            print("[WARNING] DataPool.read_control_vals(): Unable to read self.control_vals!")
-        self._lock_control_vals.release()
-        return control_vals
+    # def write_DAC(self, Bm):  # TODO STALE
+    #     """Thread-safely write Bm to the datapool
+    #
+    #     The lock prevents other threads from accessing self.Bm whilst it is
+    #     being updated. Useful to prevent hard-to-debug race condition bugs.
+    #     """
+    #     self._lock_Bm.acquire(timeout=0.001)
+    #     try:
+    #         self.Bm = Bm
+    #     except:  # noqa
+    #         print("[WARNING] DataPool.write_Bm(): Unable to write to self.Bm!")
+    #     self._lock_Bm.release()
+    #
+    # def write_Bm(self, Bm):  # TODO STALE
+    #     """Thread-safely write Bm to the datapool
+    #
+    #     The lock prevents other threads from accessing self.Bm whilst it is
+    #     being updated. Useful to prevent hard-to-debug race condition bugs.
+    #     """
+    #     self._lock_Bm.acquire(timeout=0.001)
+    #     try:
+    #         self.Bm = Bm
+    #     except:  # noqa
+    #         print("[WARNING] DataPool.write_Bm(): Unable to write to self.Bm!")
+    #     self._lock_Bm.release()
+    #
+    #
+    # def write_tmBmIm(self, tm, Bm, Im):
+    #     """Thread-safely write tm, Bm, and Im to the datapool.
+    #
+    #     The lock prevents other threads from accessing self.Bm and self.Im
+    #     whilst they is being updated. Useful to prevent hard-to-debug race
+    #     condition bugs.
+    #     """
+    #     self._lock_tmBmIm.acquire(timeout=0.001)
+    #     try:
+    #         self.tm = tm
+    #         self.Bm = Bm
+    #         self.Im = Im
+    #     except:  # noqa
+    #         print("[WARNING] DataPool.write_tmBmIm(): Unable to write correctly!")
+    #     self._lock_tmBmIm.release()
+    #
+    # def read_telemetry(self):
+    #     """Thread-safely reads the current Bm field from the datapool
+    #
+    #     The lock prevents other threads from updating self.Bm whilst it is
+    #     being read. Useful to prevent hard-to-debug race condition bugs.
+    #     """
+    #     self._lock_tmBmIm.acquire(timeout=0.001)
+    #     try:
+    #         tm = self.tm
+    #         Bm = self.Bm
+    #         Im = self.Im
+    #         Ic = self.Ic
+    #         Vc = self.Vc
+    #         Vvc = self.Vvc
+    #         Vcc = self.Vcc
+    #     except:  # noqa
+    #         print("[WARNING] DataPool.read_telemetry(): Unable to read correctly!")
+    #     self._lock_tmBmIm.release()
+    #     return tm, Bm, Im, Ic, Vc, Vvc, Vcc
+    #
+    # def read_Bm(self):
+    #     """Thread-safely reads the current Bm field from the datapool
+    #
+    #     The lock prevents other threads from updating self.Bm whilst it is
+    #     being read. Useful to prevent hard-to-debug race condition bugs.
+    #     """
+    #     self._lock_Bm.acquire(timeout=0.001)
+    #     try:
+    #         tm = self.tm
+    #         Bm = self.Bm
+    #     except:  # noqa
+    #         print("[WARNING] DataPool.read_Bm(): Unable to read self.Bm!")
+    #     self._lock_Bm.release()
+    #     return tm, Bm
+    #
+    #
+    # def write_Bc(self, Bc):  # TODO: DUMMY - Implement actual functionality
+    #     """Thread-safely write Bc to the datapool
+    #
+    #     The lock prevents other threads from accessing self.Bc whilst it is
+    #     being updated. Useful to prevent hard-to-debug race condition bugs.
+    #     """
+    #     self._lock_Bc.acquire(timeout=0.001)
+    #     try:
+    #         self.Bc = Bc
+    #     except:  # noqa
+    #         print("[WARNING] DataPool.write_Bc(): Unable to write to self.Bc!")
+    #     self._lock_Bc.release()
+    #
+    #
+    # def read_Bc(self):
+    #     """Thread-safely reads the current Bc field from the datapool.
+    #
+    #     The lock prevents other threads from updating self.Bc whilst it is
+    #     being read. Useful to prevent hard-to-debug race condition bugs.
+    #     """
+    #     self._lock_Bc.acquire(timeout=0.001)
+    #     try:
+    #         Bc = self.Bc
+    #     except:  # noqa
+    #         print("[WARNING] DataPool.read_Bc(): Unable to read self.Bc!")
+    #     self._lock_Bc.release()
+    #     return Bc
+    #
+    #
+    # def write_control_vals(self, Bc, Ic, Vc):  # TODO STALE
+    #     """Thread-safely write the control_vals to the datapool
+    #     """
+    #     print(f"[DEBUG] write_control_vals({Bc}, {Ic}, {Vc})")
+    #     self._lock_control_vals.acquire(timeout=0.001)
+    #     try:
+    #         # self.Bc = Bc
+    #         self.Ic = Ic
+    #         self.Vc = Vc
+    #         # self.control_vals = control_vals
+    #     except:  # noqa
+    #         print("[WARNING] DataPool.write_control_vals(): Unable to write to self.control_vals!")
+    #     self._lock_control_vals.release()
+    #
+    #
+    # def read_control_vals(self):  # TODO STALE
+    #     """Thread-safely reads the applied control_vals from the datapool.
+    #     """
+    #     print("[DEBUG] STALE FUNCTION USED: read_control_vals()")
+    #     self._lock_control_vals.acquire(timeout=0.001)
+    #     try:
+    #         control_vals = self.control_vals
+    #     except:  # noqa
+    #         print("[WARNING] DataPool.read_control_vals(): Unable to read self.control_vals!")
+    #     self._lock_control_vals.release()
+    #     return control_vals
 
 # Server object
 class ThreadedTCPServer(ThreadingMixIn, TCPServer):
@@ -504,55 +586,55 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             # t0 = time()  # [TIMING]
             if packet_in == b"":
                 break
-            type_id = scc.packet_type(packet_in)
+            type_id = codec.packet_type(packet_in)
             # t1 = time()  # [TIMING]
 
             # print("[DEBUG] packet_in:", packet_in)
 
             if type_id == "m":
                 # print("[DEBUG] Detected m-package")
-                msg = scc.decode_mpacket(packet_in)
+                msg = codec.decode_mpacket(packet_in)
                 print(f"[{self.client_address[0]}:{self.client_address[1]}] {msg}")
-                packet_out = scc.encode_mpacket("1")  # Send 1 as confirmation
+                packet_out = codec.encode_mpacket("1")  # Send 1 as confirmation
 
             elif type_id == "e":
                 # print("[DEBUG] Detected e-package")
-                packet_out = scc.encode_epacket(scc.decode_epacket(packet_in))
+                packet_out = codec.encode_epacket(codec.decode_epacket(packet_in))
 
             elif type_id == "b":
                 # print("[DEBUG] Detected b-package")
-                packet_out = scc.encode_bpacket(*self.server.datapool.read_Bm())
+                packet_out = codec.encode_bpacket(*self.server.datapool.read_Bm())
                 # print(packet_out)
 
             elif type_id == "t":
                 # print("[DEBUG] Detected t-package")
-                packet_out = scc.encode_tpacket(
+                packet_out = codec.encode_tpacket(
                     *self.server.datapool.read_telemetry()
                 )
                 # print(packet_out)
 
             elif type_id == "c":
                 # print("[DEBUG] Detected c-package")
-                Bc = scc.decode_cpacket(packet_in)
+                Bc = codec.decode_cpacket(packet_in)
                 try:
                     self.server.datapool.write_Bc(Bc)
                     print("[DEBUG] Bc written to datapool:", Bc, type(Bc))
                     print("[DEBUG] CHECK datapool.Bc:", self.server.datapool.Bc)
-                    packet_out = scc.encode_mpacket("1")
+                    packet_out = codec.encode_mpacket("1")
                 except:  # noqa
-                    packet_out = scc.encode_mpacket("-1")
+                    packet_out = codec.encode_mpacket("-1")
 
             elif type_id == "s":
                 # print("[DEBUG] Detected b-package")
 
-                segment = scc.decode_spacket(packet_in)
+                segment = codec.decode_spacket(packet_in)
                 self.server.datapool.set_schedule_segment(segment)
                 # Send segment number back as a verification
-                packet_out = scc.encode_mpacket(str(segment[0]))
+                packet_out = codec.encode_mpacket(str(segment[0]))
 
             elif type_id == "x":
                 # print("[DEBUG] Detected x-package")
-                fname, args = scc.decode_xpacket(packet_in)
+                fname, args = codec.decode_xpacket(packet_in)
                 # print(f"[DEBUG] {fname}({args})")
                 packet_out = self.command_handle(fname, args)
 
@@ -567,7 +649,7 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             if packet_out is not None:
                 self.request.sendall(packet_out)
             # t3 = time()  # [TIMING]
-            # print(f"Sent {scc.packet_type(packet_out)}-packet. Time: {int((t1-t0)*1E6)}, {int((t2-t1)*1E6)}, {int((t3-t2)*1E6)} \u03bcs")  # [TIMING]
+            # print(f"Sent {codec.packet_type(packet_out)}-packet. Time: {int((t1-t0)*1E6)}, {int((t2-t1)*1E6)}, {int((t3-t2)*1E6)} \u03bcs")  # [TIMING]
 
 
     def command_handle(self, fname, args):
@@ -575,42 +657,25 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
 
         # Requests the server uptime:
         if fname == "get_server_uptime":
-            packet_out = scc.encode_mpacket(str(self.server.uptime()))
+            packet_out = codec.encode_mpacket(str(self.server.uptime()))
 
         # Requests the uptime of the communication socket, from the perspective
         # of the server
         elif fname == "get_socket_uptime":
-            packet_out = scc.encode_mpacket(str(time()-self.socket_tstart))
+            packet_out = codec.encode_mpacket(str(time()-self.socket_tstart))
 
-        # Requests the value of play mode (False indicates `manual mode`)
-        elif fname == "get_play_mode":
-            packet_out = scc.encode_mpacket(str(self.server.datapool.get_play_mode()))
-
-        # Requests the value of play status (False indicates `manual mode`)
-        elif fname == "get_play_status":
-            packet_out = scc.encode_mpacket(self.server.datapool.get_play_status())
+        # # Requests the value of play mode (False indicates `manual mode`)
+        # elif fname == "get_play_mode":
+        #     packet_out = codec.encode_mpacket(str(self.server.datapool.get_play_mode()))
+        #
+        # # Requests the value of play status (False indicates `manual mode`)
+        # elif fname == "get_play_status":
+        #     packet_out = codec.encode_mpacket(self.server.datapool.get_play_status())
 
         # Requests the schedule name, length, and duration as csv string
         elif fname == "get_schedule_info":
             name, length, duration = self.server.datapool.get_schedule_info()
-            packet_out = scc.encode_mpacket(f"{name},{length},{duration}")
-
-        # Gets the schedule hash
-        elif fname == "get_schedule_hash":
-            t0 = time()
-            schedule = self.server.datapool.get_schedule()
-            hs = blake2b(array(schedule).tobytes(), digest_size=64).hexdigest()
-            print(f"Hash in {int((time()-t0)*1E6)} \u03bcs")
-            packet_out = scc.encode_mpacket(hs)
-
-        # Alternative echo, mainly for testing purposes. Echoes the first
-        # argument given to it, or an empty string if no arguments were given.
-        elif fname == "echo":
-            if len(args) == 0:
-                packet_out = scc.encode_epacket("")
-            else:
-                packet_out = scc.encode_epacket(str(args[0]))
-
+            packet_out = codec.encode_mpacket(f"{name},{length},{duration}")
 
         else:
             raise ValueError(f"Function name '{fname}' not recognised!")
@@ -629,14 +694,15 @@ if __name__ == "__main__":
     datapool = DataPool()
 
     # Server object
-    HOST = ("127.0.0.1", 7777)  # TODO replace with config
+    # HOST = ("127.0.0.1", 7777)  # TODO remove
+    HOST = (config["SERVER_ADDRESS"], config["SERVER_PORT"])
 
     server = ThreadedTCPServer(HOST, ThreadedTCPRequestHandler, datapool)
 
     # When set to True, this makes all child threads of the server thread
     # daemonic, forcing them to terminate when main thread terminates.
     # It is recommended to keep this on False, because operation of the
-    # apply_Bc_thread will be safer if it is non-daemonic.
+    # write_DAC_thread will be safer if it is non-daemonic.
     server.daemon_threads = False
 
     # Place server in own thread
@@ -649,35 +715,23 @@ if __name__ == "__main__":
     # Start server thread
     server_thread.start()
 
-    # # Set up thread for continuously polling magnetic field data from ADC, and
-    # # writing it to datapool.Bm
-    # datapool.write_Bm_period = 0.1
-    # thread_write_Bm = Thread(
-    #     name="Measure tmBmIm Thread",
-    #     target=threaded_write_tmBmIm,
-    #     args=(datapool,),
-    #     daemon=True)
-    # thread_write_Bm.start()
-
-    # Set up thread for continuously polling magnetic field data from ADC, and
-    # writing it to datapool.Bm
-    datapool.write_tmBmIm_period = 0.1
-    thread_write_tmBmIm = Thread(
-        name="Measure tmBmIm Thread",
-        target=threaded_write_tmBmIm,
+    # Set up thread for continuously polling the ADC, and writing it to the
+    # server datapool.
+    thread_read_ADC = Thread(
+        name="Read ADC Thread",
+        target=threaded_read_ADC,
         args=(datapool,),
         daemon=True)
-    thread_write_tmBmIm.start()
+    thread_read_ADC.start()
 
-    # Set up thread that finds when a change in datapool.Bc occurs, and when
-    # it occurs, that it gets applied to the power supplies.
-    datapool.apply_Bc_period = 0.1
-    thread_apply_Bc = Thread(
-        name="Apply Bc Thread",
-        target=threaded_apply_Bc,
+    # Set up thread that finds when a change in control parameters occurs, and
+    # when it occurs, ensures that it is written to the DAC.
+    thread_write_DAC = Thread(
+        name="Write DAC Thread",
+        target=threaded_write_DAC,
         args=(datapool,),
         daemon=False)  # Not set as daemon to ensure that it finishes properly
-    thread_apply_Bc.start()
+    thread_write_DAC.start()
 
     print(f"Server is up. Time elapsed: {round((time()-t0)*1E3, 3)} ms. Active threads: {active_count()}")
 
@@ -686,7 +740,7 @@ if __name__ == "__main__":
     while True:
         try:
             # Do something useful
-            sleep(0.1)
+            sleep(0.001)
             pass
 
         except:  # noqa
@@ -697,9 +751,9 @@ if __name__ == "__main__":
 
     # Gracefully terminate control threads
     print("Shutting down - finishing threads.")
-    datapool.kill_apply_Bc = True
+    datapool.kill_threaded_read_ADC = True
     # datapool.kill_write_Bm = True  # TODO STALE
-    datapool.kill_write_tmBmIm = True
+    datapool.kill_threaded_write_DAC = True
 
     ttest = time()
     # thread_write_Bm.join(timeout=1.0)
