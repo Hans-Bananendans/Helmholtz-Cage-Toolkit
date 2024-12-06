@@ -5,7 +5,7 @@ from timeit import timeit
 
 
 tmult = int(1E6)    # 1 / 1E3 / 1E6 / 1E9 for s / ms / us / ns respectively
-N = int(1E6)        # Generic number of tests
+N = int(1E5)        # Generic number of tests
 
 if tmult == 1:
     t_unit = "s"
@@ -31,6 +31,8 @@ msg_test = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eius
 mpacket_test = b"mLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Tellus elementum sagittis vitae et leo. Quam vulputate dignissim suspendisse in est ante in nibh mauris. Aliquam faucibus purus in "
 seg_test = [35, 60, 355.932203, -83331.392, -55280.007, 18644.068]
 spacket_test = b"s0000000000000000000000000000003500000000000000000000000000000060355.9322030000000000-83331.392000000-55280.00700000018644.0680000000###########################################################################################################################"
+echo_test = "ECHO!"
+epacket_test = b"eECHO!##########################################################################################################################################################################################################################################################"
 
 input_t = {
     "tm": 1705321618.6226978,
@@ -71,11 +73,13 @@ xpacket_int_float = codec.encode_xpacket(*input_int_float)
 xpacket_bool_str = codec.encode_xpacket(*input_bool_str)
 
 
+print(codec.encode_epacket(echo_test))
 
 print("\n ==== LENGTH CHECKS ====")
 length_checks = {
     "bpacket": len(codec.encode_bpacket(*Bm_test)),
     "cpacket": len(codec.encode_cpacket(Bc_test)),
+    "epacket": len(codec.encode_cpacket(echo_test)),
     "mpacket": len(codec.encode_mpacket(msg_test)),
     "spacket": len(codec.encode_spacket(*seg_test)),
     "tpacket": len(codec.encode_tpacket(*input_t.values())),
@@ -107,6 +111,14 @@ else:
     print("cpacket : FAIL")
     print("PRE  :", Bc_test)
     print("POST :", c_packet_decoded)
+
+e_packet_decoded = codec.decode_epacket(codec.encode_epacket(echo_test))
+if echo_test == e_packet_decoded:
+    print("epacket : PASS")
+else:
+    print("epacket : FAIL")
+    print("PRE  :", echo_test)
+    print("POST :", e_packet_decoded)
 
 m_packet_decoded = codec.decode_mpacket(codec.encode_mpacket(msg_test))
 if msg_test == m_packet_decoded:
@@ -152,6 +164,15 @@ print(f"codec.encode_cpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
 
 print(f"codec.decode_cpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
       round(timeit('codec.decode_cpacket(cpacket_test)',
+                   globals=globals(), number=n)*tmult/n, 3), t_unit)
+
+
+print(f"codec.encode_epacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+      round(timeit('codec.encode_epacket(echo_test)',
+                   globals=globals(), number=n)*tmult/n, 3), t_unit)
+
+print(f"codec.decode_epacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+      round(timeit('codec.decode_epacket(epacket_test)',
                    globals=globals(), number=n)*tmult/n, 3), t_unit)
 
 

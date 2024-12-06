@@ -166,16 +166,24 @@ def decode_cpacket(c_packet):
         float(c_decoded[33:49])]
 
 
-# TODO Remove e-packet and use m-packet for echo functionality
+
 def encode_epacket(msg: str):
     """ Encodes an e_packet, which has the following anatomy:
     e (1 B)    msg (n B)
+
+    Optimization:
+    550 ns/encode (FX-8350)
+     ns/encode (Raspberry Pi 4)
     """
     return ("e"+msg[:255]+_pad*(packet_size-len(msg)-1)).encode()
 
 def decode_epacket(e_packet):
     """ Encodes an e_packet, which has the following anatomy:
     e (1 B)    msg (n B)
+
+    Optimization:
+    500 ns/encode (FX-8350)
+     ns/encode (Raspberry Pi 4)
     """
     # return e_packet.decode()[1:].rstrip(_pad)
     e_packet_decoded = e_packet.decode()
@@ -188,7 +196,6 @@ def encode_mpacket(msg: str):
 
     The allowed length of msg is equal to packet_size-1
 
-    TODO RE-BENCHMARK
     Optimization:
     480 ns/encode (FX-8350)
      ns/encode (Raspberry Pi 4)
