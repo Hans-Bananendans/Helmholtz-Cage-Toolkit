@@ -323,8 +323,8 @@ class DataPool:
 
         self.i_step = self.init_buffer(ibs, 1, dtype=int)
 
-        self.adc_aux = self.init_buffer(ibs, 1)
-        self.dac_aux = self.init_buffer(ibs, 6)
+        self.aux_adc = self.init_buffer(ibs, 1)
+        self.aux_dac = self.init_buffer(ibs, 6)
 
         # ==== Other parameters ==============================================
 
@@ -526,7 +526,7 @@ class DataPool:
         return tm, i_step, Im, Bm, Bc
 
 
-    def write_ADC_data(self, Bm, Im, V_board, adc_aux):
+    def write_ADC_data(self, Bm, Im, V_board, aux_adc):
         """Thread-safely writes all ADC data to their corresponding fields
          in the datapool.
 
@@ -538,10 +538,66 @@ class DataPool:
             self.write_buffer(self.Bm, Bm)  # noqa
             self.write_buffer(self.Im, Im)  # noqa
             self.write_buffer(self.V_board, V_board)  # noqa
-            self.write_buffer(self.adc_aux, adc_aux)  # noqa
+            self.write_buffer(self.aux_adc, aux_adc)  # noqa
         except:  # noqa
             print("[WARNING] DataPool.read_Bm(): Unable to read self.Bm!")
         self._lock_ADC.release()
+
+
+    def read_aux_adc(self):
+        """Thread-safely reads the ADC aux1 channel data from the datapool.
+
+        The lock prevents other threads from updating this data whilst it is
+        being read. Useful to prevent hard-to-debug race condition bugs.
+        """
+        self._lock_ADC.acquire(timeout=0.001)
+        try:
+            aux_adc = self.aux_adc[0]
+        except:  # noqa
+            print("[WARNING] DataPool.read_aux_adc: Exception!")
+        self._lock_ADC.release()
+        return aux_adc
+
+    def read_V_board(self):
+        """Thread-safely reads the board voltage data from the datapool.
+
+        The lock prevents other threads from updating this data whilst it is
+        being read. Useful to prevent hard-to-debug race condition bugs.
+        """
+        self._lock_ADC.acquire(timeout=0.001)
+        try:
+            V_board = self.V_board[0]
+        except:  # noqa
+            print("[WARNING] DataPool.read_V_board(): Exception!")
+        self._lock_ADC.release()
+        return V_board
+
+    def read_output_enable(self):
+        """Thread-safely reads the output_enable toggle from the datapool.
+
+        The lock prevents other threads from updating this data whilst it is
+        being read. Useful to prevent hard-to-debug race condition bugs.
+        """
+        self._lock_DAC.acquire(timeout=0.001)
+        try:
+            output_enable = self.output_enable
+        except:  # noqa
+            print("[WARNING] DataPool.read_output_enable(): Exception!")
+        self._lock_DAC.release()
+        return output_enable
+
+    def write_output_enable(self, output_enable: bool):
+        """Thread-safely writes the output_enable toggle to the datapool.
+
+        The lock prevents other threads from updating this data whilst it is
+        being read. Useful to prevent hard-to-debug race condition bugs.
+        """
+        self._lock_DAC.acquire(timeout=0.001)
+        try:
+            self.output_enable = output_enable
+        except:  # noqa
+            print("[WARNING] DataPool.write_output_enable(): Exception!")
+        self._lock_DAC.release()
 
 
     # def activate_play_mode(self):
@@ -1034,18 +1090,48 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
         appropriate properties of the response packet.
 
         Here is a list of all functions the server currently supports:
+
+        get_aux_adc
+        get_aux_dac / set_aux_dac
         get_Bc
+        get_Br / set_Br
+        get output_enable / set output_enable
         get_schedule_info
         get_server_uptime
-        get_socket_uptime
-
+        get_socket_info
+        get_serveropt_spoof_Bm / set_serveropt_spoof_Bm
+        get_V_board
 
         """
         packet_out = None
 
+        if fname == "get_aux_adc":
+            packet_out = codec.encode_mpacket(
+                str(self.server.datapool.read_aux_adc()))
+
+
+        elif fname == "get_aux_dac":
+            dac = self.server.datapool.aux_dac[0]               # Not thread-safe
+            packet_out = codec.encode_mpacket(
+                f"{dac[0]},{dac[1]},{dac[2]},{dac[3]},{dac[4]},{dac[5]}"
+            )
+
+        elif fname == "set_aux_dac":
+            dac_str = [args[0], args[1], args[2], args[3], args[4], args[5]]
+            dac_vals = [float(item) for item in dac_str]
+            self.server.datapool.write_buffer(
+                self.server.datapool.aux_dac, dac_vals
+            )                                               # Not thread-safe
+            dac = self.server.datapool.aux_dac[0]           # Not thread-safe
+            packet_out = codec.encode_mpacket(
+                f"{dac[0]},{dac[1]},{dac[2]},{dac[3]},{dac[4]},{dac[5]}"
+            )
+
+
         # Requests the Bc value:
-        if fname == "get_Bc":
+        elif fname == "get_Bc":
             packet_out = codec.encode_cpacket(self.server.datapool.read_Bc())
+
 
         # Requests the Br value:
         elif fname == "get_Br":
@@ -1059,6 +1145,17 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 print("[DEBUG] Br written to datapool:", Br, type(Br))
                 print("[DEBUG] CHECK datapool.Br:", self.server.datapool.Br)
             packet_out = codec.encode_mpacket("1")
+
+
+        elif fname == "get_output_enable":
+            packet_out = codec.encode_mpacket(
+                str(int(self.server.datapool.read_output_enable()))
+            )
+
+        elif fname == "set_output_enable":
+            bool_val = bool(int(args[0]))
+            self.server.datapool.write_output_enable(bool_val)
+            packet_out = codec.encode_mpacket(str(int(bool_val)))
 
 
         # Requests the schedule name, length, and duration as csv string
@@ -1105,6 +1202,10 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 f"{uptime},{self.client_address[0]},{self.client_address[1]}"
             )
 
+
+        elif fname == "get_V_board":
+            packet_out = codec.encode_mpacket(
+                str(self.server.datapool.read_V_board()))
 
         # # Requests the value of play mode (False indicates `manual mode`)
         # elif fname == "get_play_mode":

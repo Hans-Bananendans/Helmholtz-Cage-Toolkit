@@ -471,6 +471,122 @@ def reset_Bc(socket, # TODO DEPRECATED?
 #
 #     return int(confirm)
 
+def get_V_board(socket,
+                datastream: QDataStream = None):
+    """Requests and returns a m-packet with board voltage from the server.
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+
+    V_board = codec.decode_mpacket(
+        send_and_receive(
+            codec.encode_xpacket("get_V_board"),
+            socket,
+            datastream=datastream
+        )
+    )
+    return float(V_board)
+
+def get_aux_adc(socket,
+                datastream: QDataStream = None):
+    """Requests the voltage of the auxiliary ADC channel on the server.
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+
+    aux_adc = codec.decode_mpacket(
+        send_and_receive(
+            codec.encode_xpacket("get_aux_adc"),
+            socket,
+            datastream=datastream
+        )
+    )
+    return float(aux_adc)
+
+
+def get_aux_dac(socket,
+                datastream: QDataStream = None):
+    """Requests the voltage of the six auxiliary DAC channels on the server.
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+
+    aux_dac = codec.decode_mpacket(
+        send_and_receive(
+            codec.encode_xpacket("get_aux_dac"),
+            socket,
+            datastream=datastream
+        )
+    ).split(",")
+
+    return [float(val) for val in aux_dac]
+
+
+def set_aux_dac(socket,
+                dac_vals: list,
+                datastream: QDataStream = None):
+    """Sets the voltage of the six auxiliary DAC channels on the server.
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+
+    if len(dac_vals) != 6:
+        raise AssertionError(f"dac_vals must be a list of length 6 (given: {len(dac_vals)}!")
+
+    # [ch1, ch2, ch3, ch4, ch5, ch6] = dac_vals
+    confirm = codec.decode_mpacket(
+        send_and_receive(
+            codec.encode_xpacket("set_aux_dac", *dac_vals),
+            socket,
+            datastream=datastream
+        )
+    ).split(",")
+
+    return [float(val) for val in confirm]
+
+
+def get_output_enable(socket,
+                      datastream: QDataStream = None):
+    """Requests the state of the <output_enable> hardware enable functionality.
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+
+    enable = codec.decode_mpacket(
+        send_and_receive(
+            codec.encode_xpacket("get_output_enable"),
+            socket,
+            datastream=datastream
+        )
+    )
+
+    return bool(int(enable))
+
+
+def set_output_enable(socket,
+                      enable: bool,
+                      datastream: QDataStream = None):
+    """Enables or disables the current channel outputs via the hardware enable.
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+
+    confirm = codec.decode_mpacket(
+        send_and_receive(
+            codec.encode_xpacket("set_output_enable", str(int(enable))),
+            socket,
+            datastream=datastream
+        )
+    )
+
+    return bool(int(confirm))
+
 
 # ==== FIELD MEASUREMENT
 def get_Bm(socket,

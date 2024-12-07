@@ -292,9 +292,9 @@ def decode_tpacket(t_packet):
             float(t_decoded[65:77]),        # Im
             float(t_decoded[77:89]),        # /
         ], [
-            float(t_decoded[89:105]),        # \
-            float(t_decoded[105:121]),        # Bm
-            float(t_decoded[121:137]),       # /
+            float(t_decoded[89:105]),       # \
+            float(t_decoded[105:121]),      # Bm
+            float(t_decoded[121:137]),      # /
         ], [
             float(t_decoded[137:153]),      # \
             float(t_decoded[153:169]),      # Bc

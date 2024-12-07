@@ -190,7 +190,7 @@ if __name__ == "__main__":
         if Br == Br_test:
             print(cg + f"{i}/{n} Get Br                    PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
             if details:
-                print(cg + f"       {Br} -> {Br}" + ce)
+                print(cg + f"       {Br_test} -> {Br}" + ce)
         else:
             print(cr + f"{i}/{n} Get Br                    FAIL")
             print(f"Bc set:      {Br_test}")
@@ -209,12 +209,102 @@ if __name__ == "__main__":
                 and [isinstance(v, float) for v in Im+Bm+Bc] == [True, ]*9:
             print(cg + f"{i}/{n} Get telemetry             PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
             if details:
-                for i, val in enumerate((tm, i_step, Im, Bm, Bc)):
-                    print(cg + f"       {txt[i]}: {val}" + ce)
+                for j, val in enumerate((tm, i_step, Im, Bm, Bc)):
+                    print(cg + f"       {txt[j]}: {val}" + ce)
         else:
             print(cr + f"{i}/{n} Get telemetry             FAIL" + ce)
-            for i, val in enumerate((tm, i_step, Im, Bm, Bc)):
-                print(cr + f"       {txt[i]}: {val}" + ce)
+            for j, val in enumerate((tm, i_step, Im, Bm, Bc)):
+                print(cr + f"       {txt[j]}: {val}" + ce)
+        i += 1
+
+
+        # ==== Set / Get output_enable ====
+        ts0 = time()
+        rs0 = cf.set_output_enable(s, True, ds)
+        ts1 = time()
+
+        tg0 = time()
+        rg0 = cf.get_output_enable(s, ds)
+        tg1 = time()
+
+        rs1 = cf.set_output_enable(s, False, ds)
+        rg1 = cf.get_output_enable(s, ds)
+
+        if rs0 and not rs1:
+            print(cg + f"{i}/{n} Set output_enable         PASS ({int(1E6*(ts1-ts0))} \u03bcs)" + ce)
+        else:
+            print(cr + f"{i}/{n} Set output_enable         FAIL")
+            print(f"Enable True:  {rs0}")
+            print(f"Enable False: {rs1}" + ce)
+        i += 1
+
+        if rg0 and not rg1:
+            print(cg + f"{i}/{n} Get output_enable         PASS ({int(1E6*(tg1-tg0))} \u03bcs)" + ce)
+        else:
+            print(cr + f"{i}/{n} Get output_enable         FAIL")
+            print(f"Enable True:  {rg0}")
+            print(f"Enable False: {rg1}" + ce)
+        i += 1
+
+
+        # ==== Get V_board ====
+        t0 = time()
+        V_board = cf.get_V_board(s, ds)
+        t1 = time()
+        if isinstance(V_board, float):
+            print(cg + f"{i}/{n} Get V_board               PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
+            if details:
+                print(cg + f"       V_board: {V_board}" + ce)
+        else:
+            print(cr + f"{i}/{n} Get V_board               FAIL")
+            print(f" V_board: {V_board}" + ce)
+        i += 1
+
+
+        # ==== Get aux ADC ====
+        t0 = time()
+        aux_adc = cf.get_aux_adc(s, ds)
+        t1 = time()
+        if isinstance(aux_adc, float):
+            print(cg + f"{i}/{n} Get aux ADC               PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
+            if details:
+                print(cg + f"       aux ADC: {aux_adc}" + ce)
+        else:
+            print(cr + f"{i}/{n} Get aux ADC               FAIL")
+            print(f"V_board: {aux_adc}" + ce)
+        i += 1
+
+
+        # ==== Set / Get aux DAC ====
+        dac_test = [1.01, 2.02, 3.03, 4.04, 5.05, -6.06]
+        ts0 = time()
+        rs = cf.set_aux_dac(s, dac_test, ds)
+        ts1 = time()
+
+        tg0 = time()
+        rg = cf.get_aux_dac(s, ds)
+        tg1 = time()
+
+        if rs == dac_test:
+            print(cg + f"{i}/{n} Set aux DAC               PASS ({int(1E6*(ts1-ts0))} \u03bcs)" + ce)
+            if details:
+                print(cg + f"       Input:  {dac_test}" + ce)
+                print(cg + f"       Output: {rs}" + ce)
+        else:
+            print(cr + f"{i}/{n} Set aux DAC               FAIL")
+            print(f"Input:  {dac_test}")
+            print(f"Output: {rs}" + ce)
+        i += 1
+
+        if rg == dac_test:
+            print(cg + f"{i}/{n} Get aux DAC               PASS ({int(1E6*(tg1-tg0))} \u03bcs)" + ce)
+            if details:
+                print(cg + f"       Expected: {dac_test}" + ce)
+                print(cg + f"       Received: {rg}" + ce)
+        else:
+            print(cr + f"{i}/{n} Get aux DAC               FAIL")
+            print(f"Expected: {dac_test}")
+            print(f"Received: {rg}" + ce)
         i += 1
 
 
@@ -260,19 +350,39 @@ if __name__ == "__main__":
         if diff is True and same is True:
             print(cg + f"{i}/{n} Bm spoofing and mutate()  PASS ({int(1E6*(ts1-ts0))} \u03bcs)" + ce)
             if details:
-                print(cg + f"       mutate() ON (before/after):  {Bm_0}/{Bm_1}")
-                print(cg + f"       mutate() OFF (before/after): {Bm_2}/{Bm_3}" + ce)
+                print(cg + f"       mutate() ON (before):  {Bm_0}")
+                print(cg + f"                    (after):  {Bm_1}")
+                print(cg + f"       mutate() OFF (before): {Bm_2}")
+                print(cg + f"                     (after): {Bm_3}")
         else:
-            print(cr + f"{i}/{n} Bm spoofing and mutate()  FAIL")
-            print(f"mutate() ON (before/after):  {Bm_0}/{Bm_1}")
-            print(f"mutate() OFF (before/after): {Bm_2}/{Bm_3}" + ce)
+            print(cr + f"{i}/{n} Bm spoofing and mutate()  FAIL" + ce)
+            print(cr + f"mutate() ON (before):  {Bm_0}" + ce)
+            print(cr + f"             (after):  {Bm_1}" + ce)
+            print(cr + f"mutate() OFF (before): {Bm_2}" + ce)
+            print(cr + f"              (after): {Bm_3}" + ce)
         i += 1
 
 
 
 
+        test_schedule_name = "test_schedule_name"
+
+        test_schedule = [
+            [0, 6, 0.0, 0.0, 0.0, 0.0],
+            [1, 6, 3.0, 1.0, 0.0, 0.0],
+            [2, 6, 5.0, 2.0, 0.0, 0.0],
+            [3, 6, 7.0, 3.0, 0.0, 0.0],
+            [4, 6, 9.0, 4.0, 0.0, 0.0],
+            [5, 6, 10.0, 0.0, 0.0, 0.0],
+        ]
 
 
+
+
+
+
+
+        print("\n ======================== \n")
 
         # ==== Uptimes
         print(f"Socket uptime {round(cf.get_socket_uptime(s), 3)} s")
