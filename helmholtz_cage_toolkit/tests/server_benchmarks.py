@@ -103,7 +103,7 @@ if __name__ == "__main__":
         t0 = time()
         r = cf.get_server_uptime(s, ds)
         t1 = time()
-        if type(r) == float and r > 0:
+        if isinstance(r, float) and r > 0:
             print(cg + f" {i}/{n} Get server uptime         PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
         else:
             print(cr + f" {i}/{n} Get server uptime         FAIL")
@@ -116,8 +116,8 @@ if __name__ == "__main__":
         r = cf.get_socket_info(s, ds)
         t1 = time()
         diff = (t1-t_start)-r[0]
-        if type(r[0]) == float and abs(diff) <= 0.01 and type(r[1]) == str \
-                and type(r[2]) == int and r[2] >= 0:
+        if isinstance(r[0], float) and abs(diff) <= 0.01 and isinstance(r[1], str) \
+                and isinstance(r[2], int) and r[2] >= 0:
             print(cg + f" {i}/{n} Get socket info           PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
             if details:
                 print(cg + f"       -> Uptime: {round(r[0], 6)} (diff: {round(diff*1E6)} \u03bcs)" + ce)
@@ -134,7 +134,7 @@ if __name__ == "__main__":
         tm, Bm = cf.get_Bm(s, ds)
         t1 = time()
         if tm >= 0 and len(Bm) == 3 \
-                and [True for v in Bm if type(v) == float] == [True, ]*3:
+                and [True for v in Bm if isinstance(v, float)] == [True, ]*3:
             print(cg + f" {i}/{n} Get Bm                    PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
             if details:
                 print(cg + f"       -> {tm}, {Bm}" + ce)
@@ -195,6 +195,26 @@ if __name__ == "__main__":
             print(cr + f"{i}/{n} Get Br                    FAIL")
             print(f"Bc set:      {Br_test}")
             print(f"Bc response: {Br}" + ce)
+        i += 1
+
+
+        # ==== Get telemetry ====
+        t0 = time()
+        tm, i_step, Im, Bm, Bc = cf.get_telemetry(s, ds)
+        t1 = time()
+        txt = ["tm", "i_step", "Im", "Bm", "Bc"]
+        if isinstance(tm, float) and tm >= 0. \
+                and isinstance(i_step, int) and i_step >= 0 \
+                and len(Im+Bm+Bc) == 9 \
+                and [isinstance(v, float) for v in Im+Bm+Bc] == [True, ]*9:
+            print(cg + f"{i}/{n} Get telemetry             PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
+            if details:
+                for i, val in enumerate((tm, i_step, Im, Bm, Bc)):
+                    print(cg + f"       {txt[i]}: {val}" + ce)
+        else:
+            print(cr + f"{i}/{n} Get telemetry             FAIL" + ce)
+            for i, val in enumerate((tm, i_step, Im, Bm, Bc)):
+                print(cr + f"       {txt[i]}: {val}" + ce)
         i += 1
 
 

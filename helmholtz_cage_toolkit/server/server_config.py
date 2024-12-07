@@ -12,7 +12,7 @@ server_config = {
     # "verbosity_printtimestamp": True,
 
     # ==== ADC settings ====
-    "adc_pollrate": 30,     # S/s
+    "adc_pollrate": 30,     # S/s TODO DEPRECATED?
 
     # ==== DAC settings ====
     "vmax_dac": 5.0,        # V

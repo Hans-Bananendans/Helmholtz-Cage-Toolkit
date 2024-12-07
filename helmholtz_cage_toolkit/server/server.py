@@ -321,7 +321,7 @@ class DataPool:
 
         self.V_board = self.init_buffer(ibs, 1) # Measured value of +12V bus - +5V bus
 
-        self.i_step = self.init_buffer(ibs, 1)
+        self.i_step = self.init_buffer(ibs, 1, dtype=int)
 
         self.adc_aux = self.init_buffer(ibs, 1)
         self.dac_aux = self.init_buffer(ibs, 6)
@@ -366,7 +366,7 @@ class DataPool:
         buffer.insert(0, value)
         buffer.pop()
 
-    def init_buffer(self, buffer_size, entry_size):
+    def init_buffer(self, buffer_size, entry_size, dtype=float):
         """Automatically creates a buffer object, which is a list with a number
         of entries. The number of entries is equal to <buffer_size>.
         The entries themselves are lists if <entry_size> is larger than 1,
@@ -377,9 +377,9 @@ class DataPool:
             raise ValueError(f"init_buffer(): buffer_size cannot be {buffer_size}!")
 
         if entry_size == 1:
-            return zeros(buffer_size).tolist()
+            return zeros(buffer_size, dtype=dtype).tolist()
         elif entry_size > 1:
-            return zeros((buffer_size, entry_size)).tolist()
+            return zeros((buffer_size, entry_size), dtype=dtype).tolist()
         else:
             raise ValueError(f"init_buffer(): Negative entry_size given!")
 
@@ -412,6 +412,9 @@ class DataPool:
             mutagen = m * (1 + abs(d / v_central) * fence_strength)
 
         return v_prev + mutagen
+
+    def measure_performance(self):
+        pass # TODO
 
     def auto_calibrate(self):
         pass # TODO
@@ -446,7 +449,6 @@ class DataPool:
         except:  # noqa
             print("[WARNING] DataPool.write_Bm(): Unable to write to self.Bm!")
         self._lock_ADC.release()
-
 
     def read_Bc(self):
         """Thread-safely reads the current Bc field from the datapool.
@@ -502,6 +504,44 @@ class DataPool:
         except:  # noqa
             print("[WARNING] DataPool.write_Br(): Unable to write to self.Br!")
         self._lock_DAC.release()
+
+    def read_telemetry(self):
+        """Thread-safely reads the telemetry data from the datapool.
+
+        The lock prevents other threads from updating this data whilst it is
+        being read. Useful to prevent hard-to-debug race condition bugs.
+        """
+        self._lock_ADC.acquire(timeout=0.001)
+        self._lock_DAC.acquire(timeout=0.001)
+        try:
+            tm = self.tm[0]
+            i_step = self.i_step[0]
+            Im = self.Im[0]
+            Bm = self.Bm[0]
+            Bc = self.Bc[0]
+        except:  # noqa
+            print("[WARNING] DataPool.read_telemetry(): Unable to read telemetry!")
+        self._lock_ADC.release()
+        self._lock_DAC.release()
+        return tm, i_step, Im, Bm, Bc
+
+
+    def write_ADC_data(self, Bm, Im, V_board, adc_aux):
+        """Thread-safely writes all ADC data to their corresponding fields
+         in the datapool.
+
+        The lock prevents other threads from accessing this data whilst it is
+        being read. Useful to prevent hard-to-debug race condition bugs.
+        """
+        self._lock_ADC.acquire(timeout=0.001)
+        try:
+            self.write_buffer(self.Bm, Bm)  # noqa
+            self.write_buffer(self.Im, Im)  # noqa
+            self.write_buffer(self.V_board, V_board)  # noqa
+            self.write_buffer(self.adc_aux, adc_aux)  # noqa
+        except:  # noqa
+            print("[WARNING] DataPool.read_Bm(): Unable to read self.Bm!")
+        self._lock_ADC.release()
 
 
     # def activate_play_mode(self):

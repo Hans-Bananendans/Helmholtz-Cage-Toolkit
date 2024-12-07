@@ -513,24 +513,9 @@ def get_Bm(socket,
     return r[0], [r[1], r[2], r[3]]
 
 
-def get_telemetry(socket, # TODO EVALUATE
+def get_telemetry(socket,
                   datastream: QDataStream = None):
     """Requests and returns a t-packet with telemetry from the server.
-
-    TODO UPDATE DESCRIPTION
-
-    Telemetry can also be requested using:
-        tm, Bm, Im, Ic, Vc, Vvc, Vcc = codec.decode_tpacket(
-        send_and_receive(
-            codec.encode_xpacket("get_telemetry"),
-            socket,
-            datastream=datastream
-        )
-    )
-    however, this implementation is a few microseconds slower, likely due to
-    the fact that x-packets take a few microseconds longer to encode than
-    t-packets (13.5 us vs 15.7 us).
-
 
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
@@ -538,7 +523,7 @@ def get_telemetry(socket, # TODO EVALUATE
 
     tm, i_step, Im, Bm, Bc = codec.decode_tpacket(
         send_and_receive(
-            codec.encode_tpacket(0., *[[0.]*3]*6),
+            codec.encode_tpacket(0., 0, *[[0.]*3]*3),
             socket,
             datastream=datastream
         )
