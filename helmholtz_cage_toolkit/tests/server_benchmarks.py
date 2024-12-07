@@ -90,9 +90,9 @@ if __name__ == "__main__":
         r = cf.message(s, msg, ds)
         t1 = time()
         if r == 1:
-            print(cg + f" {i}/{n} Echo message              PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
+            print(cg + f" {i}/{n} Send message              PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
         else:
-            print(cr + f" {i}/{n} Echo message              FAIL")
+            print(cr + f" {i}/{n} Send message              FAIL")
             print(f"msg:       {msg}")
             print(f"response:  {r}" + ce)
         i += 1
@@ -110,22 +110,86 @@ if __name__ == "__main__":
         i += 1
 
 
-        # ==== Get socket uptime ====
+        # ==== Get socket info ====
         t0 = time()
-        r = cf.get_socket_uptime(s, ds)
+        r = cf.get_socket_info(s, ds)
         t1 = time()
-        diff = (t1-t_start)-r
-        if type(r) == float and abs(diff) <= 0.01:
-            print(cg + f" {i}/{n} Get socket uptime:        PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
+        diff = (t1-t_start)-r[0]
+        if type(r[0]) == float and abs(diff) <= 0.01 and type(r[1]) == str \
+                and type(r[2]) == int and r[2] >= 0:
+            print(cg + f" {i}/{n} Get socket info           PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
+            print(cg + f"       -> Uptime: {round(r[0], 6)} (diff: {round(diff*1E6)} \u03bcs)" + ce)
+            print(cg + f"       -> Socket: {r[1]}:{r[2]}" + ce)
         else:
-            print(cr + f" {i}/{n} Get socket uptime:        FAIL")
-            print(f"socket-side: {t1-t_start}")
-            print(f"server-side: {r}")
-            print(f"diff:        {t1-t_start-r}" + ce)
+            print(cr + f" {i}/{n} Get socket info           FAIL" + ce)
+            print(cr + f"Uptime: {round(r[0], 6)} (diff: {round(diff*1E6)} \u03bcs)" + ce)
+            print(cr + f"Socket: {r[1]}:{r[2]} ({type(r[1])}:{type(r[2])})" + ce)
         i += 1
 
 
+        # ==== Get Bm ====
+        t0 = time()
+        tm, Bm = cf.get_Bm(s, ds)
+        t1 = time()
+        if tm >= 0 and len(Bm) == 3 \
+                and [True for v in Bm if type(v) == float] == [True, ]*3:
+            print(cg + f" {i}/{n} Get Bm                    PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
+            print(cg + f"       -> {tm}, {Bm}" + ce)
+        else:
+            print(cr + f" {i}/{n} Get Bm                    FAIL")
+            print(f"tm: {tm}")
+            print(f"Bm: {Bm}" + ce)
+        i += 1
 
+
+        # ==== Set Bc ====
+        Bc_test = [3.3, 6.6, -9.9]
+        t0 = time()
+        r = cf.set_Bc(s, Bc_test, ds)
+        t1 = time()
+        if r == 1:
+            print(cg + f" {i}/{n} Set Bc                    PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
+        else:
+            print(cr + f" {i}/{n} Set Bc                    FAIL")
+        i += 1
+
+        # ==== Get Bc ====
+        t0 = time()
+        Bc = cf.get_Bc(s, ds)
+        t1 = time()
+        if Bc == Bc_test:
+            print(cg + f" {i}/{n} Get Bc                    PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
+            print(cg + f"       {Bc} -> {Bc}" + ce)
+        else:
+            print(cr + f" {i}/{n} Get Bc                    FAIL")
+            print(f"Bc set:      {Bc_test}")
+            print(f"Bc response: {Bc}" + ce)
+        i += 1
+
+
+        # ==== Set Br ====
+        Br_test = [2.2, 5.5, -8.8]
+        t0 = time()
+        r = cf.set_Br(s, Br_test, ds)
+        t1 = time()
+        if r == 1:
+            print(cg + f"{i}/{n} Set Br                    PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
+        else:
+            print(cr + f"{i}/{n} Set Br                    FAIL")
+        i += 1
+
+        # ==== Get Br ====
+        t0 = time()
+        Br = cf.get_Br(s, ds)
+        t1 = time()
+        if Br == Br_test:
+            print(cg + f"{i}/{n} Get Br                    PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
+            print(cg + f"       {Br} -> {Br}" + ce)
+        else:
+            print(cr + f"{i}/{n} Get Br                    FAIL")
+            print(f"Bc set:      {Br_test}")
+            print(f"Bc response: {Br}" + ce)
+        i += 1
 
 
 

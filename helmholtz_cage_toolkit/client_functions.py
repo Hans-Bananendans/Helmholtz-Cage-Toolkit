@@ -142,7 +142,7 @@ def echo(socket,
     return response
 
 
-def echo_alt(socket,
+def echo_alt(socket, # TODO EVALUATE
              msg,
              datastream: QDataStream = None,
              timing=False):
@@ -211,7 +211,7 @@ def get_server_uptime(socket,
     return float(server_uptime)
 
 
-def get_socket_uptime(socket,
+def get_socket_uptime(socket, # TODO EVALUATE
                       datastream: QDataStream = None,
                       timing=False):
     """Requests the uptime of the socket connection from the perspective of
@@ -236,6 +236,36 @@ def get_socket_uptime(socket,
         print(f"Called get_socket_uptime(). Executed in {round((tend - tstart) * 1E6, 3)} us")
 
     return float(socket_uptime)
+
+
+def get_socket_info(socket,
+                    datastream: QDataStream = None,
+                    timing=False):
+    """Request an m-packet with some information about the client from the
+    perspective of the server:
+    1. The time for which the client socket has been active
+    2. The client address
+    3. The client port
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+    if timing:
+        tstart = time()
+
+    uptime, address, port = codec.decode_mpacket(
+        send_and_receive(
+            codec.encode_xpacket("get_socket_info"),
+            socket,
+            datastream=datastream
+        )
+    ).split(",")
+
+    if timing:
+        tend = time()
+        print(f"Called get_socket_info(). Executed in {round((tend - tstart) * 1E6, 3)} us")
+
+    return float(uptime), address, int(port)
 
 # def get_socket_uptime(socket, timing=False):
 #     if timing:
@@ -273,7 +303,7 @@ def message(socket,
 
 
 # ==== FIELD CONTROL ====
-def get_control_vals(socket,
+def get_control_vals(socket, # TODO EVALUATE
                      datastream: QDataStream = None,
                      timing=False):
     """Requests the current control_vals from the server, which is a list of
@@ -360,7 +390,36 @@ def set_Bc(socket,
     return int(confirm)
 
 
-def reset_Bc(socket,
+def get_Bc(socket,
+           datastream: QDataStream = None,
+           timing=False):
+    """Requests and returns the most recent Bc value from the server.
+
+    The server will return c-packet with the current Bc value whenever a
+    client sends this command.
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+    if timing:
+        tstart = time()
+
+    Bc = codec.decode_cpacket(
+        send_and_receive(
+            codec.encode_xpacket("get_Bc"),
+            socket,
+            datastream=datastream
+        )
+    )
+
+    if timing:
+        tend = time()
+        print(f"Called get_Bc(). Executed in {int((tend-tstart)*1E6)} us")
+
+    return Bc
+
+
+def reset_Bc(socket, # TODO DEPRECATED?
              datastream: QDataStream = None,
              timing=False):
     """Reset a control field vector Bc back to [0. 0. 0.] when in manual mode.
@@ -414,7 +473,7 @@ def reset_Bc(socket,
 
 
 # ==== FIELD MEASUREMENT
-def get_Bm(socket,  # TODO STALE - Succeeded by d-packet implementation
+def get_Bm(socket,
            datastream: QDataStream = None,
            timing=False):
     """Requests and returns the most recent Bm value from the server.
@@ -432,7 +491,7 @@ def get_Bm(socket,  # TODO STALE - Succeeded by d-packet implementation
     if timing:
         tstart = time()
 
-    Bm = codec.decode_bpacket(
+    r = codec.decode_bpacket(
         send_and_receive(
             codec.encode_bpacket(0., [0.]*3),
             socket,
@@ -451,10 +510,10 @@ def get_Bm(socket,  # TODO STALE - Succeeded by d-packet implementation
         tend = time()
         print(f"Called get_Bm(). Executed in {int((tend-tstart)*1E6)} us")
 
-    return Bm
+    return r[0], [r[1], r[2], r[3]]
 
 
-def get_telemetry(socket,
+def get_telemetry(socket, # TODO EVALUATE
                   datastream: QDataStream = None):
     """Requests and returns a t-packet with telemetry from the server.
 
@@ -488,7 +547,7 @@ def get_telemetry(socket,
 
 
 # ==== SCHEDULE ====
-def print_schedule_info(
+def print_schedule_info( # TODO EVALUATE
     socket,
     datastream: QDataStream = None):
     """Prints schedule info to the console *of the server*. Mainly used for
@@ -507,7 +566,7 @@ def print_schedule_info(
     return int(confirm)
 
 
-def print_schedule(
+def print_schedule( # TODO EVALUATE
     socket,
     max_entries: int = 32,
     datastream: QDataStream = None):
@@ -527,7 +586,7 @@ def print_schedule(
     return int(confirm)
 
 
-def get_schedule_info(
+def get_schedule_info( # TODO EVALUATE
     socket,
     datastream: QDataStream = None):
     """Gets some information about the schedule on the server side. Gets the
@@ -546,7 +605,7 @@ def get_schedule_info(
     return name, int(length_string), float(duration_string)
 
 
-def get_schedule_hash(
+def get_schedule_hash( # TODO EVALUATE
     socket,
     datastream: QDataStream = None,
     timeout_ms=10000):
@@ -572,7 +631,7 @@ def get_schedule_hash(
     return hash_string
 
 
-def initialize_schedule(
+def initialize_schedule( # TODO EVALUATE
     socket,
     datastream: QDataStream = None):
     """Initialize a schedule on the server's end.
@@ -593,7 +652,7 @@ def initialize_schedule(
     return int(confirm)
 
 
-def allocate_schedule(
+def allocate_schedule( # TODO EVALUATE
     socket,
     name: str,
     n_seg: int,
@@ -623,7 +682,7 @@ def allocate_schedule(
     return int(confirm)
 
 
-def transfer_segment(
+def transfer_segment( # TODO EVALUATE
     socket,
     segment,
     datastream: QDataStream = None):
@@ -714,12 +773,12 @@ def transfer_schedule(  # TODO Incorporate schedule validation tools
     return 1
 
 
-def schedule_hash(schedule: list):
+def schedule_hash(schedule: list): # TODO EVALUATE
     """Creates a schedule digest using the BLAKE2b algorithm"""
     return blake2b(array(schedule).tobytes(), digest_size=64).hexdigest()
 
 
-def verify_schedule(
+def verify_schedule( # TODO EVALUATE
     socket,
     schedule,
     datastream: QDataStream = None,
@@ -815,7 +874,7 @@ def verify_schedule(
 
 
 # ==== PLAY CONTROLS ====
-def activate_play_mode(
+def activate_play_mode( # TODO EVALUATE
     socket,
     datastream: QDataStream = None):
     """Switches the field vector control thread from `manual mode` to
@@ -835,7 +894,7 @@ def activate_play_mode(
     )
     return int(confirm)
 
-def deactivate_play_mode(
+def deactivate_play_mode( # TODO EVALUATE
     socket,
     datastream: QDataStream = None):
     """Switches the field vector control thread from `play mode` to
@@ -853,7 +912,7 @@ def deactivate_play_mode(
     )
     return int(confirm)
 
-def play_start(
+def play_start( # TODO EVALUATE
     socket,
     datastream: QDataStream = None):
     """Instructs the server to immediately start schedule playback.
@@ -870,7 +929,7 @@ def play_start(
     )
     return int(confirm)
 
-def play_stop(
+def play_stop( # TODO EVALUATE
     socket,
     datastream: QDataStream = None):
     """Instructs the server to immediately stop schedule playback. The
@@ -890,7 +949,7 @@ def play_stop(
     return int(confirm)
 
 
-def get_current_time_step(
+def get_current_time_step( # TODO EVALUATE
     socket,
     datastream: QDataStream = None):
     """Requests the current instantaneous playback time at the server side.
@@ -918,7 +977,7 @@ def get_current_time_step(
     return int(ts_string[0]), int(ts_string[1]), float(ts_string[2])
 
 
-def get_play_mode(
+def get_play_mode( # TODO EVALUATE
     socket,
     datastream: QDataStream = None):
     """Requests the current value of play_mode.
@@ -944,7 +1003,7 @@ def get_play_mode(
     else:
         raise AssertionError("Received invalid play_mode '{play_mode_string}'")
 
-def get_play_status(
+def get_play_status( # TODO EVALUATE
     socket,
     datastream: QDataStream = None):
     """Requests the current value of play_status.
@@ -989,7 +1048,7 @@ def get_play_status(
 
 
 # ==== CONFIGURATION ====
-def get_apply_Bc_period(
+def get_apply_Bc_period( # TODO EVALUATE
     socket,
     datastream: QDataStream = None):
     """Getter of field control vector thread looping period [s].
@@ -1006,7 +1065,7 @@ def get_apply_Bc_period(
     )
     return float(period_string)
 
-def set_apply_Bc_period(
+def set_apply_Bc_period( # TODO EVALUATE
     socket,
     period: float,
     datastream: QDataStream = None):
@@ -1061,7 +1120,7 @@ def set_write_Bm_period( # TODO STALE
     return int(confirm)
 
 
-def get_write_tmBmIm_period(
+def get_write_tmBmIm_period( # TODO EVALUATE
     socket,
     datastream: QDataStream = None):
     """Getter of field measurement thread looping period [s].
@@ -1097,7 +1156,7 @@ def set_write_tmBmIm_period( # TODO STALE
     return int(confirm)
 
 
-def set_Bm_sim(
+def set_Bm_sim( # TODO EVALUATE
     socket,
     Bm_sim,
     datastream: QDataStream = None):
@@ -1112,9 +1171,9 @@ def set_Bm_sim(
     confirm = codec.decode_mpacket(
         send_and_receive(
             codec.encode_xpacket("set_Bm_sim",
-                               float(Bm_sim[0]),
-                               float(Bm_sim[1]),
-                               float(Bm_sim[2])),
+                                 float(Bm_sim[0]),
+                                 float(Bm_sim[1]),
+                                 float(Bm_sim[2])),
             socket,
             datastream=datastream
         )
@@ -1122,7 +1181,7 @@ def set_Bm_sim(
     return int(confirm)
 
 
-def get_Bm_sim(socket,
+def get_Bm_sim(socket, # TODO EVALUATE
                datastream: QDataStream = None):
     """Getter of Bm_sim
 
@@ -1140,7 +1199,7 @@ def get_Bm_sim(socket,
     return [float(Bm_sim[0]), float(Bm_sim[1]), float(Bm_sim[2])]
 
 
-def get_serveropt_Bm_sim(
+def get_serveropt_Bm_sim( # TODO EVALUATE
     socket,
     datastream: QDataStream = None):
     """Getter of serveropt_Bm_sim.
@@ -1157,7 +1216,7 @@ def get_serveropt_Bm_sim(
     )
     return serveropt_Bm_sim
 
-def set_serveropt_Bm_sim(
+def set_serveropt_Bm_sim( # TODO EVALUATE
     socket,
     serveropt_Bm_sim: str,
     datastream: QDataStream = None):
@@ -1192,7 +1251,6 @@ def set_Br(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    print(f"[DEBUG] cf.set_Br({Br})")
 
     if len(Br) != 3:
         raise AssertionError(f"Br given is not length 3 but length {len(Br)}!")
@@ -1200,9 +1258,9 @@ def set_Br(
     confirm = codec.decode_mpacket(
         send_and_receive(
             codec.encode_xpacket("set_Br",
-                               float(Br[0]),
-                               float(Br[1]),
-                               float(Br[2])),
+                                 float(Br[0]),
+                                 float(Br[1]),
+                                 float(Br[2])),
             socket,
             datastream=datastream
         )

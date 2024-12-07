@@ -4,10 +4,11 @@ server_config = {
     "SERVER_PORT": 7777,
 
     # ==== Thread settings ====
-    "threaded_read_ADC_rate": 50,   # S/s
-    "threaded_write_DAC_rate": 50,  # S/s
+    "threaded_read_ADC_rate": 1,   # S/s
+    "threaded_write_DAC_rate": 1,  # S/s
 
-    "verbosity": 2,
+    "internal_buffer_size": 5,
+    "verbosity": 4,
     # "verbosity_printtimestamp": True,
 
     # ==== ADC settings ====
@@ -16,15 +17,29 @@ server_config = {
     # ==== DAC settings ====
     "vmax_dac": 5.0,        # V
 
+    # ==== Settings for Bm spoofing ====
+    "spoof_Bm": False,
+    "params_mutate": [
+        [100, 100, 100],    # central value
+        [0.1, 0.1, 0.1],    # mutation scale
+        [0.5, 0.5, 0.5],    # fence strength
+    ],
+
     # ==== Power supply settings ====
     "vmax_supply": 30.0,    # V
-    "imax_supply": 5.0,    # A
+    "imax_supply": 5.0,     # A
     "r_load": 7,            # Ohm
     "v_above": 2,           # V
     "i_above": 0.2,         # A
 
     "vlevel_pol": 5.0,      # V
     "v_psu_enable": 5.0,    # V
+
+
+    # Linear regression coefficients for VC transfer function ([a, b] -> B_out = a*V + b)
+    "params_tf_vb_x": [100, 0],
+    "params_tf_vb_y": [100, 0],
+    "params_tf_vb_z": [100, 0],
 
     # Linear regression coefficients for VC transfer function ([a, b] -> v_cc = a*v + b)
     "params_tf_vc_x": [15.05305, -4.80750],
@@ -64,7 +79,7 @@ server_config = {
     "pin_dac_supply_z_vvc": 9,
     "pin_dac_supply_z_pol": 8,
 
-    "pin_dac_psu_enable": 13,
+    "pin_dac_psu_enable": 13, # TODO Rename to pin_dac_output_enable
 
     "pin_dac_aux1": 2,
     "pin_dac_aux2": 6,

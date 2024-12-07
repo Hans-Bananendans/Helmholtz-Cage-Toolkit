@@ -855,8 +855,8 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 *self.server.datapool.Bm_sim))
 
         elif fname == "set_Bm_sim":
-            print("[DEBUG] set_Bm_sim(): ({}, {}, {})".format(args[0], args[1], args[2]))
-            self.server.datapool.Bm_sim = [args[0], args[1], args[2]]
+            # print("[DEBUG] set_Bm_sim(): ({}, {}, {})".format(args[0], args[1], args[2]))
+            # self.server.datapool.Bm_sim = [args[0], args[1], args[2]]
             packet_out = scc.encode_mpacket("1")
 
         elif fname == "get_Br":
@@ -864,7 +864,7 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 *self.server.datapool.Br))
 
         elif fname == "set_Br":
-            print("[DEBUG] set_Br(): ({}, {}, {})".format(args[0], args[1], args[2]))
+            # print("[DEBUG] set_Br(): ({}, {}, {})".format(args[0], args[1], args[2]))
             self.server.datapool.Br = [args[0], args[1], args[2]]
             packet_out = scc.encode_mpacket("1")
 

@@ -135,8 +135,6 @@ def decode_bpacket(b_packet):
         float(b_decoded[37:53]),
         float(b_decoded[53:69])]
 
-
-
 def encode_cpacket(Bc):
     """ Encodes a c_packet, which has the following anatomy:
     c (1 B)    Bc_X (16 B)    Bc_Y (16 B)    Bc_Z (16 B)

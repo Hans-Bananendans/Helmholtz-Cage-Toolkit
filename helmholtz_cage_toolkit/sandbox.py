@@ -72,59 +72,7 @@ item = [1.0, 1.0, 1.0]
 
 
 
-def encode_tpacket(tm, i_step, Im, Bm, Bc):
-    """ Encodes a t_packet, which has the following anatomy:
-    b (1 B)    UNIX_time (20 B)    i_step (32 B)    Im (3x12 B)
-               Bm (3x16 B)         Bc (3x16 B)      padding (71 B)
-    TODO RE-BENCHMARK
-    Optimization: 9398 ns/encode (FX-8350)
-    """
-    output = [str(tm), str(i_step), ]
-    for par in (Im, Bm, Bc):
-        output += [str(par[0]), str(par[1]), str(par[2])]
-    return ("t{:0<20.20}"+"{:0>32.32}"+"{:0<12.12}"*3+"{:0<16.16}"*6+"#"*71
-            ).format(*output).encode()
 
-
-def decode_tpacket(t_packet):
-    """ Decodes a t_packet, which has the following anatomy:
-    b (1 B)    UNIX_time (20 B)    i_step (32 B)    Im (3x12 B)
-               Bm (3x16 B)         Bc (3x16 B)      padding (71 B)
-    Optimization: 3597 ns/encode (FX-8350)
-    """
-    t_decoded = t_packet.decode()
-    return float(t_decoded[1:21]), \
-        int(t_decoded[21:53]), \
-        [
-            float(t_decoded[53:65]),        # \
-            float(t_decoded[65:77]),        # Im
-            float(t_decoded[77:89]),        # /
-        ], [
-            float(t_decoded[89:105]),        # \
-            float(t_decoded[105:121]),        # Bm
-            float(t_decoded[121:137]),       # /
-        ], [
-            float(t_decoded[137:153]),      # \
-            float(t_decoded[153:169]),      # Bc
-            float(t_decoded[169:185]),      # /
-        ]
-
-
-
-
-
-t_packet = encode_tpacket(tm, i_step, Im, Bm, Bc)
-
-tm2, i_step2, Im2, Bm2, Bc2 = decode_tpacket(t_packet)
-
-print(t_packet)
-print(len(t_packet))
-
-for pair in [[tm, tm2], [i_step, i_step2], [Im, Im2], [Bm, Bm2], [Bc, Bc2]]:
-    if pair[0] == pair[1]:
-        print("PASS: ", pair[0], pair[1])
-    else:
-        print("FAIL: ", pair[0], pair[1])
 
 
 
@@ -163,14 +111,14 @@ tunit = "us"
 
 
 
-print(f"encode_tpacket (n={'{:1.0E}'.format(n)}):",
-      round(timeit('encode_tpacket(tm, i_step, Im, Bm, Bc)',
-                   globals=globals(), number=n)*tmult/n, 3), "us")
-
-
-print(f"decode_tpacket (n={'{:1.0E}'.format(n)}):",
-      round(timeit('decode_tpacket(t_packet)',
-                   globals=globals(), number=n)*tmult/n, 3), "us")
+# print(f"encode_tpacket (n={'{:1.0E}'.format(n)}):",
+#       round(timeit('encode_tpacket(tm, i_step, Im, Bm, Bc)',
+#                    globals=globals(), number=n)*tmult/n, 3), "us")
+#
+#
+# print(f"decode_tpacket (n={'{:1.0E}'.format(n)}):",
+#       round(timeit('decode_tpacket(t_packet)',
+#                    globals=globals(), number=n)*tmult/n, 3), "us")
 
 
 

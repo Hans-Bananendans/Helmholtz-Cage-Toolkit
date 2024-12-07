@@ -38,8 +38,8 @@ The server implementation relies on the server config and the SCC codec.
 from socketserver import TCPServer, ThreadingMixIn, BaseRequestHandler
 from threading import Thread, Lock, main_thread, active_count
 
-from numpy import array
-from numpy.random import random
+from numpy import array, zeros
+from numpy.random import rand
 from time import time, sleep
 
 import helmholtz_cage_toolkit.scc.scc4 as codec
@@ -205,8 +205,6 @@ def threaded_read_ADC(datapool):
     print(f"Started 'read ADC' thread with rate {1/datapool.threaded_read_ADC_period}")
     datapool.kill_threaded_read_ADC = False
 
-    Bc_prev = [0., 0., 0.]
-
     while not datapool.kill_threaded_read_ADC:  # Kills loop when set to True
 
         # # ==== PLAY MODE ====
@@ -257,8 +255,25 @@ def threaded_read_ADC(datapool):
         if not datapool.pause_threaded_read_ADC:  # Pause loop when set to True
             t0 = time()
             # print("threaded_read_ADC() loop")
-            # DO READING STUFF
-            sleep(datapool.threaded_read_ADC_period) # TODO remove
+
+            if datapool.serveropt_spoof_Bm:
+                Bm_prev = datapool.read_Bm()
+                Bm = []
+                for i in (0, 1, 2):
+                    Bm.append(datapool.mutate(
+                        Bm_prev[i],
+                        datapool.params_mutate[0][i],
+                        datapool.params_mutate[1][i],
+                        datapool.params_mutate[2][i]
+                    ))
+                datapool.write_Bm(Bm)
+
+            else:
+                pass # DO ADC READING STUFF
+
+            print(f"[DEBUG] Bm = {datapool.read_Bm()}")
+            sleep(max(0., datapool.threaded_read_ADC_period - (time() - t0)))
+
         else:
             sleep(datapool.threaded_read_ADC_period)
 
@@ -269,9 +284,9 @@ def threaded_read_ADC(datapool):
 class DataPool:
     def __init__(self):
         # Thread controls
-        self._lock_ADC = Lock()
-        self._lock_DAC = Lock()
-        self._lock_schedule = Lock()
+        self._lock_ADC = Lock()                 # Thread lock for ADC value buffers
+        self._lock_DAC = Lock()                 # Thread lock for DAC value buffers
+        self._lock_schedule = Lock()            # Thread lock for schedule
 
         self.pause_threaded_read_ADC = False    # Not thread-safe
         self.pause_threaded_write_DAC = False   # Not thread-safe
@@ -283,21 +298,47 @@ class DataPool:
         self.threaded_write_DAC_period = 1/config["threaded_write_DAC_rate"]  # Not thread-safe
 
 
-        # Data values
-        self.tm = 0.                    # Time at which Bm, Im were taken
-        self.Im = [0., 0., 0.]          # Measured current Im in [A]
-        self.Bm = [0., 0., 0.]          # Measured field Bm in [nT]
-        self.Bc = [0., 0., 0.]          # Control vector Bc to be applied [nT]
+        # ==== Data buffers ==================================================
+        """ Here all data buffers are defined. They are all defined as lists,
+        such that previous data can be stored for potential analysis.
+        
+        Entry 0 will always be the most recent value, and should therefore be
+        useful in most cases. To write to the buffer, use self.write_buffer().
+        """
 
-        self.output_enable = False
+        ibs = config["internal_buffer_size"]
 
+        self.tm = self.init_buffer(ibs, 1)      # Time at which Bm, Im were taken
+        self.Im = self.init_buffer(ibs, 3)      # Measured current Im in [A]
+        self.Bm = self.init_buffer(ibs, 3)      # Measured field Bm in [nT]
 
-        self.i_step = 0
-        self.Br = [0., 0., 0.]
+        self.Bc = self.init_buffer(ibs, 3)      # Control vector Bc to be applied [nT]
+        self.Vvc = self.init_buffer(ibs, 3)  # Currently unused
+        self.Vcc = self.init_buffer(ibs, 3)  # Currently unused
 
-        self.Vvc = [0., 0., 0.]
-        self.Vcc = [0., 0., 0.]
+        self.Br = self.init_buffer(ibs, 3)      # Magnetic field vector to be rejected
 
+        self.V_board = self.init_buffer(ibs, 1) # Measured value of +12V bus - +5V bus
+
+        self.i_step = self.init_buffer(ibs, 1)
+
+        self.adc_aux = self.init_buffer(ibs, 1)
+        self.dac_aux = self.init_buffer(ibs, 6)
+
+        # ==== Other parameters ==============================================
+
+        self.params_tf_vb = {
+            "x": config["params_tf_vb_x"],
+            "y": config["params_tf_vb_y"],
+            "z": config["params_tf_vb_z"],
+        }
+
+        self.params_mutate = config["params_mutate"]
+
+        self.output_enable = False              # Enable/disable H-bridge output using PSUE pin
+
+        # ==== Serveropts ==============================================
+        self.serveropt_spoof_Bm = config["spoof_Bm"]
 
         # # Play controls
         # self.play_mode = False          # If False, manual control is enabled, if True,
@@ -310,6 +351,145 @@ class DataPool:
 
         # Initialize schedule
         self.initialize_schedule()
+
+
+    # ==== INTERNAL FUNCTIONS ================================================
+
+    def write_buffer(self, buffer, value):
+        """First-in, last-out buffer update function.
+        - Increases length of buffer by 1 by inserting new value at position 0
+        - Deletes the last value of the buffer using pop()
+        Beware: There is NO input validation or type/size checking, you must
+        ensure that the value that is written is appropriate!
+        """
+        buffer.insert(0, value)
+        buffer.pop()
+
+    def init_buffer(self, buffer_size, entry_size):
+        """Automatically creates a buffer object, which is a list with a number
+        of entries. The number of entries is equal to <buffer_size>.
+        The entries themselves are lists if <entry_size> is larger than 1,
+        making the buffer 2D. For <entry_size> equal to 1, the buffer will be
+        1D instead.
+        """
+        if buffer_size <= 0:
+            raise ValueError(f"init_buffer(): buffer_size cannot be {buffer_size}!")
+
+        if entry_size == 1:
+            return zeros(buffer_size).tolist()
+        elif entry_size > 1:
+            return zeros((buffer_size, entry_size)).tolist()
+        else:
+            raise ValueError(f"init_buffer(): Negative entry_size given!")
+
+    def mutate(self, v_prev, v_central, mutation_scale, fence_strength):
+        """Mutate a value from a starting value, but push back if it gets too
+        far from some defined central value.
+        """
+        m = mutation_scale * v_central * (2 * rand() - 1)
+        d = v_prev - v_central
+
+        # d=0 causes a singularity later, so side-step it
+        if d == 0:
+            d = 0.1
+
+        if d / abs(d) == m / abs(m):
+            mutagen = m * (1 - abs(d / v_central) * fence_strength)
+        else:
+            mutagen = m * (1 + abs(d / v_central) * fence_strength)
+
+        return v_prev + mutagen
+
+    def auto_calibrate(self):
+        pass # TODO
+
+
+    # ==== IO FUNCTIONS ======================================================
+
+    def read_Bm(self):
+        """Thread-safely reads the current Bm field from the datapool.
+
+        The lock prevents other threads from updating self.Bm whilst it is
+        being read. Useful to prevent hard-to-debug race condition bugs.
+        """
+        self._lock_ADC.acquire(timeout=0.001)
+        try:
+            tm = self.tm[0]
+            Bm = self.Bm[0]
+        except:  # noqa
+            print("[WARNING] DataPool.read_Bm(): Unable to read self.Bm!")
+        self._lock_ADC.release()
+        return tm, Bm
+
+    def write_Bm(self, Bm: list):
+        """Thread-safely write Bm to the datapool.
+
+        The lock prevents other threads from accessing self.Bm whilst it is
+        being updated. Useful to prevent hard-to-debug race condition bugs.
+        """
+        self._lock_ADC.acquire(timeout=0.001)
+        try:
+            self.write_buffer(self.Bm, Bm) # noqa
+        except:  # noqa
+            print("[WARNING] DataPool.write_Bm(): Unable to write to self.Bm!")
+        self._lock_ADC.release()
+
+
+    def read_Bc(self):
+        """Thread-safely reads the current Bc field from the datapool.
+
+        The lock prevents other threads from updating self.Bc whilst it is
+        being read. Useful to prevent hard-to-debug race condition bugs.
+        """
+        self._lock_DAC.acquire(timeout=0.001)
+        try:
+            Bc = self.Bc[0]
+        except:  # noqa
+            print("[WARNING] DataPool.read_Bc(): Unable to read self.Bc!")
+        self._lock_DAC.release()
+        return Bc
+
+    def write_Bc(self, Bc: list):
+        """Thread-safely write Bc to the datapool.
+
+        The lock prevents other threads from accessing self.Bc whilst it is
+        being updated. Useful to prevent hard-to-debug race condition bugs.
+        """
+        self._lock_DAC.acquire(timeout=0.001)
+        try:
+            self.write_buffer(self.Bc, Bc) # noqa
+        except:  # noqa
+            print("[WARNING] DataPool.write_Bc(): Unable to write to self.Bc!")
+        self._lock_DAC.release()
+
+
+    def read_Br(self):
+        """Thread-safely reads the current Br field from the datapool.
+
+        The lock prevents other threads from updating self.Bc whilst it is
+        being read. Useful to prevent hard-to-debug race condition bugs.
+        """
+        self._lock_DAC.acquire(timeout=0.001)
+        try:
+            Br = self.Br[0]
+        except:  # noqa
+            print("[WARNING] DataPool.read_Br(): Unable to read self.Br!")
+        self._lock_DAC.release()
+        return Br
+
+    def write_Br(self, Br: list):
+        """Thread-safely write Br to the datapool.
+
+        The lock prevents other threads from accessing self.Bc whilst it is
+        being updated. Useful to prevent hard-to-debug race condition bugs.
+        """
+        self._lock_DAC.acquire(timeout=0.001)
+        try:
+            self.write_buffer(self.Br, Br) # noqa
+        except:  # noqa
+            print("[WARNING] DataPool.write_Br(): Unable to write to self.Br!")
+        self._lock_DAC.release()
+
 
     # def activate_play_mode(self):
     #     print("[DEBUG] activate_play_mode()")
@@ -393,7 +573,7 @@ class DataPool:
 
         self.schedule_name = name
         self.schedule_duration = duration
-        self.schedule = [[0, 0, 0., 0., 0., 0.], ]*n_seg
+        self.schedule = [[0, 0, 0., 0., 0., 0.], ]*n_seg # TODO NEVER USE THIS
 
         self._lock_schedule.release()
         return 1
@@ -702,8 +882,9 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 Bc = codec.decode_cpacket(packet_in)
                 try:
                     self.server.datapool.write_Bc(Bc)
-                    print("[DEBUG] Bc written to datapool:", Bc, type(Bc))
-                    print("[DEBUG] CHECK datapool.Bc:", self.server.datapool.Bc)
+                    if self.v >= 4:
+                        print("[DEBUG] Bc written to datapool:", Bc, type(Bc))
+                        print("[DEBUG] CHECK datapool.Bc:", self.server.datapool.Bc)
                     packet_out = codec.encode_mpacket("1")
                 except:  # noqa
                     packet_out = codec.encode_mpacket("-1")
@@ -800,6 +981,7 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
         appropriate properties of the response packet.
 
         Here is a list of all functions the server currently supports:
+        get_Bc
         get_schedule_info
         get_server_uptime
         get_socket_uptime
@@ -808,16 +990,56 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
         """
         packet_out = None
 
+        # Requests the Bc value:
+        if fname == "get_Bc":
+            packet_out = codec.encode_cpacket(self.server.datapool.read_Bc())
+
+        # Requests the Br value:
+        elif fname == "get_Br":
+            packet_out = codec.encode_mpacket("{},{},{}".format(
+                *self.server.datapool.read_Br()))
+        # Sets the Br value:
+        elif fname == "set_Br":
+            Br = [args[0], args[1], args[2]]
+            self.server.datapool.write_Br(Br)
+            if self.v >= 4:
+                print("[DEBUG] Br written to datapool:", Br, type(Br))
+                print("[DEBUG] CHECK datapool.Br:", self.server.datapool.Br)
+            packet_out = codec.encode_mpacket("1")
+
+
+        # Requests the schedule name, length, and duration as csv string
+        elif fname == "get_schedule_info":
+            name, length, duration = self.server.datapool.get_schedule_info()
+            packet_out = codec.encode_mpacket(f"{name},{length},{duration}")
+
+
         # Requests the server uptime:
-        if fname == "get_server_uptime":
+        elif fname == "get_server_uptime":
             packet_out = codec.encode_mpacket(str(self.server.uptime()))
 
+
         # Requests the uptime of the communication socket, from the perspective
-        # of the server
+        # of the server # TODO DEPRECATED IN FAVOUR OF get_socket_info
         elif fname == "get_socket_uptime":
             """Return an m-packet with the time the corresponding client has 
             been connected for."""
             packet_out = codec.encode_mpacket(str(time()-self.socket_tstart))
+
+
+        elif fname == "get_socket_info":
+            """Return an m-packet with some information about the client from
+            the perspective of the server:
+            1. The time for which the client socket has been active
+            2. The client address
+            3. The client port
+            This information is packaged as a csv string.
+            """
+            uptime = time()-self.socket_tstart
+            packet_out = codec.encode_mpacket(
+                f"{uptime},{self.client_address[0]},{self.client_address[1]}"
+            )
+
 
         # # Requests the value of play mode (False indicates `manual mode`)
         # elif fname == "get_play_mode":
@@ -827,13 +1049,10 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
         # elif fname == "get_play_status":
         #     packet_out = codec.encode_mpacket(self.server.datapool.get_play_status())
 
-        # Requests the schedule name, length, and duration as csv string
-        elif fname == "get_schedule_info":
-            name, length, duration = self.server.datapool.get_schedule_info()
-            packet_out = codec.encode_mpacket(f"{name},{length},{duration}")
 
         else:
             raise ValueError(f"Function name '{fname}' not recognised!")
+
         return packet_out
 
 
