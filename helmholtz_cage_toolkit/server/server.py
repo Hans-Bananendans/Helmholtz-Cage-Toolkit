@@ -257,7 +257,8 @@ def threaded_read_ADC(datapool):
             # print("threaded_read_ADC() loop")
 
             if datapool.serveropt_spoof_Bm:
-                Bm_prev = datapool.read_Bm()
+                Bm_prev = datapool.read_Bm()[1]
+                # print("[DEBUG] Bm_prev", Bm_prev)
                 Bm = []
                 for i in (0, 1, 2):
                     Bm.append(datapool.mutate(
@@ -271,7 +272,7 @@ def threaded_read_ADC(datapool):
             else:
                 pass # DO ADC READING STUFF
 
-            print(f"[DEBUG] Bm = {datapool.read_Bm()}")
+            # print(f"[DEBUG] Bm = {datapool.read_Bm()}")
             sleep(max(0., datapool.threaded_read_ADC_period - (time() - t0)))
 
         else:
@@ -385,7 +386,19 @@ class DataPool:
     def mutate(self, v_prev, v_central, mutation_scale, fence_strength):
         """Mutate a value from a starting value, but push back if it gets too
         far from some defined central value.
+         - v_prev is the value to mutate
+         - v_central is the value around which the mutation will move
+         - mutation_scale is the size of the mutation steps
+         - fence_strength increases how tightly the mutation is kept near
+            v_central
+        Convergence is not guaranteed for all values. If mutation_scale is too
+        large in comparison to fence_strength and v_central, the results may
+        become unbound.
         """
+        # strs = ["v_prev", "v_central", "mutation_scale", "fence_strength"]
+        # for i, var in enumerate((v_prev, v_central, mutation_scale, fence_strength)):
+        #     print("[DEBUG]", strs[i], var)
+
         m = mutation_scale * v_central * (2 * rand() - 1)
         d = v_prev - v_central
 
@@ -1017,6 +1030,18 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
         # Requests the server uptime:
         elif fname == "get_server_uptime":
             packet_out = codec.encode_mpacket(str(self.server.uptime()))
+
+
+        elif fname == "set_serveropt_spoof_Bm":
+            self.server.datapool.serveropt_spoof_Bm = bool(int(args[0]))    # Not thread-safe
+            packet_out = codec.encode_mpacket(
+                str(int(self.server.datapool.serveropt_spoof_Bm)))          # Not thread-safe
+            if self.v >= 4:
+                print(f"[DEBUG] serveropt_spoof_Bm() set {bool(int(args[0]))}")
+
+        elif fname == "get_serveropt_spoof_Bm":
+            packet_out = codec.encode_mpacket(
+                str(int(self.server.datapool.serveropt_spoof_Bm)))          # Not thread-safe
 
 
         # Requests the uptime of the communication socket, from the perspective

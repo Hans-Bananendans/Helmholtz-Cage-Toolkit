@@ -1199,47 +1199,42 @@ def get_Bm_sim(socket, # TODO EVALUATE
     return [float(Bm_sim[0]), float(Bm_sim[1]), float(Bm_sim[2])]
 
 
-def get_serveropt_Bm_sim( # TODO EVALUATE
+def get_serveropt_spoof_Bm(
     socket,
     datastream: QDataStream = None):
-    """Getter of serveropt_Bm_sim.
+    """Getter of serveropt_spoof_Bm.
 
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    serveropt_Bm_sim = codec.decode_mpacket(
+    serveropt_spoof_Bm = codec.decode_mpacket(
         send_and_receive(
-            codec.encode_xpacket("get_serveropt_Bm_sim"),
+            codec.encode_xpacket("get_serveropt_spoof_Bm"),
             socket,
             datastream=datastream
         )
     )
-    return serveropt_Bm_sim
+    return bool(int(serveropt_spoof_Bm))
 
-def set_serveropt_Bm_sim( # TODO EVALUATE
+def set_serveropt_spoof_Bm(
     socket,
-    serveropt_Bm_sim: str,
+    serveropt_spoof_Bm: bool,
     datastream: QDataStream = None):
-    """Setter of serveropt_Bm_sim
+    """Setter of serveropt_spoof_Bm
 
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-
-    allowed_opts = ("disabled", "constant", "feedback", "mutate")
-    if serveropt_Bm_sim not in allowed_opts:
-        raise AssertionError(f"Invalid opt for serveropt_Bm_sim. Must be: {allowed_opts}")
-
-    print(f"[DEBUG] get_serveropt_Bm_sim('{serveropt_Bm_sim}')")
+    # print(f"[DEBUG] get_serveropt_Bm_sim('{serveropt_Bm_sim}')")
 
     confirm = codec.decode_mpacket(
         send_and_receive(
-            codec.encode_xpacket("set_serveropt_Bm_sim", serveropt_Bm_sim),
+            codec.encode_xpacket("set_serveropt_spoof_Bm", int(serveropt_spoof_Bm)),
             socket,
             datastream=datastream
         )
     )
-    return int(confirm)
+    return bool(int(confirm))
 
 
 def set_Br(

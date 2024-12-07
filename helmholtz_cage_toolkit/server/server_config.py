@@ -18,7 +18,7 @@ server_config = {
     "vmax_dac": 5.0,        # V
 
     # ==== Settings for Bm spoofing ====
-    "spoof_Bm": False,
+    "spoof_Bm": True,
     "params_mutate": [
         [100, 100, 100],    # central value
         [0.1, 0.1, 0.1],    # mutation scale
