@@ -5,7 +5,7 @@ from time import sleep, time
 
 from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.config import config
-import helmholtz_cage_toolkit.scc.scc2q as scc
+import helmholtz_cage_toolkit.scc.scc4 as codec
 import helmholtz_cage_toolkit.client_functions as cf
 
 
@@ -536,7 +536,7 @@ class MainWindow(QMainWindow):
         self.socket.readyRead.connect(self.on_read)
         self.socket.errorOccurred.connect(self.on_socketerror)
 
-        self.ds = QDataStream()
+        self.ds = QDataStream(self.socket)
 
 
         # ====================================================================
@@ -616,8 +616,7 @@ class MainWindow(QMainWindow):
         self.label_ping_avg = QLabel()
         layout_statusbox.addWidget(self.label_ping_avg, 6, 1)
         self.button_ping_avg = QPushButton("test")
-        # self.button_ping_avg.clicked.connect(self.do_ping_avg)
-        self.button_ping_avg.clicked.connect(self.do_echo)
+        self.button_ping_avg.clicked.connect(self.do_ping_avg)
         layout_statusbox.addWidget(self.button_ping_avg, 6, 2)
 
 
@@ -727,7 +726,7 @@ class MainWindow(QMainWindow):
         print("[DEBUG] SIGNAL: socket.readyRead")
         print("[ON READ]")
 
-        print(self.socket.readAll())
+        # print(self.socket.readAll()) # NEVER. EVER. DO THIS. OR PACKET CORRPUTION ENSUES!
 
     def on_socketerror(self, socketerror: QAbstractSocket.SocketError):
         print("[DEBUG] SIGNAL: socket.errorOccurred")
@@ -752,7 +751,7 @@ class MainWindow(QMainWindow):
 
     def do_echo(self):
         print("[DEBUG] do_echo()")
-        echo = cf.echo(self.socket, "Hello there!")
+        echo = cf.echo(self.socket, "", self.ds)
         print(echo)
 
 
@@ -760,6 +759,15 @@ class MainWindow(QMainWindow):
         # print("[DEBUG] do_uptime_update()")
         self.socket_uptime = time()-self.socket_tstart
         self.label_socket_uptime.setText("{:.0f} s".format(self.socket_uptime))
+
+    # def send_message(self):
+    #     print("[DEBUG] send_message()")
+    #     confirm = cf.message(self.socket, "Test message", self.ds)
+    #     print(confirm)
+
+    def get_uptime(self):
+        print("[DEBUG] do_uptime()")
+        print(cf.get_socket_uptime(self.socket, self.ds))
 
 
 if __name__ == "__main__":

@@ -635,16 +635,16 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             type_id = scc.packet_type(packet_in)
             # t1 = time()  # [TIMING]
 
-            # print("[DEBUG] packet_in:", packet_in)
+            print("[DEBUG] packet_in:", packet_in)
 
             if type_id == "m":
-                # print("[DEBUG] Detected m-package")
+                print("[DEBUG] Detected m-package")
                 msg = scc.decode_mpacket(packet_in)
                 print(f"[{self.client_address[0]}:{self.client_address[1]}] {msg}")
                 packet_out = scc.encode_mpacket("1")  # Send 1 as confirmation
 
             elif type_id == "e":
-                # print("[DEBUG] Detected e-package")
+                print("[DEBUG] Detected e-package")
                 packet_out = scc.encode_epacket(scc.decode_epacket(packet_in))
 
             elif type_id == "b":

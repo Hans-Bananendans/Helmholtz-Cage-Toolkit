@@ -1,3 +1,40 @@
+"""
+This is the main script for the server side of the Helmholtz Cage Toolkit,
+intended to be run from the Raspberry Pi controlling all the hardware.
+Its design is relatively simple, but since the implementation fully supports
+multi-threading, things tend to look a bit more complicated than they ought
+to.
+
+This script is intended to be run directly, preferably invoked via the
+terminal. The code to set up the server can be found after the line:
+    if __name__ == "__main__":
+
+The basic layout of the server setup is as follows:
+1. Create Datapool(), a general-purpose data container that the server will use
+    as a thread-safe data hub. The definition of the server Datapool is also in
+    this file, and is altogether distinct to the Datapool used by the clients.
+2. Fetch own address and port information from the server_config, via the
+    Datapool.
+3. Create a ThreadedTCPServer instance, which is the main and only server
+    instance. Its creation also defines a ThreadedTCPRequestHandler. Each
+    connected client will interact with their own instance of this handler,
+    running in a separate thread to keep things compartmentalized.
+4. The server object is placed in its own thread, which is then started.
+5. Two separate threads are created and started:
+    - A thread running the function threaded_write_DAC(), used for DAC hardware
+    interactions.
+    - A thread running the function threaded_read_ADC(), used for ADC hardware
+    interactions.
+
+After this, the server will be fully operational and run in perpetuity unless
+terminated or an exception occurs. When this occurs, the threads are one by one
+stopped, some work is done to finish gracefully, and finally the server Thread
+will be terminated.
+
+The server implementation relies on the server config and the SCC codec.
+"""
+
+
 from socketserver import TCPServer, ThreadingMixIn, BaseRequestHandler
 from threading import Thread, Lock, main_thread, active_count
 
@@ -6,7 +43,34 @@ from numpy.random import random
 from time import time, sleep
 
 import helmholtz_cage_toolkit.scc.scc4 as codec
-import helmholtz_cage_toolkit.server.server_config as sconfig
+from helmholtz_cage_toolkit.server.server_config import server_config as config
+
+
+
+
+def hardware_shutdown(datapool):
+    """
+    In case of a software error or upon termination of the server, it is of
+    critical importance that the hardware is properly terminated. Without this,
+    the hardware can still output power without user control, store energy,
+    cause voltage surges, etc.
+
+    This routine should be called in such cases, and will properly terminate
+    the hardware to a safe idling state. Given that the Helmholtz Cage Toolkit
+    is in many places relatively hardware agnostic, the proper termination
+    procedure is hardware specific nonetheless, depending for example on the
+    slewing properties of power supplies. If you are using particular hardware,
+    note that you may have to rewrite/overload this function with your own
+    implementation.
+
+    The basic overview of the termination procedure is as follows:
+    1. Command all power supplies to output zero amp.
+    2. Sleep for a specific period to allow the power supplies to slew to zero.
+    3. Reset the H-bridges to their default off state.
+    4. Inhibit the output of either the PSUs or the H-bridges with the
+        dedicated software toggle implementation.
+    """
+    print("hardware_shutdown() called")
 
 
 
@@ -25,14 +89,12 @@ def threaded_write_DAC(datapool):
         2. If time of next point is reached, move forward, write Bc value to
             DACs, and calculate next time to move
 
-
     If in "manual mode":
         1. Thread-safely read datapool.Bc
         2. Compare value to previously stored value
         3. If no change was made, sleep for 'period' and start again
         4. If a change was detected, apply this change by instructing the DACs
         5. Also store a copy to datapool.Bc_applied
-
 
     The thread running this function will be in charge of controlling hardware.
     It is important for this hardware that in the event of a software
@@ -109,23 +171,20 @@ def threaded_write_DAC(datapool):
 
         # ==== MANUAL MODE ====
         if not datapool.pause_threaded_write_DAC:  # Pause loop when set to True
+            # print("threaded_write_DAC() loop")
             t0 = time()
-            Bc_read = datapool.read_Bc()
+            Bc_read = [0., 0., 0.]
             if Bc_read == Bc_prev:
-                sleep(max(0., datapool.apply_Bc_period - (time() - t0)))
+                sleep(max(0., datapool.threaded_write_DAC_period - (time() - t0)))
             else:
-                # control_vals = instruct_DACs(datapool, Bc_read)
-                Bc, Ic, Vc = instruct_DACs(datapool, Bc_read)
-                # datapool.write_control_vals(control_vals)
-                datapool.write_control_vals(Bc, Ic, Vc)
-                Bc_prev = Bc_read
+                pass
         else:
             sleep(datapool.threaded_write_DAC_period)
 
     # When loop is broken, set power supply values to zero.
     # TODO implement safe shutdown
-    instruct_DACs(datapool, [0., 0., 0.])
-    print(f"Closing apply_Bc thread")
+    print(f"Closing write_DAC thread")
+    hardware_shutdown(datapool)
 
 def threaded_read_ADC(datapool):
     """The thread running this function will periodically read the value of
@@ -197,14 +256,13 @@ def threaded_read_ADC(datapool):
         # ==== MANUAL MODE ====
         if not datapool.pause_threaded_read_ADC:  # Pause loop when set to True
             t0 = time()
+            # print("threaded_read_ADC() loop")
             # DO READING STUFF
+            sleep(datapool.threaded_read_ADC_period) # TODO remove
         else:
             sleep(datapool.threaded_read_ADC_period)
 
-    # When loop is broken, set power supply values to zero.
-    # TODO implement safe shutdown
-    instruct_DACs(datapool, [0., 0., 0.])
-    print(f"Closing apply_Bc thread")
+    print(f"Closing read ADC thread")
 
 
 # DataPool object
@@ -232,7 +290,6 @@ class DataPool:
         self.Bc = [0., 0., 0.]          # Control vector Bc to be applied [nT]
 
         self.output_enable = False
-
 
 
         self.i_step = 0
@@ -572,6 +629,11 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
     Because the DataPool object implements its own thread locks, it should
     also be possible for the clients to safely interact with the datapool, so
     long as the thread-safe read and write functions are used.
+
+    Its behaviour is as follows: It will run setup() once, after which it will
+    loop handle() forever. Within handle(), the more specialized function
+    command_handle() may be invoked. When the handle() loop is broken, finish()
+    will run once, after which the class instance will terminate.
     """
 
     def setup(self):
@@ -579,7 +641,33 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
         self.socket_tstart = time()
         print(f"Client {self.client_address[0]}:{self.client_address[1]} connected.")
 
+        self.v = config["verbosity"]
+
     def handle(self):
+        """
+        This is the default handling routine for any data packets sent to the
+        server from any client. Its behaviour is to while-loop forever until
+        interrupted.
+
+        Every server-client interaction is blocking for that client. This
+        means that every incoming packet warrants a response packet from the
+        server before a new packet can be sent from the client. A packet from
+        one client will not block a packet coming from another client, as it
+        will be interacting with a different instance of the handler running
+        in its own thread.
+
+        The first thing that is done when a packet arrives is its type is
+        identified. This involves the reading of the first byte character
+        through the packet_type() function in the SCC codec, which can be done
+        very quickly. Based on the type, a different subroutine is chosen to
+        handle the packet. For x-packets, whose contents may vary a lot, the
+        handling routines are bundled in the command_handle() function.
+
+        Every subroutine for handling a particular package type will result in
+        the creation "package_out", which holds the package that will be sent
+        in response. Empty packets will not be sent.
+        """
+        print("handle()")
         while True:
             packet_out = None
             packet_in = self.request.recv(256)
@@ -589,32 +677,28 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             type_id = codec.packet_type(packet_in)
             # t1 = time()  # [TIMING]
 
-            # print("[DEBUG] packet_in:", packet_in)
+            if self.v >= 4:
+                print("[DEBUG] packet_in:", packet_in)
 
-            if type_id == "m":
-                # print("[DEBUG] Detected m-package")
-                msg = codec.decode_mpacket(packet_in)
-                print(f"[{self.client_address[0]}:{self.client_address[1]}] {msg}")
-                packet_out = codec.encode_mpacket("1")  # Send 1 as confirmation
-
-            elif type_id == "e":
-                # print("[DEBUG] Detected e-package")
-                packet_out = codec.encode_epacket(codec.decode_epacket(packet_in))
-
-            elif type_id == "b":
-                # print("[DEBUG] Detected b-package")
-                packet_out = codec.encode_bpacket(*self.server.datapool.read_Bm())
-                # print(packet_out)
-
-            elif type_id == "t":
-                # print("[DEBUG] Detected t-package")
-                packet_out = codec.encode_tpacket(
-                    *self.server.datapool.read_telemetry()
+            if type_id == "b":
+                """b-packets received from a client are considered a request 
+                for Bm, and always have their contents discarded. The server
+                sends back a b-packet with a timestamp and the current value
+                of Bm."""
+                if self.v >= 2:
+                    print("[DEBUG] Detected b-packet")
+                packet_out = codec.encode_bpacket(
+                    *self.server.datapool.read_Bm()
                 )
-                # print(packet_out)
+
 
             elif type_id == "c":
-                # print("[DEBUG] Detected c-package")
+                """c-packets contain power supply instructions in the form of
+                Bc: a desired flux density value for all three axes. Return
+                an m-packet with 1 if successfully passed on to the Datapool,
+                or -1 if it was unsuccessful."""
+                if self.v >= 2:
+                    print("[DEBUG] Detected c-packet")
                 Bc = codec.decode_cpacket(packet_in)
                 try:
                     self.server.datapool.write_Bc(Bc)
@@ -624,35 +708,104 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 except:  # noqa
                     packet_out = codec.encode_mpacket("-1")
 
+
+            elif type_id == "e":
+                """The purpose of e-packets is to require as little processing 
+                as possible, and they will be comstantly coming in from the 
+                client, so they are instantly decoded, re-encoded, and echoed 
+                back without any additional action."""
+                if self.v >= 2:
+                    print("[DEBUG] Detected e-packet")
+                packet_out = codec.encode_epacket(
+                    codec.decode_epacket(packet_in)
+                )
+
+
+            elif type_id == "m":
+                """m-packets comprise simple string messages. They are always 
+                displayed in the server terminal, and a simple acknowledgement 
+                m-packet is sent in response."""
+                if self.v >= 2:
+                    print("[DEBUG] Detected m-packet")
+
+                msg = codec.decode_mpacket(packet_in)
+                print(f"[{self.client_address[0]}:{self.client_address[1]}] {msg}")
+                packet_out = codec.encode_mpacket("1")  # Send 1 as confirmation
+
+
             elif type_id == "s":
-                # print("[DEBUG] Detected b-package")
+                """s-packets are schedule segments and usually sent in large
+                batches. The corresponding entry in the schedule located in
+                the Datapool is updated with the information in the s-packet.
+                The segment number is sent back as a acknowledgement and 
+                verification."""
+                if self.v >= 2:
+                    print("[DEBUG] Detected s-packet")
 
                 segment = codec.decode_spacket(packet_in)
                 self.server.datapool.set_schedule_segment(segment)
                 # Send segment number back as a verification
                 packet_out = codec.encode_mpacket(str(segment[0]))
 
+
+            elif type_id == "t":
+                """t-packets received from a client are considered a request 
+                for telemetry, and always have their contents discarded. The 
+                server responds with a t-packet with a timestamp and the 
+                latest telemetry values as specified by the SCC codec."""
+                if self.v >= 2:
+                    print("[DEBUG] Detected t-packet")
+                packet_out = codec.encode_tpacket(
+                    *self.server.datapool.read_telemetry()
+                )
+
+
             elif type_id == "x":
-                # print("[DEBUG] Detected x-package")
+                """x-packets always contain a command, the number of additional
+                arguments, as well as these additional arguments. This routine
+                simply identifies the function name and its arguments, and 
+                delegates these to command_handle() for further processing.
+                When done, command_handle() returns the contents of packet_out.
+                """
+                if self.v >= 2:
+                    print("[DEBUG] Detected x-packet")
                 fname, args = codec.decode_xpacket(packet_in)
-                # print(f"[DEBUG] {fname}({args})")
+                if self.v >= 2:
+                    print(f"[DEBUG] {fname}({args})")
                 packet_out = self.command_handle(fname, args)
 
+
             else:
+                """Raise exception when encountering an unrecognised packet 
+                type."""
                 raise ValueError(f"Encountered uninterpretable type_id '{type_id}' in received packet.")
 
-            # print("[DEBUG] packet_out:", packet_out)
+            if self.v >= 4:
+                print("[DEBUG] packet_out:", packet_out)
 
             # t2 = time()  # [TIMING]
 
-            # If a response was warranted, send it:
+            # Send packet_out:
             if packet_out is not None:
                 self.request.sendall(packet_out)
+
             # t3 = time()  # [TIMING]
             # print(f"Sent {codec.packet_type(packet_out)}-packet. Time: {int((t1-t0)*1E6)}, {int((t2-t1)*1E6)}, {int((t3-t2)*1E6)} \u03bcs")  # [TIMING]
 
 
     def command_handle(self, fname, args):
+        """
+        This function handles the interpretation of all x-packets sent to the
+        server, executes the corresponding actions, and composes the
+        appropriate properties of the response packet.
+
+        Here is a list of all functions the server currently supports:
+        get_schedule_info
+        get_server_uptime
+        get_socket_uptime
+
+
+        """
         packet_out = None
 
         # Requests the server uptime:
@@ -662,6 +815,8 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
         # Requests the uptime of the communication socket, from the perspective
         # of the server
         elif fname == "get_socket_uptime":
+            """Return an m-packet with the time the corresponding client has 
+            been connected for."""
             packet_out = codec.encode_mpacket(str(time()-self.socket_tstart))
 
         # # Requests the value of play mode (False indicates `manual mode`)
@@ -752,21 +907,19 @@ if __name__ == "__main__":
     # Gracefully terminate control threads
     print("Shutting down - finishing threads.")
     datapool.kill_threaded_read_ADC = True
-    # datapool.kill_write_Bm = True  # TODO STALE
     datapool.kill_threaded_write_DAC = True
 
     ttest = time()
-    # thread_write_Bm.join(timeout=1.0)
-    thread_write_tmBmIm.join(timeout=1.0)
-    print(f"Shut down measure_tmBmIm_thread in {round((time()-ttest)*1E3, 3)} ms")
+    thread_read_ADC.join(timeout=1.0)
+    print(f"Shut down read_ADC thread in {round((time()-ttest)*1E3, 3)} ms")
 
     ttest = time()
-    thread_apply_Bc.join(timeout=1.0)
-    print(f"Shut down apply_Bc_thread in {round((time()-ttest)*1E3, 3)} ms")
+    thread_write_DAC.join(timeout=5.0)
+    print(f"Shut down write_DAC thread in {round((time()-ttest)*1E3, 3)} ms")
 
     # For safety: set power supplies to zero, separately from apply_Bc_thread
     print(f"Resetting Bc just in case")
-    instruct_DACs(datapool, [0., 0., 0.])
+    hardware_shutdown(datapool)
 
     # Server termination
     total_uptime = server.uptime()

@@ -88,6 +88,7 @@ from PyQt5.QtWidgets import (
     QMainWindow,
     QMenuBar,
     QMessageBox,
+    QProgressBar,
     QPushButton,
     QSizePolicy,
     QSpinBox,
