@@ -648,8 +648,29 @@ def get_telemetry(socket,
 
 
 # ==== SCHEDULE ====
-def print_schedule_info( # TODO EVALUATE
+
+# def print_schedule_info(
+#     socket,
+#     datastream: QDataStream = None):
+#     """Prints schedule info to the console *of the server*. Mainly used for
+#     debugging with visual access to the server console output.
+#
+#     If implementing this function with QTcpSocket, you can specify a re-usable
+#     QDataStream object to substantially increase performance.
+#     """
+#     confirm = codec.decode_mpacket(
+#         send_and_receive(
+#             codec.encode_xpacket("print_schedule_info"),
+#             socket,
+#             datastream=datastream
+#         )
+#     )
+#     return int(confirm)
+
+
+def print_schedule_info(
     socket,
+    max_entries: int = 16,
     datastream: QDataStream = None):
     """Prints schedule info to the console *of the server*. Mainly used for
     debugging with visual access to the server console output.
@@ -659,80 +680,39 @@ def print_schedule_info( # TODO EVALUATE
     """
     confirm = codec.decode_mpacket(
         send_and_receive(
-            codec.encode_xpacket("print_schedule_info"),
+            codec.encode_xpacket("print_schedule_info", max_entries),
             socket,
             datastream=datastream
         )
     )
+
     return int(confirm)
 
 
-def print_schedule( # TODO EVALUATE
+def get_schedule_info(
     socket,
-    max_entries: int = 32,
-    datastream: QDataStream = None):
-    """Prints schedule info to the console *of the server*. Mainly used for
-    debugging with visual access to the server console output.
-
-    If implementing this function with QTcpSocket, you can specify a re-usable
-    QDataStream object to substantially increase performance.
-    """
-    confirm = codec.decode_mpacket(
-        send_and_receive(
-            codec.encode_xpacket("print_schedule", max_entries),
-            socket,
-            datastream=datastream
-        )
-    )
-    return int(confirm)
-
-
-def get_schedule_info( # TODO EVALUATE
-    socket,
+    generate_hash=True,
     datastream: QDataStream = None):
     """Gets some information about the schedule on the server side. Gets the
+    schedule name, the length, the duration, and the hash.
 
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-
-    name, length_string, duration_string = codec.decode_mpacket(
+    info = codec.decode_mpacket(
         send_and_receive(
-            codec.encode_xpacket("get_schedule_info"),
+            codec.encode_xpacket("get_schedule_info", str(int(generate_hash))),
             socket,
             datastream=datastream
         )
     ).split(",")
-    return name, int(length_string), float(duration_string)
+
+    [name, length_string, duration_string, schedule_hash] = info
+
+    return name, int(length_string), float(duration_string), schedule_hash
 
 
-def get_schedule_hash( # TODO EVALUATE
-    socket,
-    datastream: QDataStream = None,
-    timeout_ms=10000):
-    """Requests the server to hash its schedule and send the result.
-
-    For large schedules (>1M segments), calculating the hash can take over one
-    second, which is the default timeout for the send_and_receive() call.
-    Therefore, get_schedule_hash() allows you to raise this limit by specifying
-    a value for `timeout_ms`, set to 10 seconds by default.
-
-    If implementing this function with QTcpSocket, you can specify a re-usable
-    QDataStream object to substantially increase performance.
-    """
-
-    hash_string = codec.decode_mpacket(
-        send_and_receive(
-            codec.encode_xpacket("get_schedule_hash"),
-            socket,
-            datastream=datastream,
-            timeout_ms=timeout_ms,
-        )
-    )
-    return hash_string
-
-
-def initialize_schedule( # TODO EVALUATE
+def initialize_schedule(
     socket,
     datastream: QDataStream = None):
     """Initialize a schedule on the server's end.
@@ -753,7 +733,7 @@ def initialize_schedule( # TODO EVALUATE
     return int(confirm)
 
 
-def allocate_schedule( # TODO EVALUATE
+def allocate_schedule(
     socket,
     name: str,
     n_seg: int,
@@ -772,18 +752,40 @@ def allocate_schedule( # TODO EVALUATE
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    print(f"[DEBUG] allocate_schedule(): {socket}, {name}({type(name)}), {n_seg}({type(n_seg)}), {float(duration)}({type(float(duration))})")
-    packet_in = send_and_receive(
-        codec.encode_xpacket("allocate_schedule", name, n_seg, float(duration)),
-        socket,
-        datastream=datastream
+    # print(f"[DEBUG] allocate_schedule(): {socket}, {name}({type(name)}), {n_seg}({type(n_seg)}), {float(duration)}({type(float(duration))})")
+    confirm = codec.decode_mpacket(
+        send_and_receive(
+            codec.encode_xpacket("allocate_schedule", name, n_seg, float(duration)),
+            socket,
+            datastream=datastream
+        )
     )
-    print(f"[DEBUG] allocate_schedule(): packet_in: {packet_in}")
-    confirm = codec.decode_mpacket(packet_in)
+    # # print(f"[DEBUG] allocate_schedule(): packet_in: {packet_in}")
+    # confirm = codec.decode_mpacket(packet_in)
     return int(confirm)
 
 
-def transfer_segment( # TODO EVALUATE
+def get_schedule_segment(
+    socket,
+    segment_id: int,
+    datastream: QDataStream = None):
+    """Gets some information about the schedule on the server side. Gets the
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+
+    segment = codec.decode_spacket(
+        send_and_receive(
+            codec.encode_xpacket("get_schedule_segment", segment_id),
+            socket,
+            datastream=datastream
+        )
+    )
+    return segment
+
+
+def set_schedule_segment(
     socket,
     segment,
     datastream: QDataStream = None):
@@ -802,6 +804,7 @@ def transfer_segment( # TODO EVALUATE
             datastream=datastream
         )
     )
+
     return int(confirm)
 
 
@@ -817,7 +820,7 @@ def transfer_schedule(  # TODO Incorporate schedule validation tools
     schedule. It will first pre-allocate the schedule buffer on the server
     side, and then sequentially transfer the schedule segment by segment.
 
-    Every s-packet contains a single segment, as dictated by the SCC2 codec.
+    Every s-packet contains a single segment, as dictated by the SCC codec.
     The server sends a confirmation for each package received, which this
     function will also examine, raising an exception if something went wrong.
 
@@ -845,8 +848,8 @@ def transfer_schedule(  # TODO Incorporate schedule validation tools
     # elif type(socket) == QTcpSocket and not datastream:
     #     datastream = QDataStream(socket_obj)
 
-    print(f"[DEBUG] transfer_schedule(), about to do:")
-    print(f"[DEBUG  allocate_schedule({socket}, {name}|{type(name)}, {len(schedule)}|{type(len(schedule))}, {schedule[-1][2]}|{type(schedule[-1][2])}")
+    # print(f"[DEBUG] transfer_schedule(), about to do:")
+    # print(f"[DEBUG  allocate_schedule({socket}, {name}|{type(name)}, {len(schedule)}|{type(len(schedule))}, {schedule[-1][2]}|{type(schedule[-1][2])}")
     # First allocate schedule
     confirm = allocate_schedule(
         socket, name, len(schedule), schedule[-1][2], datastream=datastream
@@ -874,12 +877,41 @@ def transfer_schedule(  # TODO Incorporate schedule validation tools
     return 1
 
 
-def schedule_hash(schedule: list): # TODO EVALUATE
+def get_schedule_hash(
+    socket,
+    datastream: QDataStream = None,
+    timeout_ms=10000):
+    """Requests the server to hash its schedule and send the result. It reuses
+    the 'get_schedule_info' command and returns only the hash.
+
+    For large schedules (>1M segments), calculating the hash can take over one
+    second, which is the default timeout for the send_and_receive() call.
+    Therefore, get_schedule_hash() allows you to raise this limit by specifying
+    a value for `timeout_ms`, set to 10 seconds by default.
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+
+    generate_hash = True
+
+    (_, _, _, hash_string) = codec.decode_mpacket(
+        send_and_receive(
+            codec.encode_xpacket("get_schedule_info", generate_hash),
+            socket,
+            datastream=datastream,
+            timeout_ms=timeout_ms,
+        )
+    ).split(",")
+    return hash_string
+
+
+def calculate_schedule_hash(schedule: list):
     """Creates a schedule digest using the BLAKE2b algorithm"""
-    return blake2b(array(schedule).tobytes(), digest_size=64).hexdigest()
+    return blake2b(array(schedule).tobytes(), digest_size=8).hexdigest()
 
 
-def verify_schedule( # TODO EVALUATE
+def verify_schedule(
     socket,
     schedule,
     datastream: QDataStream = None,
@@ -894,7 +926,7 @@ def verify_schedule( # TODO EVALUATE
     This function then outputs the boolean result of the comparison.
 
     For large schedules (>1M segments), calculating the hash can take some
-    time, and for schedules of this size, verify_schedule automatically
+    time, and for schedules of this size, verify_schedule() automatically
     estimates some appropriate TCP interaction timeout, according to:
 
     timeout_ms = 125% * ( computation_factor * 1,000 [ms] / 1,000,000 )
@@ -916,9 +948,11 @@ def verify_schedule( # TODO EVALUATE
         socket,
         timeout_ms=timeout_ms,
         datastream=datastream)
-    hash_schedule_local = schedule_hash(schedule)
+    hash_schedule_local = calculate_schedule_hash(schedule)
 
-    return hash_schedule_local == hash_schedule_server
+    verify = (hash_schedule_local == hash_schedule_server)
+
+    return verify, hash_schedule_local, hash_schedule_server
 
 
 

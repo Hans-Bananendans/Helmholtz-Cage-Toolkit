@@ -422,7 +422,7 @@ class DataPool:
         self._lock_schedule.release()
         return name, length, duration
 
-    def print_schedule_info(self):
+    def print_schedule_info(self, max_entries=6):
         self._lock_schedule.acquire(timeout=0.001)
 
         print(" ==== SCHEDULE INFO ==== ")

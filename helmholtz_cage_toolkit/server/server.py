@@ -38,6 +38,7 @@ The server implementation relies on the server config and the SCC codec.
 from socketserver import TCPServer, ThreadingMixIn, BaseRequestHandler
 from threading import Thread, Lock, main_thread, active_count
 
+from hashlib import blake2b
 from numpy import array, zeros
 from numpy.random import rand
 from time import time, sleep
@@ -600,6 +601,185 @@ class DataPool:
         self._lock_DAC.release()
 
 
+    # ==== SCHEDULE HANDLING =================================================
+
+    def read_schedule_segment(self, segment_id: int):
+        """Thread-safely reads a schedule segment from the schedule in the
+        datapool, if it exists, and returns it. If it does not exist, it
+        returns 0.
+
+        The lock prevents other threads from accessing the schedule whilst it
+        is being edited. Useful to prevent hard-to-debug race condition bugs.
+        """
+        # print("[DEBUG] read_schedule_segment()")
+
+        self._lock_schedule.acquire(timeout=0.001)
+
+        if segment_id > len(self.schedule) - 1:
+            print(f"[WARNING] get_schedule_segment(): Tried to set " +
+                  f"segment {segment_id}, but this is out of bounds for a " +
+                  f"schedule of length {len(self.schedule)}!")
+            return 0
+
+        segment = self.schedule[segment_id]
+        self._lock_schedule.release()
+        return segment
+
+    def write_schedule_segment(self, segment: list):
+        """Thread-safely writes a schedule segment into the schedule, by
+        consulting the ID of the segment (first entry, segment[0]) and writing
+        it to the schedule object.
+
+        The lock prevents other threads from accessing the schedule whilst it
+        is being edited. Useful to prevent hard-to-debug race condition bugs.
+        """
+        # print("[DEBUG] write_schedule_segment()")
+
+        self._lock_schedule.acquire(timeout=0.001)
+        self.schedule[segment[0]] = segment
+        self.schedule_hash = ""     # Modifying the schedule voids the hash.
+        self._lock_schedule.release()
+
+
+    def initialize_schedule(self):
+        """Thread-safely writes the default init schedule to the datapool.
+        Returns a 1 for remote confirmation purposes.
+
+        The lock prevents other threads from accessing the schedule whilst it
+        is being edited. Useful to prevent hard-to-debug race condition bugs.
+        """
+        # print("[DEBUG] initialize_schedule()")
+
+        self._lock_schedule.acquire(timeout=0.001)
+
+        self.schedule_hash = ""     # Modifying the schedule voids the hash.
+
+        self.schedule = [[0, 0, 0., 0., 0., 0.], ]
+        self.schedule_name = "init"
+        self.schedule_duration = 0.0
+
+        self._lock_schedule.release()
+
+        # print(f"[DEBUG] HASH INIT {self.schedule_hash}")
+        return 1
+
+
+    def allocate_schedule(self, name: str, n_seg: int, duration: float):
+        """Thread-safely allocates an empty schedule of a defined size. This
+        schedule then has to be filled with segments by using
+        write_schedule_segment(). The schedule name and duration are also
+        written to the datapool. Returns a 1 for remote confirmation purposes.
+
+        Note that the dtypes of the empty schedule values will all be float,
+        where some have to be int, but write_schedule_segment() addresses this.
+
+        The lock prevents other threads from accessing the schedule whilst it
+        is being edited. Useful to prevent hard-to-debug race condition bugs.
+        """
+        # print("[DEBUG] allocate_schedule()")
+
+        self._lock_schedule.acquire(timeout=0.001)
+
+        self.schedule_hash = ""     # Modifying the schedule voids the hash.
+
+        self.schedule_name = name
+        self.schedule_duration = duration
+        # self.schedule = [[0, 0, 0., 0., 0., 0.], ]*n_seg  # Risky implementation
+        self.schedule = self.init_buffer(n_seg, 6)
+
+        self._lock_schedule.release()
+
+        # print(f"[DEBUG] HASH ALLOC {self.schedule_hash}")
+
+        return 1
+
+    def read_schedule_hash(self, generate_hash=True):
+        """Thread-safely reads the value of self.schedule_hash and returns it.
+        If the hash is empty, generate it, but only when allowed.
+
+        The reason for potentially disallowing it is that hashing takes
+        significant time and computational resources, and since accessing it
+        here thread-locks the object, it means that it cannot be accessed for
+        schedule playback, which would result in execution lag.
+
+        The lock prevents other threads from accessing the schedule whilst it
+        is being edited. Useful to prevent hard-to-debug race condition bugs.
+
+        [DEV NOTE] As an extra safety/performance measure, the schedule could
+        be deep-copied so that the thread lock can be lifted while the hashing
+        function works on the schedule copy. However, this will take twice the
+        memory resources, and for large schedules, where you expect the hashing
+        to take a long time, available memory will already be limited. So this
+        idea has been shelved for now, but may be revisited in the future.
+        """
+        # print("[DEBUG] read_schedule_hash()")
+
+        self._lock_schedule.acquire(timeout=30.000)
+
+        schedule_hash = self.schedule_hash
+
+        if schedule_hash == "" and generate_hash is True:
+            t0 = time()
+            schedule_hash = blake2b(
+                array(self.schedule).tobytes(), digest_size=8
+            ).hexdigest()
+            print(f"[BLAKE2B] Hash generated in {int((time()-t0)*1E6)} \u03bcs")
+            self.schedule_hash = schedule_hash
+
+        self._lock_schedule.release()
+        return schedule_hash
+
+    def read_schedule_info(self, generate_hash=True):
+        # print("[DEBUG] read_schedule_info()")
+
+        self._lock_schedule.acquire(timeout=0.001)
+
+        name = self.schedule_name
+        length = len(self.schedule)
+        duration = self.schedule_duration
+
+        self._lock_schedule.release()
+
+        # print(f"[DEBUG] HASH SI 1 {self.schedule_hash}")
+
+        schedule_hash = self.read_schedule_hash(generate_hash=generate_hash)
+
+        # print(f"[DEBUG] HASH SI 2 {self.schedule_hash}")
+
+        return name, length, duration, schedule_hash
+
+    def print_schedule_info(self, max_entries=16):
+        self._lock_schedule.acquire(timeout=0.001)
+
+        print(" ==== SCHEDULE INFO ==== ")
+        print("Name:    ", self.schedule_name)
+        print("n_seg:   ", len(self.schedule))
+        print("Duration:", self.schedule_duration)
+        print("Hash", self.schedule_hash)
+
+        if len(self.schedule) == 0:
+            pass
+        elif len(self.schedule) == 1:
+            print(" [Preview]")
+            print(self.schedule[0])
+        elif len(self.schedule) == 2:
+            print(" [Preview]")
+            print(self.schedule[0])
+            print(self.schedule[1])
+        else:
+            print(" [Preview]")
+            n_prints = min(len(self.schedule), max_entries)
+            for i_seg in range(0, int(n_prints/2)):
+                print(self.schedule[i_seg])
+            if len(self.schedule) > max_entries:
+                print("...         ...")
+            for i_seg in range(-int(n_prints/2), 0):
+                print(self.schedule[i_seg])
+
+        self._lock_schedule.release()
+        return 1
+
+
     # def activate_play_mode(self):
     #     print("[DEBUG] activate_play_mode()")
     #     self.play_mode = True
@@ -654,237 +834,6 @@ class DataPool:
     #     # print("[DEBUG] get_play_status()")
     #     return self.play_status  # Implemented non-thread-safe
 
-    # def set_schedule_segment(self, segment: list):
-    #     # print("set_schedule_segment()")
-    #
-    #     self._lock_schedule.acquire(timeout=0.001)
-    #
-    #     self.schedule[segment[0]] = segment
-    #
-    #     self._lock_schedule.release()
-
-    def initialize_schedule(self):
-        print("initialize_schedule()")
-
-        self._lock_schedule.acquire(timeout=0.001)
-
-        self.schedule = [[0, 0, 0., 0., 0., 0.], ]
-        self.schedule_name = "init"
-        self.schedule_duration = 0.0
-
-        self._lock_schedule.release()
-        return 1
-
-    def allocate_schedule(self, name: str, n_seg: int, duration: float):
-        print("[DEBUG] allocate_schedule()")
-
-        self._lock_schedule.acquire(timeout=0.001)
-
-        self.schedule_name = name
-        self.schedule_duration = duration
-        self.schedule = [[0, 0, 0., 0., 0., 0.], ]*n_seg # TODO NEVER USE THIS
-
-        self._lock_schedule.release()
-        return 1
-
-    def get_schedule(self):
-        # print("[DEBUG] get_schedule()")
-
-        self._lock_schedule.acquire(timeout=0.001)
-
-        schedule = self.schedule
-
-        self._lock_schedule.release()
-        return schedule
-
-    def get_schedule_info(self):
-        # print("[DEBUG] get_schedule_info()")
-
-        self._lock_schedule.acquire(timeout=0.001)
-
-        name = self.schedule_name
-        length = len(self.schedule)
-        duration = self.schedule_duration
-
-        self._lock_schedule.release()
-        return name, length, duration
-
-    def print_schedule_info(self):
-        self._lock_schedule.acquire(timeout=0.001)
-
-        print(" ==== SCHEDULE INFO ==== ")
-        print("Name:    ", self.schedule_name)
-        print("n_seg:   ", len(self.schedule))
-        print("Duration:", self.schedule_duration)
-        print(" [Preview]")
-        if len(self.schedule) == 1:
-            print(self.schedule[0])
-        else:
-            print(self.schedule[0])
-            print("...         ...")
-            print(self.schedule[-1])
-
-        self._lock_schedule.release()
-        return 1
-
-    def print_schedule(self, max_entries):
-        self._lock_schedule.acquire(timeout=0.001)
-
-        if len(self.schedule) == 1:
-            print(self.schedule[0])
-
-        else:
-            n_prints = min(len(self.schedule), max_entries)
-
-            for i_seg in range(0, int(n_prints/2)):
-                print(self.schedule[i_seg])
-            if len(self.schedule) > max_entries:
-                print("...         ...")
-            for i_seg in range(-int(n_prints/2), 0):
-                print(self.schedule[i_seg])
-
-        self._lock_schedule.release()
-
-
-        # print(str(self.get_schedule()))
-        # print(hash(str(self.get_schedule())))
-        return 1
-
-
-    # def write_DAC(self, Bm):  # TODO STALE
-    #     """Thread-safely write Bm to the datapool
-    #
-    #     The lock prevents other threads from accessing self.Bm whilst it is
-    #     being updated. Useful to prevent hard-to-debug race condition bugs.
-    #     """
-    #     self._lock_Bm.acquire(timeout=0.001)
-    #     try:
-    #         self.Bm = Bm
-    #     except:  # noqa
-    #         print("[WARNING] DataPool.write_Bm(): Unable to write to self.Bm!")
-    #     self._lock_Bm.release()
-    #
-    # def write_Bm(self, Bm):  # TODO STALE
-    #     """Thread-safely write Bm to the datapool
-    #
-    #     The lock prevents other threads from accessing self.Bm whilst it is
-    #     being updated. Useful to prevent hard-to-debug race condition bugs.
-    #     """
-    #     self._lock_Bm.acquire(timeout=0.001)
-    #     try:
-    #         self.Bm = Bm
-    #     except:  # noqa
-    #         print("[WARNING] DataPool.write_Bm(): Unable to write to self.Bm!")
-    #     self._lock_Bm.release()
-    #
-    #
-    # def write_tmBmIm(self, tm, Bm, Im):
-    #     """Thread-safely write tm, Bm, and Im to the datapool.
-    #
-    #     The lock prevents other threads from accessing self.Bm and self.Im
-    #     whilst they is being updated. Useful to prevent hard-to-debug race
-    #     condition bugs.
-    #     """
-    #     self._lock_tmBmIm.acquire(timeout=0.001)
-    #     try:
-    #         self.tm = tm
-    #         self.Bm = Bm
-    #         self.Im = Im
-    #     except:  # noqa
-    #         print("[WARNING] DataPool.write_tmBmIm(): Unable to write correctly!")
-    #     self._lock_tmBmIm.release()
-    #
-    # def read_telemetry(self):
-    #     """Thread-safely reads the current Bm field from the datapool
-    #
-    #     The lock prevents other threads from updating self.Bm whilst it is
-    #     being read. Useful to prevent hard-to-debug race condition bugs.
-    #     """
-    #     self._lock_tmBmIm.acquire(timeout=0.001)
-    #     try:
-    #         tm = self.tm
-    #         Bm = self.Bm
-    #         Im = self.Im
-    #         Ic = self.Ic
-    #         Vc = self.Vc
-    #         Vvc = self.Vvc
-    #         Vcc = self.Vcc
-    #     except:  # noqa
-    #         print("[WARNING] DataPool.read_telemetry(): Unable to read correctly!")
-    #     self._lock_tmBmIm.release()
-    #     return tm, Bm, Im, Ic, Vc, Vvc, Vcc
-    #
-    # def read_Bm(self):
-    #     """Thread-safely reads the current Bm field from the datapool
-    #
-    #     The lock prevents other threads from updating self.Bm whilst it is
-    #     being read. Useful to prevent hard-to-debug race condition bugs.
-    #     """
-    #     self._lock_Bm.acquire(timeout=0.001)
-    #     try:
-    #         tm = self.tm
-    #         Bm = self.Bm
-    #     except:  # noqa
-    #         print("[WARNING] DataPool.read_Bm(): Unable to read self.Bm!")
-    #     self._lock_Bm.release()
-    #     return tm, Bm
-    #
-    #
-    # def write_Bc(self, Bc):  # TODO: DUMMY - Implement actual functionality
-    #     """Thread-safely write Bc to the datapool
-    #
-    #     The lock prevents other threads from accessing self.Bc whilst it is
-    #     being updated. Useful to prevent hard-to-debug race condition bugs.
-    #     """
-    #     self._lock_Bc.acquire(timeout=0.001)
-    #     try:
-    #         self.Bc = Bc
-    #     except:  # noqa
-    #         print("[WARNING] DataPool.write_Bc(): Unable to write to self.Bc!")
-    #     self._lock_Bc.release()
-    #
-    #
-    # def read_Bc(self):
-    #     """Thread-safely reads the current Bc field from the datapool.
-    #
-    #     The lock prevents other threads from updating self.Bc whilst it is
-    #     being read. Useful to prevent hard-to-debug race condition bugs.
-    #     """
-    #     self._lock_Bc.acquire(timeout=0.001)
-    #     try:
-    #         Bc = self.Bc
-    #     except:  # noqa
-    #         print("[WARNING] DataPool.read_Bc(): Unable to read self.Bc!")
-    #     self._lock_Bc.release()
-    #     return Bc
-    #
-    #
-    # def write_control_vals(self, Bc, Ic, Vc):  # TODO STALE
-    #     """Thread-safely write the control_vals to the datapool
-    #     """
-    #     print(f"[DEBUG] write_control_vals({Bc}, {Ic}, {Vc})")
-    #     self._lock_control_vals.acquire(timeout=0.001)
-    #     try:
-    #         # self.Bc = Bc
-    #         self.Ic = Ic
-    #         self.Vc = Vc
-    #         # self.control_vals = control_vals
-    #     except:  # noqa
-    #         print("[WARNING] DataPool.write_control_vals(): Unable to write to self.control_vals!")
-    #     self._lock_control_vals.release()
-    #
-    #
-    # def read_control_vals(self):  # TODO STALE
-    #     """Thread-safely reads the applied control_vals from the datapool.
-    #     """
-    #     print("[DEBUG] STALE FUNCTION USED: read_control_vals()")
-    #     self._lock_control_vals.acquire(timeout=0.001)
-    #     try:
-    #         control_vals = self.control_vals
-    #     except:  # noqa
-    #         print("[WARNING] DataPool.read_control_vals(): Unable to read self.control_vals!")
-    #     self._lock_control_vals.release()
-    #     return control_vals
 
 # Server object
 class ThreadedTCPServer(ThreadingMixIn, TCPServer):
@@ -1033,7 +982,7 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                     print("[DEBUG] Detected s-packet")
 
                 segment = codec.decode_spacket(packet_in)
-                self.server.datapool.set_schedule_segment(segment)
+                self.server.datapool.write_schedule_segment(segment)
                 # Send segment number back as a verification
                 packet_out = codec.encode_mpacket(str(segment[0]))
 
@@ -1157,17 +1106,9 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             self.server.datapool.write_output_enable(bool_val)
             packet_out = codec.encode_mpacket(str(int(bool_val)))
 
-
-        # Requests the schedule name, length, and duration as csv string
-        elif fname == "get_schedule_info":
-            name, length, duration = self.server.datapool.get_schedule_info()
-            packet_out = codec.encode_mpacket(f"{name},{length},{duration}")
-
-
         # Requests the server uptime:
         elif fname == "get_server_uptime":
             packet_out = codec.encode_mpacket(str(self.server.uptime()))
-
 
         elif fname == "set_serveropt_spoof_Bm":
             self.server.datapool.serveropt_spoof_Bm = bool(int(args[0]))    # Not thread-safe
@@ -1181,12 +1122,51 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 str(int(self.server.datapool.serveropt_spoof_Bm)))          # Not thread-safe
 
 
-        # Requests the uptime of the communication socket, from the perspective
-        # of the server # TODO DEPRECATED IN FAVOUR OF get_socket_info
-        elif fname == "get_socket_uptime":
-            """Return an m-packet with the time the corresponding client has 
-            been connected for."""
-            packet_out = codec.encode_mpacket(str(time()-self.socket_tstart))
+
+        # ==== Schedule and playback functions ===============================
+
+        # Prints info about the schedule into the terminal
+        elif fname == "print_schedule_info":
+            confirm = self.server.datapool.print_schedule_info(max_entries=args[0])
+            packet_out = codec.encode_mpacket(str(confirm))
+
+        # Requests the schedule name, length, and duration as csv string
+        elif fname == "get_schedule_info":
+            # print("[DEBUG] Generate_hash:", bool(int(args[0])))
+            # print(self.server.datapool.schedule_hash)
+            name, length, duration, schedule_hash = \
+                self.server.datapool.read_schedule_info(
+                    generate_hash=bool(int(args[0]))
+                )
+            # print(self.server.datapool.schedule_hash)
+            # print(schedule_hash)
+            packet_out = codec.encode_mpacket(
+                f"{name},{length},{duration},{schedule_hash}"
+            )
+
+        elif fname == "get_schedule_segment":
+            seg = self.server.datapool.read_schedule_segment(args[0])
+            packet_out = codec.encode_spacket(
+                seg[0], seg[1], seg[2], seg[3], seg[4], seg[5]
+            )
+
+        # Initialize the schedule (reset)
+        elif fname == "initialize_schedule":
+            confirm = self.server.datapool.initialize_schedule()
+            packet_out = codec.encode_mpacket(str(confirm))
+
+        # Allocate an empty schedule (args: name: str, n_seg: int, duration: float)
+        elif fname == "allocate_schedule":
+            confirm = self.server.datapool.allocate_schedule(args[0], args[1], args[2])
+            packet_out = codec.encode_mpacket(str(confirm))
+
+
+        # # Requests the uptime of the communication socket, from the perspective
+        # # of the server # TODO DEPRECATED IN FAVOUR OF get_socket_info
+        # elif fname == "get_socket_uptime":
+        #     """Return an m-packet with the time the corresponding client has
+        #     been connected for."""
+        #     packet_out = codec.encode_mpacket(str(time()-self.socket_tstart))
 
 
         elif fname == "get_socket_info":

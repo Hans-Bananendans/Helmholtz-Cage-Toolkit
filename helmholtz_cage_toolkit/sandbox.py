@@ -1,4 +1,5 @@
 import hashlib
+from hashlib import blake2b, blake2s
 from numpy import array
 from time import time
 from timeit import timeit
@@ -71,15 +72,10 @@ item = [1.0, 1.0, 1.0]
 # print(return_n_deque(Bmdeque, 4))
 
 
-
-
-
-
-
-
-n = int(1E6)
+n = int(1E3)
 tmult = int(1E6)
 tunit = "us"
+
 
 # print(f"f1 (n={'{:1.0E}'.format(n)}):",
 #       round(timeit('f1(Bm, item)',
@@ -119,6 +115,86 @@ tunit = "us"
 # print(f"decode_tpacket (n={'{:1.0E}'.format(n)}):",
 #       round(timeit('decode_tpacket(t_packet)',
 #                    globals=globals(), number=n)*tmult/n, 3), "us")
+
+
+
+
+
+
+test_schedule = [
+    [0, 6, 0.0, 0.0, 0.0, 0.0],
+    [1, 6, 3.0, 1.0, 0.0, 0.0],
+    [2, 6, 5.0, 2.0, 0.0, 0.0],
+    [3, 6, 7.0, 3.0, 0.0, 0.0],
+    [4, 6, 9.0, 4.0, 0.0, 0.0],
+    [5, 6, 10.0, 0.0, 0.0, 0.0],
+]
+
+
+
+def calculate_schedule_hash(schedule: list, digest_size=32):
+    """Creates a schedule digest using the BLAKE2b algorithm"""
+    return blake2b(array(schedule).tobytes(), digest_size=digest_size).hexdigest()
+
+def calculate_schedule_hash2(schedule: list, digest_size=32):
+    """Creates a schedule digest using the BLAKE2s algorithm"""
+    return blake2s(array(schedule).tobytes(), digest_size=digest_size).hexdigest()
+m = 1000
+
+print(calculate_schedule_hash(test_schedule*m, 64))
+print(calculate_schedule_hash(test_schedule*m, 32))
+print(calculate_schedule_hash(test_schedule*m, 16))
+print(calculate_schedule_hash(test_schedule*m, 8))
+print(calculate_schedule_hash(test_schedule*m, 4))
+
+print(calculate_schedule_hash2(test_schedule*m, 32))
+print(calculate_schedule_hash2(test_schedule*m, 16))
+print(calculate_schedule_hash2(test_schedule*m, 8))
+print(calculate_schedule_hash2(test_schedule*m, 4))
+
+
+n = int(1E3)
+tmult = int(1E6)
+tunit = "us"
+
+print(f"64 (n={'{:1.0E}'.format(n)}):",
+      round(timeit('calculate_schedule_hash(test_schedule*m, 64)',
+                   globals=globals(), number=n)*tmult/n, 3), tunit)
+print(f"32 (n={'{:1.0E}'.format(n)}):",
+      round(timeit('calculate_schedule_hash(test_schedule*m, 32)',
+                   globals=globals(), number=n)*tmult/n, 3), tunit)
+print(f"16 (n={'{:1.0E}'.format(n)}):",
+      round(timeit('calculate_schedule_hash(test_schedule*m, 16)',
+                   globals=globals(), number=n)*tmult/n, 3), tunit)
+print(f"8 (n={'{:1.0E}'.format(n)}):",
+      round(timeit('calculate_schedule_hash(test_schedule*m, 8)',
+                   globals=globals(), number=n)*tmult/n, 3), tunit)
+print(f"4 (n={'{:1.0E}'.format(n)}):",
+      round(timeit('calculate_schedule_hash(test_schedule*m, 4)',
+                   globals=globals(), number=n)*tmult/n, 3), tunit)
+
+
+print(f"s32 (n={'{:1.0E}'.format(n)}):",
+      round(timeit('calculate_schedule_hash2(test_schedule*m, 32)',
+                   globals=globals(), number=n)*tmult/n, 3), tunit)
+print(f"s16 (n={'{:1.0E}'.format(n)}):",
+      round(timeit('calculate_schedule_hash2(test_schedule*m, 16)',
+                   globals=globals(), number=n)*tmult/n, 3), tunit)
+print(f"s8 (n={'{:1.0E}'.format(n)}):",
+      round(timeit('calculate_schedule_hash2(test_schedule*m, 8)',
+                   globals=globals(), number=n)*tmult/n, 3), tunit)
+print(f"s4 (n={'{:1.0E}'.format(n)}):",
+      round(timeit('calculate_schedule_hash2(test_schedule*m, 4)',
+                   globals=globals(), number=n)*tmult/n, 3), tunit)
+
+
+
+
+
+
+
+
+
 
 
 
@@ -240,7 +316,7 @@ tunit = "us"
 # print(f"f3 (n={'{:1.0E}'.format(n)}):",
 #       round(timeit('f3(a, b)', globals=globals(), number=n)*tmult/n, 3), "us")
 
-
+#
 # test_schedule = [
 #     [0, 6, 0.0, 0.0, 0.0, 0.0],
 #     [1, 6, 3.0, 1.0, 0.0, 0.0],
@@ -249,10 +325,13 @@ tunit = "us"
 #     [4, 6, 9.0, 4.0, 0.0, 0.0],
 #     [5, 6, 10.0, 0.0, 0.0, 0.0],
 # ]
+#
+# m = 1
+#
 # t0 = time()
-# bshash = hashlib.blake2b(array(test_schedule).tobytes(), digest_size=64).digest()
+# bshash = hashlib.blake2b(array(test_schedule*m).tobytes(), digest_size=64).digest()
 # t1 = time()
-# bshash_hex = hashlib.blake2b(array(test_schedule).tobytes(), digest_size=64).hexdigest()
+# bshash_hex = hashlib.blake2b(array(test_schedule*m).tobytes(), digest_size=64).hexdigest()
 # t2 = time()
 # print(bshash, len(bshash))
 # print(bshash_hex, len(bshash_hex), type(bshash_hex))
