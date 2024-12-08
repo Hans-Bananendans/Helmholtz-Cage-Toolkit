@@ -172,6 +172,28 @@ if __name__ == "__main__":
         i += 1
 
 
+        # ==== Reset Bc ====
+        Bc0 = cf.get_Bc(s, ds)
+
+        t0 = time()
+        r = cf.reset_Bc(s, ds)
+        t1 = time()
+
+        Bc1 = cf.get_Bc(s, ds)
+
+        if r == 1 and all([False for j in (0, 1, 2) if Bc0[j] == Bc1[j]]):
+            print(cg + f"{i}/{n} Reset Bc                  PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
+            if details:
+                print(cg + f"       Bc before: {Bc0}" + ce)
+                print(cg + f"       Bc after:  {Bc1}" + ce)
+        else:
+            print(cr + f"{i}/{n} Reset Bc                  FAIL")
+            print(cr + f"Output:    {r}" + ce)
+            print(cr + f"Bc before: {Bc0}" + ce)
+            print(cr + f"Bc after:  {Bc1}" + ce)
+        i += 1
+
+
         # ==== Set Br ====
         Br_test = [2.2, 5.5, -8.8]
         t0 = time()
@@ -506,18 +528,20 @@ if __name__ == "__main__":
             s, generate_hash=False, datastream=ds
         )
 
-        if r == 1 and si_name == test_schedule_name_alt \
+        tt = round(1E3 * r, 3)
+
+        if r != 0 and si_name == test_schedule_name_alt \
             and si_len == len(test_schedule) \
             and si_dur == test_schedule[-1][2]:
-            print(cg + f"{i}/{n} Transfer schedule         PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
+            print(cc + f"{i}/{n} Transfer schedule         PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
             if details:
-                print(cg + f"       Confirm:           {r}" + ce)
+                print(cg + f"       Transfer time:     {tt} ms" + ce)
                 print(cg + f"       Schedule name:     {si_name}" + ce)
                 print(cg + f"       Schedule length:   {si_len}" + ce)
                 print(cg + f"       Schedule duration: {si_dur}" + ce)
         else:
             print(cr + f"{i}/{n} Transfer schedule         FAIL" + ce)
-            print(cr + f"Confirm:           {r}" + ce)
+            print(cr + f"Transfer time:     {tt} ms" + ce)
             print(cr + f"Schedule name:     {si_name}" + ce)
             print(cr + f"Schedule length:   {si_len}" + ce)
             print(cr + f"Schedule duration: {si_dur}" + ce)
@@ -603,7 +627,7 @@ if __name__ == "__main__":
                 print(cg + f"       Schedule name:     {si_name}" + ce)
                 print(cg + f"       Schedule length:   {si_len}" + ce)
                 print(cg + f"       Schedule duration: {si_dur}" + ce)
-                print(cg + f"       Schedule hash:     {si_hash}" + ce)
+                print(cg + f"       Schedule hash:     " + cc + f"{si_hash}" + ce)
                 print(cg + f"       Local hash:        " + cc + f"{hash_l}" + ce)
         else:
             print(cr + f"{i}/{n} Initialize schedule       FAIL" + ce)

@@ -80,7 +80,6 @@ def ping(socket, datastream: QDataStream = None):
     tend = time()
 
     # Verification
-    # print("[DEBUG] packet_in:", packet_in)  # TODO REMOVE
     response = codec.decode_epacket(packet_in)
     if response == "":
         return tend - tstart
@@ -116,16 +115,12 @@ def ping_n(socket, n=8, datastream: QDataStream = None):
 
 def echo(socket,
          msg,
-         datastream: QDataStream = None,
-         timing=False):
+         datastream: QDataStream = None):
     """Sends a message `msg` to the server, which will in turn echo it back.
 
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-
-    if timing:
-        tstart = time()
 
     response = codec.decode_epacket(
         send_and_receive(
@@ -135,48 +130,31 @@ def echo(socket,
         )
     )
 
-    if timing:
-        tend = time()
-        print(f"Called echo(). Executed in {round((tend - tstart) * 1E6, 3)} us")
-
     return response
 
 
-def echo_alt(socket, # TODO EVALUATE
-             msg,
-             datastream: QDataStream = None,
-             timing=False):
-    """Alternative implementation of echo(), implemented with an x-packet as
-    the outbound package, instead of an e-packet. Its purpose is mainly for
-    debugging the x-packet parsing stack on the server side.
-
-    If implementing this function with QTcpSocket, you can specify a re-usable
-    QDataStream object to substantially increase performance.
-    """
-
-    if timing:
-        tstart = time()
-
-    response = codec.decode_epacket(
-        send_and_receive(
-            codec.encode_xpacket("echo", str(msg)),
-            socket,
-            datastream=datastream
-        )
-    )
-
-    if timing:
-        tend = time()
-        print(f"Called echo_alt(). Executed in {round((tend - tstart) * 1E6, 3)} us")
-
-    return response
-
-# def echo_alt(socket, msg, timing=False):
+# def echo_alt(socket, # TODO EVALUATE
+#              msg,
+#              datastream: QDataStream = None,
+#              timing=False):
+#     """Alternative implementation of echo(), implemented with an x-packet as
+#     the outbound package, instead of an e-packet. Its purpose is mainly for
+#     debugging the x-packet parsing stack on the server side.
+#
+#     If implementing this function with QTcpSocket, you can specify a re-usable
+#     QDataStream object to substantially increase performance.
+#     """
+#
 #     if timing:
 #         tstart = time()
 #
-#     socket.sendall(SCC.encode_xpacket("echo", msg))
-#     response = SCC.decode_epacket(socket.recv(SSC.buffer_size))
+#     response = codec.decode_epacket(
+#         send_and_receive(
+#             codec.encode_xpacket("echo", str(msg)),
+#             socket,
+#             datastream=datastream
+#         )
+#     )
 #
 #     if timing:
 #         tend = time()
@@ -186,16 +164,12 @@ def echo_alt(socket, # TODO EVALUATE
 
 
 def get_server_uptime(socket,
-                      datastream: QDataStream = None,
-                      timing=False):
+                      datastream: QDataStream = None):
     """Requests and returns the server uptime.
 
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    if timing:
-        tstart = time()
-
     server_uptime = codec.decode_mpacket(
         send_and_receive(
             codec.encode_xpacket("get_server_uptime"),
@@ -204,43 +178,38 @@ def get_server_uptime(socket,
         )
     )
 
-    if timing:
-        tend = time()
-        print(f"Called get_server_uptime(). Executed in {round((tend - tstart) * 1E6, 3)} us")
-
     return float(server_uptime)
 
 
-def get_socket_uptime(socket, # TODO EVALUATE
-                      datastream: QDataStream = None,
-                      timing=False):
-    """Requests the uptime of the socket connection from the perspective of
-    the server.
-
-    If implementing this function with QTcpSocket, you can specify a re-usable
-    QDataStream object to substantially increase performance.
-    """
-    if timing:
-        tstart = time()
-
-    socket_uptime = codec.decode_mpacket(
-        send_and_receive(
-            codec.encode_xpacket("get_socket_uptime"),
-            socket,
-            datastream=datastream
-        )
-    )
-
-    if timing:
-        tend = time()
-        print(f"Called get_socket_uptime(). Executed in {round((tend - tstart) * 1E6, 3)} us")
-
-    return float(socket_uptime)
+# def get_socket_uptime(socket, # TODO EVALUATE
+#                       datastream: QDataStream = None,
+#                       timing=False):
+#     """Requests the uptime of the socket connection from the perspective of
+#     the server.
+#
+#     If implementing this function with QTcpSocket, you can specify a re-usable
+#     QDataStream object to substantially increase performance.
+#     """
+#     if timing:
+#         tstart = time()
+#
+#     socket_uptime = codec.decode_mpacket(
+#         send_and_receive(
+#             codec.encode_xpacket("get_socket_uptime"),
+#             socket,
+#             datastream=datastream
+#         )
+#     )
+#
+#     if timing:
+#         tend = time()
+#         print(f"Called get_socket_uptime(). Executed in {round((tend - tstart) * 1E6, 3)} us")
+#
+#     return float(socket_uptime)
 
 
 def get_socket_info(socket,
-                    datastream: QDataStream = None,
-                    timing=False):
+                    datastream: QDataStream = None):
     """Request an m-packet with some information about the client from the
     perspective of the server:
     1. The time for which the client socket has been active
@@ -250,9 +219,6 @@ def get_socket_info(socket,
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    if timing:
-        tstart = time()
-
     uptime, address, port = codec.decode_mpacket(
         send_and_receive(
             codec.encode_xpacket("get_socket_info"),
@@ -261,24 +227,7 @@ def get_socket_info(socket,
         )
     ).split(",")
 
-    if timing:
-        tend = time()
-        print(f"Called get_socket_info(). Executed in {round((tend - tstart) * 1E6, 3)} us")
-
     return float(uptime), address, int(port)
-
-# def get_socket_uptime(socket, timing=False):
-#     if timing:
-#         tstart = time()
-#
-#     socket.sendall(SCC.encode_xpacket("socket_uptime"))
-#     socket_uptime = SCC.decode_mpacket(socket.recv(SSC.buffer_size))
-#
-#     if timing:
-#         tend = time()
-#         print(f"Called get_socket_uptime(). Executed in {round((tend - tstart) * 1E6, 3)} us")
-#
-#     return float(socket_uptime)
 
 
 def message(socket,
@@ -298,55 +247,31 @@ def message(socket,
     )
     return int(confirm)
 
-# def message(socket, msg):
-#     socket.sendall(SCC.encode_mpacket(str(msg)))
-
 
 # ==== FIELD CONTROL ====
-def get_control_vals(socket, # TODO EVALUATE
-                     datastream: QDataStream = None,
-                     timing=False):
-    """Requests the current control_vals from the server, which is a list of
-    the Bc, Ic and Vc that were applied to the power supplies most recently.
-
-    If implementing this function with QTcpSocket, you can specify a re-usable
-    QDataStream object to substantially increase performance.
-    """
-    if timing:
-        tstart = time()
-
-    control_vals_string = codec.decode_mpacket(
-        send_and_receive(
-            codec.encode_xpacket("get_control_vals"),
-            socket,
-            datastream=datastream
-        )
-    ).split(",")
-
-    # socket.sendall(SCC.encode_xpacket("get_control_vals"))
-
-    # control_vals_string = SCC.decode_mpacket(socket.recv(SSC.buffer_size)).split(",")
-    control_vals = [
-        [float(B) for B in control_vals_string[0:3]],
-        [float(I) for I in control_vals_string[3:6]],
-        [float(V) for V in control_vals_string[6:9]]]
-
-    if timing:
-        tend = time()
-        print(f"Called get_control_vals(). Executed in {round((tend-tstart)*1E6, 3)} us")
-
-    return control_vals
-
-# def get_control_vals(socket, timing=False):
-#     """Fetches control_vals from the server, which is a list of the Bc, Ic and
-#     Vc that was applied to the power supplies most recently.
+# def get_control_vals(socket, # TODO EVALUATE
+#                      datastream: QDataStream = None,
+#                      timing=False):
+#     """Requests the current control_vals from the server, which is a list of
+#     the Bc, Ic and Vc that were applied to the power supplies most recently.
+#
+#     If implementing this function with QTcpSocket, you can specify a re-usable
+#     QDataStream object to substantially increase performance.
 #     """
 #     if timing:
 #         tstart = time()
 #
-#     socket.sendall(SCC.encode_xpacket("get_control_vals"))
+#     control_vals_string = codec.decode_mpacket(
+#         send_and_receive(
+#             codec.encode_xpacket("get_control_vals"),
+#             socket,
+#             datastream=datastream
+#         )
+#     ).split(",")
 #
-#     control_vals_string = SCC.decode_mpacket(socket.recv(SSC.buffer_size)).split(",")
+#     # socket.sendall(SCC.encode_xpacket("get_control_vals"))
+#
+#     # control_vals_string = SCC.decode_mpacket(socket.recv(SSC.buffer_size)).split(",")
 #     control_vals = [
 #         [float(B) for B in control_vals_string[0:3]],
 #         [float(I) for I in control_vals_string[3:6]],
@@ -361,19 +286,14 @@ def get_control_vals(socket, # TODO EVALUATE
 
 def set_Bc(socket,
            Bc,
-           datastream: QDataStream = None,
-           timing=False):
+           datastream: QDataStream = None):
     """Manually set a control field vector Bc when in manual mode.
 
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-
     if len(Bc) != 3:
         raise AssertionError(f"Bc must be an array of length 3 (given: {len(Bc)}!")
-
-    if timing:
-        tstart = time()
 
     confirm = codec.decode_mpacket(
         send_and_receive(
@@ -383,16 +303,11 @@ def set_Bc(socket,
         )
     )
 
-    if timing:
-        tend = time()
-        print(f"Called set_Bc(). Executed in {round((tend - tstart) * 1E6, 3)} us")
-
     return int(confirm)
 
 
 def get_Bc(socket,
-           datastream: QDataStream = None,
-           timing=False):
+           datastream: QDataStream = None):
     """Requests and returns the most recent Bc value from the server.
 
     The server will return c-packet with the current Bc value whenever a
@@ -401,9 +316,6 @@ def get_Bc(socket,
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    if timing:
-        tstart = time()
-
     Bc = codec.decode_cpacket(
         send_and_receive(
             codec.encode_xpacket("get_Bc"),
@@ -412,16 +324,11 @@ def get_Bc(socket,
         )
     )
 
-    if timing:
-        tend = time()
-        print(f"Called get_Bc(). Executed in {int((tend-tstart)*1E6)} us")
-
     return Bc
 
 
-def reset_Bc(socket, # TODO DEPRECATED?
-             datastream: QDataStream = None,
-             timing=False):
+def reset_Bc(socket,
+             datastream: QDataStream = None):
     """Reset a control field vector Bc back to [0. 0. 0.] when in manual mode.
 
     When in `play mode`, instead use `play_stop()` to stop playback, which
@@ -431,45 +338,11 @@ def reset_Bc(socket, # TODO DEPRECATED?
     QDataStream object to substantially increase performance.
     """
 
-    if timing:
-        tstart = time()
-
     confirm = set_Bc(socket, [0., 0., 0.], datastream=datastream)
 
-    if timing:
-        tend = time()
-        print(f"Called reset_Bc(). Executed in {round((tend - tstart) * 1E6, 3)} us")
+    return confirm
 
-    return int(confirm)
 
-# def set_Bc(socket, Bc, timing=False):
-#     if len(Bc) != 3:
-#         raise AssertionError(f"Bc must be an array of length 3 (given: {len(Bc)}!")
-#
-#     if timing:
-#         tstart = time()
-#
-#     socket.sendall(SCC.encode_cpacket(Bc))
-#     confirm = SCC.decode_mpacket(socket.recv(SSC.buffer_size))
-#
-#     if timing:
-#         tend = time()
-#         print(f"Called set_Bc(). Executed in {round((tend - tstart) * 1E6, 3)} us")
-#
-#     return int(confirm)
-#
-# def reset_Bc(socket, timing=False):
-#     if timing:
-#         tstart = time()
-#
-#     socket.sendall(SCC.encode_cpacket([0., 0., 0.]))
-#     confirm = SCC.decode_mpacket(socket.recv(SSC.buffer_size))
-#
-#     if timing:
-#         tend = time()
-#         print(f"Called reset_Bc(). Executed in {round((tend - tstart) * 1E6, 3)} us")
-#
-#     return int(confirm)
 
 def get_V_board(socket,
                 datastream: QDataStream = None):
@@ -487,6 +360,7 @@ def get_V_board(socket,
         )
     )
     return float(V_board)
+
 
 def get_aux_adc(socket,
                 datastream: QDataStream = None):
@@ -662,8 +536,7 @@ def get_params_VB(socket,
 
 # ==== FIELD MEASUREMENT
 def get_Bm(socket,
-           datastream: QDataStream = None,
-           timing=False):
+           datastream: QDataStream = None):
     """Requests and returns the most recent Bm value from the server.
 
     The server will return b-packet with the current Bm value whenever a
@@ -676,9 +549,6 @@ def get_Bm(socket,
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    if timing:
-        tstart = time()
-
     r = codec.decode_bpacket(
         send_and_receive(
             codec.encode_bpacket(0., [0.]*3),
@@ -686,17 +556,6 @@ def get_Bm(socket,
             datastream=datastream
         )
     )
-    # packet_in = send_and_receive(
-    #     codec.encode_bpacket(0., [0.]*3),
-    #     socket,
-    #     datastream=datastream
-    # )
-    # print(packet_in)
-    # Bm = codec.decode_bpacket(packet_in)
-
-    if timing:
-        tend = time()
-        print(f"Called get_Bm(). Executed in {int((tend-tstart)*1E6)} us")
 
     return r[0], [r[1], r[2], r[3]]
 
@@ -720,25 +579,6 @@ def get_telemetry(socket,
 
 
 # ==== SCHEDULE ====
-
-# def print_schedule_info(
-#     socket,
-#     datastream: QDataStream = None):
-#     """Prints schedule info to the console *of the server*. Mainly used for
-#     debugging with visual access to the server console output.
-#
-#     If implementing this function with QTcpSocket, you can specify a re-usable
-#     QDataStream object to substantially increase performance.
-#     """
-#     confirm = codec.decode_mpacket(
-#         send_and_receive(
-#             codec.encode_xpacket("print_schedule_info"),
-#             socket,
-#             datastream=datastream
-#         )
-#     )
-#     return int(confirm)
-
 
 def print_schedule_info(
     socket,
@@ -824,7 +664,6 @@ def allocate_schedule(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    # print(f"[DEBUG] allocate_schedule(): {socket}, {name}({type(name)}), {n_seg}({type(n_seg)}), {float(duration)}({type(float(duration))})")
     confirm = codec.decode_mpacket(
         send_and_receive(
             codec.encode_xpacket("allocate_schedule", name, n_seg, float(duration)),
@@ -832,8 +671,7 @@ def allocate_schedule(
             datastream=datastream
         )
     )
-    # # print(f"[DEBUG] allocate_schedule(): packet_in: {packet_in}")
-    # confirm = codec.decode_mpacket(packet_in)
+
     return int(confirm)
 
 
@@ -846,7 +684,6 @@ def get_schedule_segment(
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-
     segment = codec.decode_spacket(
         send_and_receive(
             codec.encode_xpacket("get_schedule_segment", segment_id),
@@ -854,6 +691,7 @@ def get_schedule_segment(
             datastream=datastream
         )
     )
+
     return segment
 
 
@@ -884,8 +722,7 @@ def transfer_schedule(  # TODO Incorporate schedule validation tools
     socket,
     schedule,
     name: str = "schedule1",
-    datastream: QDataStream = None,
-    timing=False):
+    datastream: QDataStream = None):
     """Sequentially transfers a schedule to the server.
 
     This function is meant to be a one-shot solution to transferring a
@@ -902,8 +739,7 @@ def transfer_schedule(  # TODO Incorporate schedule validation tools
     QDataStream object to substantially increase performance.
     """
 
-    if timing:
-        tstart = time()
+    tstart = time()
 
     # TODO: Schedule integrity and validity should probably be checked once,
     #  but probably not here -> Make separate integrity check function.
@@ -920,8 +756,6 @@ def transfer_schedule(  # TODO Incorporate schedule validation tools
     # elif type(socket) == QTcpSocket and not datastream:
     #     datastream = QDataStream(socket_obj)
 
-    # print(f"[DEBUG] transfer_schedule(), about to do:")
-    # print(f"[DEBUG  allocate_schedule({socket}, {name}|{type(name)}, {len(schedule)}|{type(len(schedule))}, {schedule[-1][2]}|{type(schedule[-1][2])}")
     # First allocate schedule
     confirm = allocate_schedule(
         socket, name, len(schedule), schedule[-1][2], datastream=datastream
@@ -942,11 +776,10 @@ def transfer_schedule(  # TODO Incorporate schedule validation tools
         if int(confirm) != i:
             raise AssertionError(f"Failed to transfer segment {i} of schedule '{name}'!")
 
-    if timing:
-        tend = time()
-        print(f"transfer_schedule(). Transferred schedule in {round((tend - tstart) * 1E3, 3)} ms")
+    tend = time()
+    # print(f"Transferred schedule in {round((tend - tstart) * 1E3, 3)} ms")
 
-    return 1
+    return tend - tstart
 
 
 def get_schedule_hash(
@@ -1027,57 +860,6 @@ def verify_schedule(
     return verify, hash_schedule_local, hash_schedule_server
 
 
-
-# def print_schedule_info(socket):
-#     socket.sendall(SCC.encode_xpacket("print_schedule_info"))
-#     return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
-#
-# def print_schedule(socket, max_entries: int = 32):
-#     socket.sendall(SCC.encode_xpacket("print_schedule", max_entries))
-#     return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
-#
-# def initialize_schedule(socket):
-#     socket.sendall(SCC.encode_xpacket("initialize_schedule"))
-#     return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
-#
-# def allocate_schedule(socket, name: str, n_seg: int, duration: float):
-#     socket.sendall(SCC.encode_xpacket(
-#         "allocate_schedule", name, n_seg, duration)
-#     )
-#     return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
-#
-# def transfer_segment(socket, vals):
-#     socket.sendall(SCC.encode_spacket(*vals))
-#     # Return value is the segment number, as verification.
-#     return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
-#
-# def transfer_schedule(socket, schedule: list, name="schedule1", timing=False):
-#
-#     if timing:
-#         tstart = time()
-#
-#     # Checking that segment numbers match with length
-#     if schedule[-1][0]+1 != len(schedule):
-#         raise AssertionError(f"The segment numbers of schedule '{name}' do not match its length!")
-#
-#     # First allocate schedule
-#     check = allocate_schedule(s, name, len(schedule), schedule[-1][2])
-#
-#     if int(check) != 1:
-#         raise AssertionError(f"Something went wrong transferring schedule '{name}'!")
-#
-#     for i, seg in enumerate(schedule):
-#         socket.sendall(SCC.encode_spacket(*(schedule[i])))
-#         confirm = int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
-#         if confirm != i:
-#             raise AssertionError(f"Something went wrong transferring schedule '{name}'!")
-#         # print("[DEBUG] Check:", i, confirm)
-#
-#     if timing:
-#         tend = time()
-#         print(f"transfer_schedule(). Transferred schedule in {round((tend - tstart) * 1E3, 3)} ms")
-#
-#     return 1
 
 
 # ==== PLAY CONTROLS ====
@@ -1231,29 +1013,6 @@ def get_play_status( # TODO EVALUATE
     return play_status_string
 
 
-
-# def activate_play_mode(socket):
-#     socket.sendall(SCC.encode_xpacket("activate_play_mode"))
-#     return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))  # Return 1
-#
-# def deactivate_play_mode(socket):
-#     socket.sendall(SCC.encode_xpacket("deactivate_play_mode"))
-#     return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))  # Return 1
-#
-# def play_start(socket):
-#     socket.sendall(SCC.encode_xpacket("play_start"))
-#     return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))  # Return 1
-#
-# def play_stop(socket):
-#     socket.sendall(SCC.encode_xpacket("play_stop"))
-#     return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))  # Return 1
-#
-# def get_current_step_time(socket):
-#     socket.sendall(SCC.encode_xpacket("get_current_step_time"))
-#     step_time_string = SCC.decode_mpacket(socket.recv(SSC.buffer_size)).split(",")
-#     return int(step_time_string[0]), int(step_time_string[1]), float(step_time_string[2])
-
-
 # ==== CONFIGURATION ====
 def get_apply_Bc_period( # TODO EVALUATE
     socket,
@@ -1271,6 +1030,7 @@ def get_apply_Bc_period( # TODO EVALUATE
         )
     )
     return float(period_string)
+
 
 def set_apply_Bc_period( # TODO EVALUATE
     socket,
@@ -1486,19 +1246,3 @@ def get_Br(socket,
     ).split(",")
 
     return [float(Br[0]), float(Br[1]), float(Br[2])]
-
-# def get_apply_Bc_period(socket):
-#     socket.sendall(SCC.encode_xpacket("get_apply_Bc_period"))
-#     return float(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
-
-# def get_write_Bm_period(socket):
-#     socket.sendall(SCC.encode_xpacket("get_write_Bm_period"))
-#     return float(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))
-
-# def set_apply_Bc_period(socket, period: float):
-#     socket.sendall(SCC.encode_xpacket("set_apply_Bc_period", period))
-#     return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))  # Return 1
-
-# def set_write_Bm_period(socket, period: float):
-#     socket.sendall(SCC.encode_xpacket("set_write_Bm_period", period))
-#     return int(SCC.decode_mpacket(socket.recv(SSC.buffer_size)))  # Return 1
