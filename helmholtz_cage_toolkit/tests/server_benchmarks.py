@@ -308,6 +308,40 @@ if __name__ == "__main__":
         i += 1
 
 
+        # ==== Set / Get params_VB ====
+        pVB = [[110.0, 1.0], [120.0, False], [3.0, 1337.0]]
+        pVB_1D = pVB[0] + pVB[1] + pVB[2]
+
+        ts0 = time()
+        rs = cf.set_params_VB(s, *pVB_1D, ds)
+        ts1 = time()
+
+        tg0 = time()
+        rg = cf.get_params_VB(s, ds)
+        tg1 = time()
+
+        if rs == 1:
+            print(cg + f"{i}/{n} Set params_VB             PASS ({int(1E6*(ts1-ts0))} \u03bcs)" + ce)
+            if details:
+                print(cg + f"       Input:  {dac_test}" + ce)
+                print(cg + f"       Output: {rs}" + ce)
+        else:
+            print(cr + f"{i}/{n} Set params_VB             FAIL" + ce)
+            print(cr + f"Output: {rs}" + ce)
+        i += 1
+
+        if rg[1][1] is not None and rg[2] == [3.0, 1337.0]:
+            print(cg + f"{i}/{n} Get params_VB             PASS ({int(1E6*(tg1-tg0))} \u03bcs)" + ce)
+            if details:
+                print(cg + f"       Expected: {pVB}" + ce)
+                print(cg + f"       Received: {rg}" + ce)
+        else:
+            print(cr + f"{i}/{n} Get params_VB             FAIL")
+            print(cr + f"       Expected: {pVB}" + ce)
+            print(cr + f"       Received: {rg}" + ce)
+        i += 1
+
+
         # ==== Get / set serveropt_spoof_Bm ====
         ts0 = time()
         rs0 = cf.set_serveropt_spoof_Bm(s, True, ds)    # Set to True

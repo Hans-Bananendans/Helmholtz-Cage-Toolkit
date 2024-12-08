@@ -36,10 +36,10 @@ server_config = {
     "v_psu_enable": 5.0,    # V
 
 
-    # Linear regression coefficients for VC transfer function ([a, b] -> B_out = a*V + b)
-    "params_tf_vb_x": [100, 0],
-    "params_tf_vb_y": [100, 0],
-    "params_tf_vb_z": [100, 0],
+    # Linear regression coefficients for VC transfer function ([b0, b1] -> B_out = b0 + b1*V)
+    "params_tf_VB_x": [0, 100],
+    "params_tf_VB_y": [0, 100],
+    "params_tf_VB_z": [0, 100],
 
     # Linear regression coefficients for VC transfer function ([a, b] -> v_cc = a*v + b)
     "params_tf_vc_x": [15.05305, -4.80750],

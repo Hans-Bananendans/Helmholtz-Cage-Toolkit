@@ -588,6 +588,78 @@ def set_output_enable(socket,
     return bool(int(confirm))
 
 
+def set_params_VB(socket,
+                  bx0, bx1, by0, by1, bz0, bz1,
+                  datastream: QDataStream = None):
+    """Manually set the transfer function parameters for PSU control voltage Vc
+    to coil pair flux density output B_out. The preferred ways of setting these
+    parameters are to either set it once via the server_config, or
+    auto-calibrate it on the server. But the possibility to update it here is
+    added as a third option.
+
+    Besides the socket and datastream, this function takes six arguments, which
+    are three [b0, b1] pairs, one for each coil pairs. These parameters map to
+    a linear transfer function; for example by0 and by1:
+
+        B_out_y = b0y + b1y * Vc
+
+    In other words, b0 is the constant term, b1 is the linear term.
+
+    You do not have to specify all parameters to run this function. You can
+    just specify the ones you wish to update, and input False for all others.
+    All False values will be ignored by the server during interpretation.
+
+    The server returns a string that when converted to an integer denotes the
+    number of VB parameters that were updated, so six when all were specified.
+    This function returns 1 when these two numbers match.
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+
+    vals = [bx0, bx1, by0, by1, bz0, bz1]
+    confirm = codec.decode_mpacket(
+        send_and_receive(
+            codec.encode_xpacket("set_params_VB", *vals),
+            socket,
+            datastream=datastream
+        )
+    )
+
+    if int(confirm) == sum([1 for i in vals if i is not False]):
+        output = 1
+    else:
+        output = 0
+
+    return output
+
+
+def get_params_VB(socket,
+                  datastream: QDataStream = None):
+    """Requests the transfer function parameters for PSU control voltage Vc to
+    coil pair flux density output B_out. This function will output it as:
+
+        [ [bx0, bx1], [by0, by1], [bz0, bz1] ]
+
+    If implementing this function with QTcpSocket, you can specify a re-usable
+    QDataStream object to substantially increase performance.
+    """
+
+    p = codec.decode_mpacket(
+        send_and_receive(
+            codec.encode_xpacket("get_params_VB"),
+            socket,
+            datastream=datastream
+        )
+    ).split(",")
+    output = [
+        [float(p[0]), float(p[1])],
+        [float(p[2]), float(p[3])],
+        [float(p[4]), float(p[5])]
+    ]
+    return output
+
+
 # ==== FIELD MEASUREMENT
 def get_Bm(socket,
            datastream: QDataStream = None,

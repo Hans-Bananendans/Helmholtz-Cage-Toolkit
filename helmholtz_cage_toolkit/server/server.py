@@ -329,10 +329,10 @@ class DataPool:
 
         # ==== Other parameters ==============================================
 
-        self.params_tf_vb = {
-            "x": config["params_tf_vb_x"],
-            "y": config["params_tf_vb_y"],
-            "z": config["params_tf_vb_z"],
+        self.params_tf_VB = {
+            "x": config["params_tf_VB_x"],
+            "y": config["params_tf_VB_y"],
+            "z": config["params_tf_VB_z"],
         }
 
         self.params_mutate = config["params_mutate"]
@@ -1096,6 +1096,38 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             packet_out = codec.encode_mpacket("1")
 
 
+        elif fname == "get_params_VB":
+            p = self.server.datapool.params_tf_VB           # Not thread-safe
+            packet_out = codec.encode_mpacket(
+                f"{p['x'][0]},{p['x'][1]},"
+                + f"{p['y'][0]},{p['y'][1]},"
+                + f"{p['z'][0]},{p['z'][1]},"
+            )
+
+        elif fname == "set_params_VB":
+            count = 0
+            if args[0] is not False:
+                self.server.datapool.params_tf_VB["x"][0] = args[0]     # Not thread-safe
+                count += 1
+            if args[1] is not False:
+                self.server.datapool.params_tf_VB["x"][1] = args[1]     # Not thread-safe
+                count += 1
+            if args[2] is not False:
+                self.server.datapool.params_tf_VB["y"][0] = args[2]     # Not thread-safe
+                count += 1
+            if args[3] is not False:
+                self.server.datapool.params_tf_VB["y"][1] = args[3]     # Not thread-safe
+                count += 1
+            if args[4] is not False:
+                self.server.datapool.params_tf_VB["z"][0] = args[4]     # Not thread-safe
+                count += 1
+            if args[5] is not False:
+                self.server.datapool.params_tf_VB["z"][1] = args[5]     # Not thread-safe
+                count += 1
+
+            packet_out = codec.encode_mpacket(str(count))
+
+
         elif fname == "get_output_enable":
             packet_out = codec.encode_mpacket(
                 str(int(self.server.datapool.read_output_enable()))
@@ -1132,14 +1164,10 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
 
         # Requests the schedule name, length, and duration as csv string
         elif fname == "get_schedule_info":
-            # print("[DEBUG] Generate_hash:", bool(int(args[0])))
-            # print(self.server.datapool.schedule_hash)
             name, length, duration, schedule_hash = \
                 self.server.datapool.read_schedule_info(
                     generate_hash=bool(int(args[0]))
                 )
-            # print(self.server.datapool.schedule_hash)
-            # print(schedule_hash)
             packet_out = codec.encode_mpacket(
                 f"{name},{length},{duration},{schedule_hash}"
             )
