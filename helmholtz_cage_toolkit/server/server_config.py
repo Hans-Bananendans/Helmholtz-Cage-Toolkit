@@ -4,8 +4,9 @@ server_config = {
     "SERVER_PORT": 7777,
 
     # ==== Thread settings ====
-    "threaded_read_ADC_rate": 1,   # S/s
-    "threaded_write_DAC_rate": 1,  # S/s
+    "threaded_read_ADC_rate": 8,   # S/s
+    "threaded_write_DAC_rate": 8,  # S/s
+    "threaded_control_rate": 100, # Hz
 
     "internal_buffer_size": 5,
     "verbosity": 4,
@@ -17,13 +18,17 @@ server_config = {
     # ==== DAC settings ====
     "vmax_dac": 5.0,        # V
 
-    # ==== Settings for Bm spoofing ====
-    "spoof_Bm": True,
+    # ==== Settings for Bm mutation ====
+    "mutate_Bm": False,
     "params_mutate": [
         [100, 100, 100],    # central value
         [0.1, 0.1, 0.1],    # mutation scale
         [0.5, 0.5, 0.5],    # fence strength
     ],
+
+    # ==== Settings for Bm injection ====
+    "inject_Bm": False,
+
 
     # ==== Power supply settings ====
     "vmax_supply": 30.0,    # V
@@ -35,6 +40,8 @@ server_config = {
     "vlevel_pol": 5.0,      # V
     "v_psu_enable": 5.0,    # V
 
+    # ==== Playback settings ====
+    "default_play_looping": True,
 
     # Linear regression coefficients for VC transfer function ([b0, b1] -> B_out = b0 + b1*V)
     "params_tf_VB_x": [0, 100],

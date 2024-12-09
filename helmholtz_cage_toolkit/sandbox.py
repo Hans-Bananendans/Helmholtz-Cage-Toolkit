@@ -130,6 +130,81 @@ test_schedule = [
     [5, 6, 10.0, 0.0, 0.0, 0.0],
 ]
 
+tsa = array(test_schedule)
+
+
+
+
+
+
+def init_buffer_tolist(buffer_size, entry_size, dtype=float):
+    """Automatically creates a buffer object, which is a list with a number
+    of entries. The number of entries is equal to <buffer_size>.
+    The entries themselves are lists if <entry_size> is larger than 1,
+    making the buffer 2D. For <entry_size> equal to 1, the buffer will be
+    1D instead.
+    """
+    if buffer_size <= 0:
+        raise ValueError(f"init_buffer(): buffer_size cannot be {buffer_size}!")
+
+    if entry_size == 1:
+        return np.zeros(buffer_size, dtype=dtype).tolist()
+    elif entry_size > 1:
+        return np.zeros((buffer_size, entry_size), dtype=dtype).tolist()
+    else:
+        raise ValueError(f"init_buffer(): Negative entry_size given!")
+
+
+def init_buffer_list(buffer_size, entry_size, dtype=float):
+    """Automatically creates a buffer object, which is a list with a number
+    of entries. The number of entries is equal to <buffer_size>.
+    The entries themselves are lists if <entry_size> is larger than 1,
+    making the buffer 2D. For <entry_size> equal to 1, the buffer will be
+    1D instead.
+    """
+    if buffer_size <= 0:
+        raise ValueError(f"init_buffer(): buffer_size cannot be {buffer_size}!")
+
+    if entry_size == 1:
+        return list(np.zeros(buffer_size, dtype=dtype))
+    elif entry_size > 1:
+        return list(np.zeros((buffer_size, entry_size), dtype=dtype))
+    else:
+        raise ValueError(f"init_buffer(): Negative entry_size given!")
+
+def init_buffer_fixlist(buffer_size, entry_size, dtype=float) -> list:
+    """Automatically creates a buffer object, which is a list with a number
+    of entries. The number of entries is equal to <buffer_size>.
+    The entries themselves are lists if <entry_size> is larger than 1,
+    making the buffer 2D. For <entry_size> equal to 1, the buffer will be
+    1D instead.
+    """
+    if buffer_size <= 0:
+        raise ValueError(f"init_buffer(): buffer_size cannot be {buffer_size}!")
+
+    if entry_size == 1:
+        return list(np.zeros(buffer_size, dtype=dtype).tolist())
+    elif entry_size > 1:
+        return list(np.zeros((buffer_size, entry_size), dtype=dtype).tolist())
+    else:
+        raise ValueError(f"init_buffer(): Negative entry_size given!")
+
+print(init_buffer_tolist(10, 1))
+print(init_buffer_list(10, 1))
+print(init_buffer_fixlist(10, 1))
+
+print(f"tolist() (n={'{:1.0E}'.format(n)}):",
+      round(timeit('init_buffer_tolist(1000, 6)',
+                   globals=globals(), number=10000)*tmult/n, 3), tunit)
+
+print(f"list(  ) (n={'{:1.0E}'.format(n)}):",
+      round(timeit('init_buffer_list(1000, 6)',
+                   globals=globals(), number=10000)*tmult/n, 3), tunit)
+
+
+print(f"listfix(  ) (n={'{:1.0E}'.format(n)}):",
+      round(timeit('init_buffer_fixlist(1000, 6)',
+                   globals=globals(), number=10000)*tmult/n, 3), tunit)
 
 
 def calculate_schedule_hash(schedule: list, digest_size=32):

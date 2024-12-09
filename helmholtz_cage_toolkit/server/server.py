@@ -48,7 +48,6 @@ from helmholtz_cage_toolkit.server.server_config import server_config as config
 
 
 
-
 def hardware_shutdown(datapool):
     """
     In case of a software error or upon termination of the server, it is of
@@ -72,6 +71,99 @@ def hardware_shutdown(datapool):
         dedicated software toggle implementation.
     """
     print("hardware_shutdown() called")
+
+
+def threaded_control(datapool):
+    """This thread controls information routing based on the playback modes
+    and some serveropts. It implements the following scheme:
+
+    play_mode is False (Manual mode):   user input -> Bc
+
+    play_mode is True (playback mode): i_step schedule -> Bc
+        if play is True:                move schedule through time
+
+    serveropt_inject_Bm:                Bc -> Bm
+
+    serveropt_mutate_Bm:
+        if not serveropt_inject_Bm:     mutate() -> Bm
+    """
+    print(f"Started 'control' thread with period {datapool.threaded_control_period}")
+    datapool.kill_threaded_control = False
+
+    t_prev_mutate = 0.0
+    t_prev_inject = 0.0
+
+    while not datapool.kill_threaded_control:
+        # Bm routing based on certain serveropts:
+        if datapool.serveropt_inject_Bm and \
+            (2*(time() - t_prev_inject) > datapool.threaded_read_ADC_period):
+            datapool.write_Bm(datapool.read_Bc())
+            t_prev_inject = time()
+
+        if datapool.serveropt_mutate_Bm \
+                and not datapool.serveropt_inject_Bm \
+                and (2*(time() - t_prev_mutate) > datapool.threaded_read_ADC_period):
+            Bm_prev = datapool.read_Bm()[1]
+            # print("[DEBUG] Bm_prev", Bm_prev)
+            Bm = []
+            for i in (0, 1, 2):
+                Bm.append(datapool.mutate(
+                    Bm_prev[i],
+                    datapool.params_mutate[0][i],
+                    datapool.params_mutate[1][i],
+                    datapool.params_mutate[2][i]
+                ))
+            datapool.write_Bm(Bm)
+            t_prev_mutate = time()
+            # datapool.write_Bm(datapool.mutate(datapool.read_Bm()[1]))
+            # datapool.write_buffer(datapool.Bm, datapool.mutate(datapool.Bm[0]))
+
+
+        # ==== PLAY MODE ====
+        if datapool.play_mode:
+            # Do only if playback is active
+            if datapool.play is True:
+                # Measure current time since start of play
+                datapool.t_current = time() - datapool.t_play
+
+                # If it is time, move to the next step, unless end of schedule is reached
+                if datapool.t_current >= datapool.t_next:
+                    if datapool.i_step[0] == datapool.n_steps - 2:
+                        datapool.write_buffer(datapool.i_step, datapool.i_step[0]+1)
+                        datapool.write_Bc(datapool.schedule[datapool.i_step[0]][3:6])
+                        # print(
+                        #     f"[DEBUG] Current step: {datapool.i_step}/{datapool.n_steps} (+{round(datapool.t_current, 3)} s)")
+                        if datapool.play_looping:
+                            datapool.write_buffer(datapool.i_step, 0)
+                            datapool.t_play = time()
+                            datapool.t_next = datapool.schedule[1][2]
+                            print(f"[DEBUG] Reached end of schedule -> RESETTING")
+
+                        else:
+                            confirm = datapool.set_play(False)
+                            print(f"[DEBUG] Reached end of schedule -> STOPPING")
+
+                    else:
+                        datapool.write_buffer(datapool.i_step, datapool.i_step[0] + 1)
+                        # datapool.i_step += 1
+                        # instruct_DACs(datapool, datapool.schedule[datapool.i_step][3:6])
+                        datapool.write_Bc(datapool.schedule[datapool.i_step[0]][3:6])
+                        datapool.t_next = datapool.schedule[datapool.i_step[0] + 1][2]
+                        # print(
+                        #     f"[DEBUG] Current step: {datapool.i_step}/{datapool.n_steps} (+{round(datapool.t_current, 3)} s)")
+                    sleep(max(0., datapool.threaded_control_period - (time() - t0)))
+
+                else:
+                    sleep(datapool.threaded_control_period)
+
+            else:
+                sleep(datapool.threaded_control_period)
+
+        # ==== MANUAL MODE ====
+        else:
+            sleep(datapool.threaded_control_period)
+
+    print(f"Closing control thread")
 
 
 
@@ -125,52 +217,6 @@ def threaded_write_DAC(datapool):
     Bc_prev = [0., 0., 0.]
 
     while not datapool.kill_threaded_write_DAC:  # Kills loop when set to True
-
-        # # ==== PLAY MODE ====
-        # if datapool.play_mode:
-        #     # Do only if play_status = "play"
-        #     if datapool.play_status == "play":
-        #         # Measure current time since start of play
-        #         datapool.t_current = time()-datapool.t_play
-        #
-        #         # If it is time, move to the next step, unless end of schedule is reached
-        #         if datapool.t_current >= datapool.t_next:
-        #             if datapool.step_current == datapool.steps - 2:
-        #                 datapool.step_current += 1
-        #                 instruct_DACs(datapool, datapool.schedule[datapool.step_current][3:6])
-        #                 print(f"[DEBUG] Current step: {datapool.step_current}/{datapool.steps} (+{round(datapool.t_current, 3)} s)")
-        #                 print(f"[DEBUG] Reached end of schedule -> STOPPING")
-        #                 confirm = datapool.play_stop()
-        #             else:
-        #                 datapool.step_current += 1
-        #                 instruct_DACs(datapool, datapool.schedule[datapool.step_current][3:6])
-        #                 datapool.t_next = datapool.schedule[datapool.step_current+1][2]
-        #                 print(f"[DEBUG] Current step: {datapool.step_current}/{datapool.steps} (+{round(datapool.t_current, 3)} s)")
-        #
-        #         else:
-        #             sleep(datapool.apply_Bc_period)
-        #
-        #     else:
-        #         sleep(datapool.apply_Bc_period)
-
-
-        # # ==== MANUAL MODE ====
-        # else:
-        #     if not datapool.pause_threaded_write_DAC:  # Pause loop when set to True
-        #         t0 = time()
-        #         Bc_read = datapool.read_Bc()
-        #         if Bc_read == Bc_prev:
-        #             sleep(max(0., datapool.apply_Bc_period - (time() - t0)))
-        #         else:
-        #             # control_vals = instruct_DACs(datapool, Bc_read)
-        #             Bc, Ic, Vc = instruct_DACs(datapool, Bc_read)
-        #             # datapool.write_control_vals(control_vals)
-        #             datapool.write_control_vals(Bc, Ic, Vc)
-        #             Bc_prev = Bc_read
-        #     else:
-        #         sleep(datapool.threaded_write_DAC_period)
-
-        # ==== MANUAL MODE ====
         if not datapool.pause_threaded_write_DAC:  # Pause loop when set to True
             # print("threaded_write_DAC() loop")
             t0 = time()
@@ -178,7 +224,7 @@ def threaded_write_DAC(datapool):
             if Bc_read == Bc_prev:
                 sleep(max(0., datapool.threaded_write_DAC_period - (time() - t0)))
             else:
-                pass
+                pass # TODO Apply Bc_read to the hardware!
         else:
             sleep(datapool.threaded_write_DAC_period)
 
@@ -186,6 +232,7 @@ def threaded_write_DAC(datapool):
     # TODO implement safe shutdown
     print(f"Closing write_DAC thread")
     hardware_shutdown(datapool)
+
 
 def threaded_read_ADC(datapool):
     """The thread running this function will periodically read the value of
@@ -208,70 +255,13 @@ def threaded_read_ADC(datapool):
 
     while not datapool.kill_threaded_read_ADC:  # Kills loop when set to True
 
-        # # ==== PLAY MODE ====
-        # if datapool.play_mode:
-        #     # Do only if play_status = "play"
-        #     if datapool.play_status == "play":
-        #         # Measure current time since start of play
-        #         datapool.t_current = time()-datapool.t_play
-        #
-        #         # If it is time, move to the next step, unless end of schedule is reached
-        #         if datapool.t_current >= datapool.t_next:
-        #             if datapool.step_current == datapool.steps - 2:
-        #                 datapool.step_current += 1
-        #                 instruct_DACs(datapool, datapool.schedule[datapool.step_current][3:6])
-        #                 print(f"[DEBUG] Current step: {datapool.step_current}/{datapool.steps} (+{round(datapool.t_current, 3)} s)")
-        #                 print(f"[DEBUG] Reached end of schedule -> STOPPING")
-        #                 confirm = datapool.play_stop()
-        #             else:
-        #                 datapool.step_current += 1
-        #                 instruct_DACs(datapool, datapool.schedule[datapool.step_current][3:6])
-        #                 datapool.t_next = datapool.schedule[datapool.step_current+1][2]
-        #                 print(f"[DEBUG] Current step: {datapool.step_current}/{datapool.steps} (+{round(datapool.t_current, 3)} s)")
-        #
-        #         else:
-        #             sleep(datapool.apply_Bc_period)
-        #
-        #     else:
-        #         sleep(datapool.apply_Bc_period)
-
-
-        # # ==== MANUAL MODE ====
-        # else:
-        #     if not datapool.pause_threaded_write_DAC:  # Pause loop when set to True
-        #         t0 = time()
-        #         Bc_read = datapool.read_Bc()
-        #         if Bc_read == Bc_prev:
-        #             sleep(max(0., datapool.apply_Bc_period - (time() - t0)))
-        #         else:
-        #             # control_vals = instruct_DACs(datapool, Bc_read)
-        #             Bc, Ic, Vc = instruct_DACs(datapool, Bc_read)
-        #             # datapool.write_control_vals(control_vals)
-        #             datapool.write_control_vals(Bc, Ic, Vc)
-        #             Bc_prev = Bc_read
-        #     else:
-        #         sleep(datapool.threaded_write_DAC_period)
-
-        # ==== MANUAL MODE ====
         if not datapool.pause_threaded_read_ADC:  # Pause loop when set to True
             t0 = time()
             # print("threaded_read_ADC() loop")
 
-            if datapool.serveropt_spoof_Bm:
-                Bm_prev = datapool.read_Bm()[1]
-                # print("[DEBUG] Bm_prev", Bm_prev)
-                Bm = []
-                for i in (0, 1, 2):
-                    Bm.append(datapool.mutate(
-                        Bm_prev[i],
-                        datapool.params_mutate[0][i],
-                        datapool.params_mutate[1][i],
-                        datapool.params_mutate[2][i]
-                    ))
-                datapool.write_Bm(Bm)
+            pass # TODO DO ADC READING STUFF
 
-            else:
-                pass # DO ADC READING STUFF
+            # TODO if serveropt_mutate_Bm or serveropt_inject_Bm -> Do not write_Bm() here!
 
             # print(f"[DEBUG] Bm = {datapool.read_Bm()}")
             sleep(max(0., datapool.threaded_read_ADC_period - (time() - t0)))
@@ -293,9 +283,11 @@ class DataPool:
         self.pause_threaded_read_ADC = False    # Not thread-safe
         self.pause_threaded_write_DAC = False   # Not thread-safe
 
+        self.kill_threaded_control = False     # Not thread-safe
         self.kill_threaded_read_ADC = False     # Not thread-safe
         self.kill_threaded_write_DAC = False    # Not thread-safe
 
+        self.threaded_control_period = 1/config["threaded_control_rate"]  # Not thread-safe
         self.threaded_read_ADC_period = 1/config["threaded_read_ADC_rate"]  # Not thread-safe
         self.threaded_write_DAC_period = 1/config["threaded_write_DAC_rate"]  # Not thread-safe
 
@@ -328,7 +320,6 @@ class DataPool:
         self.aux_dac = self.init_buffer(ibs, 6)
 
         # ==== Other parameters ==============================================
-
         self.params_tf_VB = {
             "x": config["params_tf_VB_x"],
             "y": config["params_tf_VB_y"],
@@ -339,25 +330,28 @@ class DataPool:
 
         self.output_enable = False              # Enable/disable H-bridge output using PSUE pin
 
-        # ==== Serveropts ==============================================
-        self.serveropt_spoof_Bm = config["spoof_Bm"]
-
-        # # Play controls
-        # self.play_mode = False          # If False, manual control is enabled, if True,
-        # self.play_status = "stop"       # Valid: "play", "stop"
-        # self.t_play = 0.0               # UNIX time at which "play" began
-        # self.steps = 1
-        # self.step_current = 0          # What step the schedule play is on
-        # self.t_current = 0.0
-        # self.t_next = 0.0
-
         # Initialize schedule
         self.initialize_schedule()
 
 
+        # ==== Play controls =================================================
+        # Looping: True: Plays schedule over and over | False: One-shot schedule playback
+        self.play_looping = config["default_play_looping"]
+        self.play_mode = False          # True: Can playback | False: Manual control only
+        self.play = False               # True: Playing | False: Stopped
+        self.n_steps = 1                # Number of steps in schedule
+        self.t_play = 0.0               # UNIX time at which "play" began
+        self.t_current = 0.0            # Current time in schedule
+        self.t_next = 0.0               # Time of next step in schedule
+
+
+        # ==== Serveropts ====================================================
+        self.serveropt_mutate_Bm = config["mutate_Bm"]
+        self.serveropt_inject_Bm = config["inject_Bm"]
+
     # ==== INTERNAL FUNCTIONS ================================================
 
-    def write_buffer(self, buffer, value):
+    def write_buffer(self, buffer: list, value):
         """First-in, last-out buffer update function.
         - Increases length of buffer by 1 by inserting new value at position 0
         - Deletes the last value of the buffer using pop()
@@ -367,20 +361,30 @@ class DataPool:
         buffer.insert(0, value)
         buffer.pop()
 
-    def init_buffer(self, buffer_size, entry_size, dtype=float):
+    def init_buffer(self, buffer_size, entry_size, dtype=float) -> list:
         """Automatically creates a buffer object, which is a list with a number
         of entries. The number of entries is equal to <buffer_size>.
         The entries themselves are lists if <entry_size> is larger than 1,
         making the buffer 2D. For <entry_size> equal to 1, the buffer will be
-        1D instead.
+        1D instead. The entries will be floats by default, but the data typing
+        of the entries can be controlled using the dtype argument.
+
+        [DEV NOTE] Buffers are created by creating a Numpy array of zeroes of
+        the right type, then using .tolist() to cast it into a list of lists.
+        This will create the correct data format, but for some reason the
+        output of (array).tolist() will be signalled as an <object> rather than
+        a <list>, causing the linter to misreport it. Hence, the operation is
+        enclosed in another list() operation, at negligible performance cost.
+        This now causes a linter misreport on the list() calls, but the error
+        is now localized to this function and can be ignored using # noqa.
         """
         if buffer_size <= 0:
             raise ValueError(f"init_buffer(): buffer_size cannot be {buffer_size}!")
 
         if entry_size == 1:
-            return zeros(buffer_size, dtype=dtype).tolist()
+            return list(zeros(buffer_size, dtype=dtype).tolist()) # noqa
         elif entry_size > 1:
-            return zeros((buffer_size, entry_size), dtype=dtype).tolist()
+            return list(zeros((buffer_size, entry_size), dtype=dtype).tolist()) # noqa
         else:
             raise ValueError(f"init_buffer(): Negative entry_size given!")
 
@@ -444,9 +448,10 @@ class DataPool:
         The lock prevents other threads from accessing self.Bm whilst it is
         being updated. Useful to prevent hard-to-debug race condition bugs.
         """
+        print(f"[DEBUG] write_Bm({Bm})")
         self._lock_ADC.acquire(timeout=0.001)
         try:
-            self.write_buffer(self.Bm, Bm) # noqa
+            self.write_buffer(self.Bm, Bm)
         except:  # noqa
             print("[WARNING] DataPool.write_Bm(): Unable to write to self.Bm!")
         self._lock_ADC.release()
@@ -471,13 +476,13 @@ class DataPool:
         The lock prevents other threads from accessing self.Bc whilst it is
         being updated. Useful to prevent hard-to-debug race condition bugs.
         """
+        print(f"[DEBUG] write_Bc({Bc})")
         self._lock_DAC.acquire(timeout=0.001)
         try:
-            self.write_buffer(self.Bc, Bc) # noqa
+            self.write_buffer(self.Bc, Bc)
         except:  # noqa
             print("[WARNING] DataPool.write_Bc(): Unable to write to self.Bc!")
         self._lock_DAC.release()
-
 
     def read_Br(self):
         """Thread-safely reads the current Br field from the datapool.
@@ -501,7 +506,7 @@ class DataPool:
         """
         self._lock_DAC.acquire(timeout=0.001)
         try:
-            self.write_buffer(self.Br, Br) # noqa
+            self.write_buffer(self.Br, Br)
         except:  # noqa
             print("[WARNING] DataPool.write_Br(): Unable to write to self.Br!")
         self._lock_DAC.release()
@@ -526,8 +531,7 @@ class DataPool:
         self._lock_DAC.release()
         return tm, i_step, Im, Bm, Bc
 
-
-    def write_ADC_data(self, Bm, Im, V_board, aux_adc):
+    def write_adc_data(self, Bm, Im, V_board, aux_adc):
         """Thread-safely writes all ADC data to their corresponding fields
          in the datapool.
 
@@ -536,14 +540,13 @@ class DataPool:
         """
         self._lock_ADC.acquire(timeout=0.001)
         try:
-            self.write_buffer(self.Bm, Bm)  # noqa
-            self.write_buffer(self.Im, Im)  # noqa
-            self.write_buffer(self.V_board, V_board)  # noqa
-            self.write_buffer(self.aux_adc, aux_adc)  # noqa
+            self.write_buffer(self.Bm, Bm)
+            self.write_buffer(self.Im, Im)
+            self.write_buffer(self.V_board, V_board)
+            self.write_buffer(self.aux_adc, aux_adc)
         except:  # noqa
             print("[WARNING] DataPool.read_Bm(): Unable to read self.Bm!")
         self._lock_ADC.release()
-
 
     def read_aux_adc(self):
         """Thread-safely reads the ADC aux1 channel data from the datapool.
@@ -640,7 +643,6 @@ class DataPool:
         self.schedule_hash = ""     # Modifying the schedule voids the hash.
         self._lock_schedule.release()
 
-
     def initialize_schedule(self):
         """Thread-safely writes the default init schedule to the datapool.
         Returns a 1 for remote confirmation purposes.
@@ -662,7 +664,6 @@ class DataPool:
 
         # print(f"[DEBUG] HASH INIT {self.schedule_hash}")
         return 1
-
 
     def allocate_schedule(self, name: str, n_seg: int, duration: float):
         """Thread-safely allocates an empty schedule of a defined size. This
@@ -780,59 +781,91 @@ class DataPool:
         return 1
 
 
-    # def activate_play_mode(self):
-    #     print("[DEBUG] activate_play_mode()")
-    #     self.play_mode = True
-    #     instruct_DACs(datapool, [0., 0., 0.])
-    #     self.steps = len(self.schedule)
-    #     self.play_status = "stop"
-    #     self.t_play = 0.0
-    #
-    #     self.t_current = 0.0
-    #     self.step_current = -1
-    #     self.t_next = self.schedule[self.step_current+1][2]
-    #
-    #     return 1
-    #
-    #
-    # def deactivate_play_mode(self):
-    #     print("[DEBUG] deactivate_play_mode()")
-    #     instruct_DACs(datapool, [0., 0., 0.])
-    #     self.play_mode = False
-    #     self.play_status = "stop"
-    #     # self.tstart_play = 0.0
-    #     # self.step_current = -1
-    #     return 1
-    #
-    #
-    # def play_start(self):
-    #     print("[DEBUG] play_start()")
-    #     self.t_play = time()
-    #     self.play_status = "play"
-    #     return 1
-    #
-    #
-    # def play_stop(self):
-    #     print("[DEBUG] play_stop()")
-    #     self.play_status = "stop"
-    #     instruct_DACs(datapool, [0., 0., 0.])  # This essentially causes the last schedule point to be ignored
-    #     self.t_current = 0.0
-    #     self.step_current = -1
-    #     self.t_next = self.schedule[self.step_current+1][2]
-    #     return 1
-    #
-    #
-    # def get_current_time_step(self):
-    #     return self.step_current, self.steps, self.t_current
+    # ==== SCHEDULE PLAYBACK =================================================
 
+    def set_play_mode(self, play_mode_on: bool):
+        """Activates or deactivates play_mode."""
+        # print("[DEBUG] set_play_mode():", play_mode_on, type(play_mode_on))
+        if play_mode_on is True:
+            """
+            Activates play mode, which primes the server to start playing back the
+            current schedule. The idea is that everything is set up such that the
+            moment self.play is set to True, playback can commence immediately.
+            This includes priming hardware such as power supplies to the first step
+            of the schedule, such that no slew transients need to happen the moment
+            that playback begins.
+    
+            To this end, this function does the following:
+                1. self.play_mode will be set to True, resulting in adjusted
+                    event loops of the ADC and DAC handling threads.
+                2. The internal play tracking parameters will be initialized to the
+                    first step of the current schedule.
+                3. The hardware is instructed to output the first schedule step.
+            """
+            # print("[DEBUG] activate_play_mode")
 
-    # def get_play_mode(self):
-    #     # print("[DEBUG] get_play_mode()")
-    #     return self.play_mode  # Implemented non-thread-safe
-    #
-    # def get_play_status(self):
-    #     # print("[DEBUG] get_play_status()")
-    #     return self.play_status  # Implemented non-thread-safe
+            self.play_mode = True
+            self.play = False
+
+            self.n_steps = len(self.schedule)
+            self.write_buffer(self.i_step, 0)
+
+            self.t_play = time()
+            self.t_current = self.schedule[self.i_step[0]][2]
+            self.t_next = self.schedule[self.i_step[0]+1][2]
+
+            # Set hardware to first schedule step
+            self.write_Bc(self.schedule[datapool.i_step[0]][3:6])
+
+            return 1
+
+        else:
+            """
+            Deactivates play mode, which deprimes the server for schedule playback.
+
+            This covers:
+                1. self.play_mode will be set to False, resulting in adjusted
+                    event loops of the ADC and DAC handling threads.
+                2. self.play is also set to False to stop any playback.
+                3. The hardware is returned to a reset/idle state.
+            """
+            # print("[DEBUG] deactivate_play_mode")
+
+            self.play_mode = False
+            self.play = False
+
+            # Reset hardware to zero
+            self.write_Bc([0., 0., 0.])
+
+            return 0
+
+    def set_play(self, play: bool):
+        """
+        Starts or stops schedule playback. Pausing is not implemented.
+
+        When playback is started, self.play is set to True and the unix start
+        time is recorded.
+
+        When playback is stopped, the playback parameters are reset to the
+        beginning of the schedule. The hardware is also set to the first
+        schedule point.
+        """
+        # print("[DEBUG] set_play:", play)
+
+        if play is True:
+            self.t_play = time()
+            self.play = True
+            return 1
+        else:
+            self.play = False
+            self.t_current = 0.0
+            self.write_buffer(self.i_step, 0)
+            self.t_next = self.schedule[self.i_step[0]][2]
+
+            # Reset hardware to first schedule step
+            self.write_Bc(self.schedule[datapool.i_step[0]][3:6])
+
+            return 0
 
 
 # Server object
@@ -915,7 +948,7 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
             type_id = codec.packet_type(packet_in)
             # t1 = time()  # [TIMING]
 
-            if self.v >= 4:
+            if self.v >= 3:
                 print("[DEBUG] packet_in:", packet_in)
 
             if type_id == "b":
@@ -925,6 +958,7 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 of Bm."""
                 if self.v >= 2:
                     print("[DEBUG] Detected b-packet")
+                # print("[DEBUG] READ_BM()", self.server.datapool.read_Bm())
                 packet_out = codec.encode_bpacket(
                     *self.server.datapool.read_Bm()
                 )
@@ -939,11 +973,16 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                     print("[DEBUG] Detected c-packet")
                 Bc = codec.decode_cpacket(packet_in)
                 try:
-                    self.server.datapool.write_Bc(Bc)
-                    if self.v >= 4:
-                        print("[DEBUG] Bc written to datapool:", Bc, type(Bc))
-                        print("[DEBUG] CHECK datapool.Bc:", self.server.datapool.Bc)
-                    packet_out = codec.encode_mpacket("1")
+                    # Safety measure that prevents manual control when play
+                    # mode is active.
+                    if self.server.datapool.play_mode is True:
+                        packet_out = codec.encode_mpacket("-2")
+                    else:
+                        self.server.datapool.write_Bc(Bc)
+                        if self.v >= 4:
+                            print("[DEBUG] Bc written to datapool:", Bc, type(Bc))
+                            print("[DEBUG] CHECK datapool.Bc:", self.server.datapool.Bc)
+                        packet_out = codec.encode_mpacket("1")
                 except:  # noqa
                     packet_out = codec.encode_mpacket("-1")
 
@@ -1019,7 +1058,7 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
                 type."""
                 raise ValueError(f"Encountered uninterpretable type_id '{type_id}' in received packet.")
 
-            if self.v >= 4:
+            if self.v >= 3:
                 print("[DEBUG] packet_out:", packet_out)
 
             # t2 = time()  # [TIMING]
@@ -1048,7 +1087,7 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
         get_schedule_info
         get_server_uptime
         get_socket_info
-        get_serveropt_spoof_Bm / set_serveropt_spoof_Bm
+        get_serveropt_mutate_Bm / set_serveropt_mutate_Bm
         get_V_board
 
         """
@@ -1142,20 +1181,68 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
         elif fname == "get_server_uptime":
             packet_out = codec.encode_mpacket(str(self.server.uptime()))
 
-        elif fname == "set_serveropt_spoof_Bm":
-            self.server.datapool.serveropt_spoof_Bm = bool(int(args[0]))    # Not thread-safe
+        elif fname == "get_socket_info":
+            """Return an m-packet with some information about the client from
+            the perspective of the server:
+            1. The time for which the client socket has been active
+            2. The client address
+            3. The client port
+            This information is packaged as a csv string.
+            """
+            uptime = time()-self.socket_tstart
             packet_out = codec.encode_mpacket(
-                str(int(self.server.datapool.serveropt_spoof_Bm)))          # Not thread-safe
-            if self.v >= 4:
-                print(f"[DEBUG] serveropt_spoof_Bm() set {bool(int(args[0]))}")
+                f"{uptime},{self.client_address[0]},{self.client_address[1]}"
+            )
 
-        elif fname == "get_serveropt_spoof_Bm":
+
+        # ==== Playback functions ============================================
+        elif fname == "set_serveropt_mutate_Bm":
+            self.server.datapool.serveropt_mutate_Bm = args[0]              # Not thread-safe
             packet_out = codec.encode_mpacket(
-                str(int(self.server.datapool.serveropt_spoof_Bm)))          # Not thread-safe
+                str(int(self.server.datapool.serveropt_mutate_Bm)))         # Not thread-safe
+
+        elif fname == "get_serveropt_mutate_Bm":
+            packet_out = codec.encode_mpacket(
+                str(int(self.server.datapool.serveropt_mutate_Bm)))         # Not thread-safe
 
 
+        elif fname == "set_serveropt_inject_Bm":
+            self.server.datapool.serveropt_inject_Bm = args[0]              # Not thread-safe
+            packet_out = codec.encode_mpacket(
+                str(int(self.server.datapool.serveropt_inject_Bm)))         # Not thread-safe
 
-        # ==== Schedule and playback functions ===============================
+        elif fname == "get_serveropt_inject_Bm":
+            packet_out = codec.encode_mpacket(
+                str(int(self.server.datapool.serveropt_inject_Bm)))          # Not thread-safe
+
+
+        # ==== Playback functions ============================================
+        elif fname == "get_play_info":
+            packet_out = codec.encode_mpacket(
+                f"{int(self.server.datapool.play_mode)}," +     # Not thread-safe
+                f"{int(self.server.datapool.play)}," +          # Not thread-safe
+                f"{int(self.server.datapool.play_looping)}," +  # Not thread-safe
+                f"{self.server.datapool.n_steps}," +            # Not thread-safe
+                f"{self.server.datapool.i_step[0]}," +             # Not thread-safe
+                f"{self.server.datapool.t_play}," +             # Not thread-safe
+                f"{self.server.datapool.t_current}," +          # Not thread-safe
+                f"{self.server.datapool.t_next}"                # Not thread-safe
+            )
+
+        elif fname == "set_play_mode":
+            packet_out = codec.encode_mpacket(
+                str(self.server.datapool.set_play_mode(args[0])))       # Not thread-safe
+
+        elif fname == "set_play":
+            packet_out = codec.encode_mpacket(
+                str(self.server.datapool.set_play(args[0])))            # Not thread-safe
+
+        elif fname == "set_play_looping":
+            self.server.datapool.play_looping = args[0]                 # Not thread-safe
+            packet_out = codec.encode_mpacket(
+                str(int(self.server.datapool.play_looping)))            # Not thread-safe
+
+        # ==== Schedule functions ===============================
 
         # Prints info about the schedule into the terminal
         elif fname == "print_schedule_info":
@@ -1187,28 +1274,6 @@ class ThreadedTCPRequestHandler(BaseRequestHandler):
         elif fname == "allocate_schedule":
             confirm = self.server.datapool.allocate_schedule(args[0], args[1], args[2])
             packet_out = codec.encode_mpacket(str(confirm))
-
-
-        # # Requests the uptime of the communication socket, from the perspective
-        # # of the server # TODO DEPRECATED IN FAVOUR OF get_socket_info
-        # elif fname == "get_socket_uptime":
-        #     """Return an m-packet with the time the corresponding client has
-        #     been connected for."""
-        #     packet_out = codec.encode_mpacket(str(time()-self.socket_tstart))
-
-
-        elif fname == "get_socket_info":
-            """Return an m-packet with some information about the client from
-            the perspective of the server:
-            1. The time for which the client socket has been active
-            2. The client address
-            3. The client port
-            This information is packaged as a csv string.
-            """
-            uptime = time()-self.socket_tstart
-            packet_out = codec.encode_mpacket(
-                f"{uptime},{self.client_address[0]},{self.client_address[1]}"
-            )
 
 
         elif fname == "get_V_board":
@@ -1263,6 +1328,14 @@ if __name__ == "__main__":
     # Start server thread
     server_thread.start()
 
+    # Set up thread for control
+    thread_control = Thread(
+        name="Control Thread",
+        target=threaded_control,
+        args=(datapool,),
+        daemon=True)
+    thread_control.start()
+
     # Set up thread for continuously polling the ADC, and writing it to the
     # server datapool.
     thread_read_ADC = Thread(
@@ -1301,6 +1374,7 @@ if __name__ == "__main__":
     print("Shutting down - finishing threads.")
     datapool.kill_threaded_read_ADC = True
     datapool.kill_threaded_write_DAC = True
+    datapool.kill_threaded_control = True
 
     ttest = time()
     thread_read_ADC.join(timeout=1.0)
@@ -1309,6 +1383,10 @@ if __name__ == "__main__":
     ttest = time()
     thread_write_DAC.join(timeout=5.0)
     print(f"Shut down write_DAC thread in {round((time()-ttest)*1E3, 3)} ms")
+
+    ttest = time()
+    thread_control.join(timeout=1.0)
+    print(f"Shut down control thread in {round((time()-ttest)*1E3, 3)} ms")
 
     # For safety: set power supplies to zero, separately from apply_Bc_thread
     print(f"Resetting Bc just in case")

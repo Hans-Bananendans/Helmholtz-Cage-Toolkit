@@ -2090,16 +2090,17 @@ class GroupManualInput(QGroupBox):
         layout0.setHorizontalSpacing(8)
         layout0.setSizeConstraint(QLayout.SetMinimumSize)
 
-        self.biv_labels = []  # Bc, Br, Bo, Bm, Bd, Vc, Ic, Im, Id
+        # self.biv_labels = []  # Bc, Br, Bo, Bm, Bd, Vc, Ic, Im, Id
+        self.biv_labels = []  # Bc, Br, Bo, Bm, Bd, Im, P
 
         styles = ["QLabel {color: #ffaaaa;}", "QLabel {color: #aaffaa;}",
                   "QLabel {color: #aaaaff;}", "QLabel {}"]
 
         for i, var in enumerate(
-                ["Bc", "Br", "Bo", "Bm", "Bd", "Vc", "Ic", "Im", "Id"]):
+                ["Bc", "Br", "Bo", "Bm", "Bd", "Im", "P"]):
             varlist = []
             for j in range(4):
-                if i >= 5 and j == 3:
+                if i == 5 and j == 3:
                     label = QLabel("")  # Empty summed voltage and current entries
                 else:
                     label = QLabel("<{}_{}>".format(var, ("x", "y", "z", "T")[j]))
@@ -2109,8 +2110,8 @@ class GroupManualInput(QGroupBox):
                 varlist.append(label)
             self.biv_labels.append(varlist)
 
-        header_text = ["Bc", "Br", "Bo", "Bm", "Bd", "Vc", "Ic", "Im", "Id"]
-        header_units = ["\u03bcT"]*5 + ["V"] + ["mA"]*3
+        header_text = ["Bc", "Br", "Bo", "Bm", "Bd", "Im", "P"]
+        header_units = ["\u03bcT"]*5 + ["mA"] + ["W"]
         header_labels = []
         for i in range(len(header_text)):
             label = QLabel("{}\n[{}]".format(header_text[i], header_units[i]))
@@ -2140,10 +2141,10 @@ class GroupManualInput(QGroupBox):
         layout0.addWidget(self.button_submit_Bc, 4, 0)
 
         # Header labels
-        for i in range(9):
+        for i in range(7):
             layout0.addWidget(header_labels[i], 0, i+1)
         # Value labels
-        for i in range(9):
+        for i in range(7):
             for j in range(4):
                 layout0.addWidget(self.biv_labels[i][j], j+1, i+1)
 
@@ -2188,8 +2189,11 @@ class GroupManualInput(QGroupBox):
         # t0 = time()  # [TIMING]
 
         # Calculating values (~5 us)
-        vc, ic, im = self.datapool.Vc, self.datapool.Ic, self.datapool.Im
-        bc, br, bm = self.datapool.Bc, self.datapool.Br, self.datapool.Bm
+        im = self.datapool.Im
+        bc = self.datapool.Bc
+        br = self.datapool.Br
+        bm = self.datapool.Bm
+
 
         # # Convert from nT to uT:  SLOWER
         # for b in (bc, br, bm):
@@ -2215,17 +2219,26 @@ class GroupManualInput(QGroupBox):
         Bd = [Bo[0]-Bm[0], Bo[1]-Bm[1], Bo[2]-Bm[2],
               ((Bo[0]-Bm[0])**2 + (Bo[1]-Bm[1])**2 + (Bo[2]-Bm[2])**2)**(1/2)]
 
-        Vc = [vc[0], vc[1], vc[2], 0]
-        Ic = [ic[0], ic[1], ic[2], 0]
+        # Vc = [vc[0], vc[1], vc[2], 0]
+        # Ic = [ic[0], ic[1], ic[2], 0]
         Im = [im[0], im[1], im[2], 0]
-        Id = [Ic[0]-Im[0], Ic[1]-Im[1], Ic[2]-Im[2], 0]
+        # Id = [Ic[0]-Im[0], Ic[1]-Im[1], Ic[2]-Im[2], 0]
+
+        P3 = [
+            self.datapool.config["r_load"][0] * (im[0]/1E3) ** 2,
+            self.datapool.config["r_load"][1] * (im[1]/1E3) ** 2,
+            self.datapool.config["r_load"][2] * (im[2]/1E3) ** 2
+        ]
+
+        P = [P3[0], P3[1], P3[2], (P3[0]**2 + P3[1]**2 + P3[2]**2)**(1/2)]
 
         # t1 = time()  # [TIMING]
 
         # Mapping values to labels:
-        for i, p in enumerate((Bc, Br, Bo, Bm, Bd, Vc, Ic, Im, Id)):
+        # for i, p in enumerate((Bc, Br, Bo, Bm, Bd, Vc, Ic, Im, Id)):
+        for i, p in enumerate((Bc, Br, Bo, Bm, Bd, Im, P)):
             for j in range(4):
-                if i >= 5 and j == 3:
+                if i == 5 and j == 3:
                     # skip summed entries for voltage and current
                     pass
                 else:

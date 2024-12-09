@@ -491,7 +491,7 @@ class ConnectionWindow(QWidget):
 
     def correct_time(self):
         self.server_uptime = cf.get_server_uptime(self.socket, datastream=self.ds)
-        self.socket_uptime = cf.get_socket_uptime(self.socket, datastream=self.ds)
+        self.socket_uptime, _, _ = cf.get_socket_info(self.socket, datastream=self.ds)
 
         self.label_server_uptime.setText(f"{int(self.server_uptime)} s")
         self.label_socket_uptime.setText(f"{int(self.socket_uptime)} s")

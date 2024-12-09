@@ -1,3 +1,11 @@
+"""
+Description here TODO
+
+If implementing this function with QTcpSocket, you can specify a re-usable
+QDataStream object to substantially increase performance.
+
+"""
+
 from time import time
 from socket import socket
 from hashlib import blake2b
@@ -341,7 +349,6 @@ def reset_Bc(socket,
     confirm = set_Bc(socket, [0., 0., 0.], datastream=datastream)
 
     return confirm
-
 
 
 def get_V_board(socket,
@@ -747,12 +754,19 @@ def transfer_schedule(  # TODO Incorporate schedule validation tools
     if schedule[-1][0]+1 != len(schedule):
         raise AssertionError(f"The segment numbers of schedule '{name}' do not match its length!")
 
-    # # TODO: Is this desirable behaviour, given that user already has control
-    # #  of this aspect by choosing to pass a QDataStream as an argument?
-    # # To help with performance, transfer_schedule() assumes that it is allowed
-    # # uninterrupted access to the TCP connection. If using a QTcpSocket and
-    # # no datastream is pre-specified, `transfer_schedule()` will now make one
-    # # once, to speed up transfer.
+
+    # [DEV NOTE] To help with performance, transfer_schedule() can be set to
+    # assume that it is allowed uninterrupted access to the TCP connection. If
+    # using a QTcpSocket and no datastream is pre-specified,
+    # `transfer_schedule()` will now make one once, to speed up transfer.
+    #
+    # However, at this time I am unsure whether this is desirable behaviour,
+    # given that user already has control of this aspect by choosing to pass a
+    # QDataStream as an argument. In addition, schedule transfer speed does not
+    # seem a particularly nasty bottleneck, and will take some time regardless,
+    # so it seems better to not congest the TCP connection and attempt to brave
+    # the perilous waters of maintaining multi-client compatibility.
+    #
     # elif type(socket) == QTcpSocket and not datastream:
     #     datastream = QDataStream(socket_obj)
 
@@ -779,6 +793,7 @@ def transfer_schedule(  # TODO Incorporate schedule validation tools
     tend = time()
     # print(f"Transferred schedule in {round((tend - tstart) * 1E3, 3)} ms")
 
+    # Return total transfer time in [s] as output:
     return tend - tstart
 
 
@@ -861,156 +876,237 @@ def verify_schedule(
 
 
 
-
 # ==== PLAY CONTROLS ====
-def activate_play_mode( # TODO EVALUATE
+
+# def activate_play_mode( # TODO EVALUATE
+#     socket,
+#     datastream: QDataStream = None):
+#     """Switches the field vector control thread from `manual mode` to
+#     `play mode`. When in play mode, the server will be poised to start schedule
+#     playback using the designated controls, so calling activate_play_mode()
+#     also serves as an `arming switch`.
+#
+#     If implementing this function with QTcpSocket, you can specify a re-usable
+#     QDataStream object to substantially increase performance.
+#     """
+#     confirm = codec.decode_mpacket(
+#         send_and_receive(
+#             codec.encode_xpacket("activate_play_mode"),
+#             socket,
+#             datastream=datastream
+#         )
+#     )
+#     return int(confirm)
+#
+# def deactivate_play_mode( # TODO EVALUATE
+#     socket,
+#     datastream: QDataStream = None):
+#     """Switches the field vector control thread from `play mode` to
+#     `manual mode`.
+#
+#     If implementing this function with QTcpSocket, you can specify a re-usable
+#     QDataStream object to substantially increase performance.
+#     """
+#     confirm = codec.decode_mpacket(
+#         send_and_receive(
+#             codec.encode_xpacket("deactivate_play_mode"),
+#             socket,
+#             datastream=datastream
+#         )
+#     )
+#     return int(confirm)
+
+
+def get_play_info(
     socket,
     datastream: QDataStream = None):
-    """Switches the field vector control thread from `manual mode` to
-    `play mode`. When in play mode, the server will be poised to start schedule
-    playback using the designated controls, so calling activate_play_mode()
-    also serves as an `arming switch`.
-
-    If implementing this function with QTcpSocket, you can specify a re-usable
-    QDataStream object to substantially increase performance.
+    """Requests various information about the server play mode. Returns:
+        - play_mode (bool)
+        - play (bool)
+        - play_looping (bool)
+        - n_steps (int)
+        - i_step (int)
+        - t_play (float)
+        - t_current (float)
+        - t_next (float)
+    in that order.
     """
-    confirm = codec.decode_mpacket(
+    play_info = codec.decode_mpacket(
         send_and_receive(
-            codec.encode_xpacket("activate_play_mode"),
-            socket,
-            datastream=datastream
-        )
-    )
-    return int(confirm)
-
-def deactivate_play_mode( # TODO EVALUATE
-    socket,
-    datastream: QDataStream = None):
-    """Switches the field vector control thread from `play mode` to
-    `manual mode`.
-
-    If implementing this function with QTcpSocket, you can specify a re-usable
-    QDataStream object to substantially increase performance.
-    """
-    confirm = codec.decode_mpacket(
-        send_and_receive(
-            codec.encode_xpacket("deactivate_play_mode"),
-            socket,
-            datastream=datastream
-        )
-    )
-    return int(confirm)
-
-def play_start( # TODO EVALUATE
-    socket,
-    datastream: QDataStream = None):
-    """Instructs the server to immediately start schedule playback.
-
-    If implementing this function with QTcpSocket, you can specify a re-usable
-    QDataStream object to substantially increase performance.
-    """
-    confirm = codec.decode_mpacket(
-        send_and_receive(
-            codec.encode_xpacket("play_start"),
-            socket,
-            datastream=datastream
-        )
-    )
-    return int(confirm)
-
-def play_stop( # TODO EVALUATE
-    socket,
-    datastream: QDataStream = None):
-    """Instructs the server to immediately stop schedule playback. The
-    playback position will be reset to the start, and so this is not a pause,
-    but indeed a stop.
-
-    If implementing this function with QTcpSocket, you can specify a re-usable
-    QDataStream object to substantially increase performance.
-    """
-    confirm = codec.decode_mpacket(
-        send_and_receive(
-            codec.encode_xpacket("play_stop"),
-            socket,
-            datastream=datastream
-        )
-    )
-    return int(confirm)
-
-
-def get_current_time_step( # TODO EVALUATE
-    socket,
-    datastream: QDataStream = None):
-    """Requests the current instantaneous playback time at the server side.
-
-    The server plays back schedules by time marching, switching to the next
-    schedule segments at the appropriate moment. This function provides insight
-    into that process at the instant the function is called.
-
-    Returns three values:
-        1. Current segment being played back
-        2. Total number of segments in schedule
-        3. Current instantaneous playback time
-
-    If implementing this function with QTcpSocket, you can specify a re-usable
-    QDataStream object to substantially increase performance.
-    """
-    ts_string = codec.decode_mpacket(
-        send_and_receive(
-            codec.encode_xpacket("get_current_time_step"),
+            codec.encode_xpacket("get_play_info"),
             socket,
             datastream=datastream
         )
     ).split(",")
-    #      Current segment    n segments         Instantaneous playback time
-    return int(ts_string[0]), int(ts_string[1]), float(ts_string[2])
 
+    [play_mode, play, play_looping, n_steps, i_step, t_play, t_current, t_next] \
+        = play_info
 
-def get_play_mode( # TODO EVALUATE
+    return bool(int(play_mode)), bool(int(play)), bool(int(play_looping)), \
+        int(n_steps), int(i_step), \
+        float(t_play), float(t_current), float(t_next)
+
+def set_play_mode(
     socket,
+    play_mode: bool,
     datastream: QDataStream = None):
-    """Requests the current value of play_mode.
-
-    True means that the Bc thread on the server is looping in `play mode`
-    False means that the Bc thread is looping in `manual mode`.
-
-    If implementing this function with QTcpSocket, you can specify a re-usable
-    QDataStream object to substantially increase performance.
+    """Setter of server play_mode. Returns 1 if play_mode was set True and 0 if
+    it was set to False.
     """
 
-    play_mode_string = codec.decode_mpacket(
+    confirm = codec.decode_mpacket(
         send_and_receive(
-            codec.encode_xpacket("get_play_mode"),
+            codec.encode_xpacket("set_play_mode", play_mode),
             socket,
             datastream=datastream
         )
     )
-    if play_mode_string == "True":
-        return True
-    elif play_mode_string == "False":
-        return False
-    else:
-        raise AssertionError("Received invalid play_mode '{play_mode_string}'")
+    return int(confirm)
 
-def get_play_status( # TODO EVALUATE
+def set_play(
     socket,
+    play: bool,
     datastream: QDataStream = None):
-    """Requests the current value of play_status.
-
-    Can only have two values: "play" or "stop".
-
-    If implementing this function with QTcpSocket, you can specify a re-usable
-    QDataStream object to substantially increase performance.
+    """Setter of server play_mode. Returns 1 if playback was started and 0 if
+    it was stopped.
     """
 
-    play_status_string = codec.decode_mpacket(
+    confirm = codec.decode_mpacket(
         send_and_receive(
-            codec.encode_xpacket("get_play_status"),
+            codec.encode_xpacket("set_play", play),
             socket,
             datastream=datastream
         )
     )
-    return play_status_string
+    return int(confirm)
+
+def set_play_looping(
+    socket,
+    play_looping: bool,
+    datastream: QDataStream = None):
+    """Setter of server play_looping. Returns 1 if playback was set to looping
+    and 0 if it was set to one-shot.
+    """
+
+    confirm = codec.decode_mpacket(
+        send_and_receive(
+            codec.encode_xpacket("set_play_looping", play_looping),
+            socket,
+            datastream=datastream
+        )
+    )
+    return int(confirm)
+
+# def play_start( # TODO EVALUATE
+#     socket,
+#     datastream: QDataStream = None):
+#     """Instructs the server to immediately start schedule playback.
+#
+#     If implementing this function with QTcpSocket, you can specify a re-usable
+#     QDataStream object to substantially increase performance.
+#     """
+#     confirm = codec.decode_mpacket(
+#         send_and_receive(
+#             codec.encode_xpacket("play_start"),
+#             socket,
+#             datastream=datastream
+#         )
+#     )
+#     return int(confirm)
+#
+# def play_stop( # TODO EVALUATE
+#     socket,
+#     datastream: QDataStream = None):
+#     """Instructs the server to immediately stop schedule playback. The
+#     playback position will be reset to the start, and so this is not a pause,
+#     but indeed a stop.
+#
+#     If implementing this function with QTcpSocket, you can specify a re-usable
+#     QDataStream object to substantially increase performance.
+#     """
+#     confirm = codec.decode_mpacket(
+#         send_and_receive(
+#             codec.encode_xpacket("play_stop"),
+#             socket,
+#             datastream=datastream
+#         )
+#     )
+#     return int(confirm)
+#
+#
+# def get_current_time_step( # TODO EVALUATE
+#     socket,
+#     datastream: QDataStream = None):
+#     """Requests the current instantaneous playback time at the server side.
+#
+#     The server plays back schedules by time marching, switching to the next
+#     schedule segments at the appropriate moment. This function provides insight
+#     into that process at the instant the function is called.
+#
+#     Returns three values:
+#         1. Current segment being played back
+#         2. Total number of segments in schedule
+#         3. Current instantaneous playback time
+#
+#     If implementing this function with QTcpSocket, you can specify a re-usable
+#     QDataStream object to substantially increase performance.
+#     """
+#     ts_string = codec.decode_mpacket(
+#         send_and_receive(
+#             codec.encode_xpacket("get_current_time_step"),
+#             socket,
+#             datastream=datastream
+#         )
+#     ).split(",")
+#     #      Current segment    n segments         Instantaneous playback time
+#     return int(ts_string[0]), int(ts_string[1]), float(ts_string[2])
+#
+#
+# def get_play_mode( # TODO EVALUATE
+#     socket,
+#     datastream: QDataStream = None):
+#     """Requests the current value of play_mode.
+#
+#     True means that the Bc thread on the server is looping in `play mode`
+#     False means that the Bc thread is looping in `manual mode`.
+#
+#     If implementing this function with QTcpSocket, you can specify a re-usable
+#     QDataStream object to substantially increase performance.
+#     """
+#
+#     play_mode_string = codec.decode_mpacket(
+#         send_and_receive(
+#             codec.encode_xpacket("get_play_mode"),
+#             socket,
+#             datastream=datastream
+#         )
+#     )
+#     if play_mode_string == "True":
+#         return True
+#     elif play_mode_string == "False":
+#         return False
+#     else:
+#         raise AssertionError("Received invalid play_mode '{play_mode_string}'")
+#
+# def get_play_status( # TODO EVALUATE
+#     socket,
+#     datastream: QDataStream = None):
+#     """Requests the current value of play_status.
+#
+#     Can only have two values: "play" or "stop".
+#
+#     If implementing this function with QTcpSocket, you can specify a re-usable
+#     QDataStream object to substantially increase performance.
+#     """
+#
+#     play_status_string = codec.decode_mpacket(
+#         send_and_receive(
+#             codec.encode_xpacket("get_play_status"),
+#             socket,
+#             datastream=datastream
+#         )
+#     )
+#     return play_status_string
 
 
 # ==== CONFIGURATION ====
@@ -1166,28 +1262,28 @@ def get_Bm_sim(socket, # TODO EVALUATE
     return [float(Bm_sim[0]), float(Bm_sim[1]), float(Bm_sim[2])]
 
 
-def get_serveropt_spoof_Bm(
+def get_serveropt_mutate_Bm(
     socket,
     datastream: QDataStream = None):
-    """Getter of serveropt_spoof_Bm.
+    """Getter of serveropt_mutate_Bm.
 
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
     """
-    serveropt_spoof_Bm = codec.decode_mpacket(
+    serveropt_mutate_Bm = codec.decode_mpacket(
         send_and_receive(
-            codec.encode_xpacket("get_serveropt_spoof_Bm"),
+            codec.encode_xpacket("get_serveropt_mutate_Bm"),
             socket,
             datastream=datastream
         )
     )
-    return bool(int(serveropt_spoof_Bm))
+    return bool(int(serveropt_mutate_Bm))
 
-def set_serveropt_spoof_Bm(
+def set_serveropt_mutate_Bm(
     socket,
-    serveropt_spoof_Bm: bool,
+    serveropt_mutate_Bm: bool,
     datastream: QDataStream = None):
-    """Setter of serveropt_spoof_Bm
+    """Setter of serveropt_mutate_Bm
 
     If implementing this function with QTcpSocket, you can specify a re-usable
     QDataStream object to substantially increase performance.
@@ -1196,7 +1292,35 @@ def set_serveropt_spoof_Bm(
 
     confirm = codec.decode_mpacket(
         send_and_receive(
-            codec.encode_xpacket("set_serveropt_spoof_Bm", int(serveropt_spoof_Bm)),
+            codec.encode_xpacket("set_serveropt_mutate_Bm", serveropt_mutate_Bm),
+            socket,
+            datastream=datastream
+        )
+    )
+    return bool(int(confirm))
+
+def get_serveropt_inject_Bm(
+    socket,
+    datastream: QDataStream = None):
+    """Getter of serveropt_inject_Bm."""
+    serveropt_mutate_Bm = codec.decode_mpacket(
+        send_and_receive(
+            codec.encode_xpacket("get_serveropt_inject_Bm"),
+            socket,
+            datastream=datastream
+        )
+    )
+    return bool(int(serveropt_mutate_Bm))
+
+def set_serveropt_inject_Bm(
+    socket,
+    serveropt_inject_Bm: bool,
+    datastream: QDataStream = None):
+    """Setter of serveropt_inject_Bm."""
+
+    confirm = codec.decode_mpacket(
+        send_and_receive(
+            codec.encode_xpacket("set_serveropt_inject_Bm", serveropt_inject_Bm),
             socket,
             datastream=datastream
         )

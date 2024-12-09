@@ -7,6 +7,7 @@ from helmholtz_cage_toolkit.orbit_visualizer import Orbit, Earth
 import helmholtz_cage_toolkit.client_functions as cf
 # from file_handling import load_file, save_file, NewFileDialog
 import scc.scc4 as codec
+from helmholtz_cage_toolkit.server.server_config import server_config
 
 class DataPool:
     def __init__(self, parent, config):
@@ -58,13 +59,13 @@ class DataPool:
         # Data buffers
         aqs = Aqs(self.config["buffer_size"])
 
-        # self.tm = 0.                    # UNIX time of most recent Bm, Im measurement
-        # self.Bm = [0., 0., 0.]          # B vector measured by hardware
-        # self.Bc = [0., 0., 0.]          # B vector as commanded by user
-        # self.Br = [0., 0., 0.]          # B vector to reject
+        self.tm = 0.                    # UNIX time of most recent Bm, Im measurement
+        self.Bm = [0., 0., 0.]          # B vector measured by hardware
+        self.Bc = [0., 0., 0.]          # B vector as commanded by user
+        self.Br = [0., 0., 0.]          # B vector to reject
         #
         # self.Ic = [0., 0., 0.]          # Coil current commanded by user (calculated by server)
-        # self.Im = [0., 0., 0.]          # Coil current as measured by hardware
+        self.Im = [0., 0., 0.]          # Coil current as measured by hardware
         #
         # self.Vc = [0., 0., 0.]          # Power supply voltage as commanded by user
         #
@@ -489,17 +490,16 @@ class Aqs:
         self.i_step = zeros(buffer_size, int).tolist()
 
     def input(self, tm, i_step, Im: list, Bm: list, Bc: list):
-        self.buffer_input(self.tm, tm) # noqa
-        self.buffer_input(self.i_step, i_step) # noqa
-        self.buffer_input(self.Im, Im) # noqa
-        self.buffer_input(self.Bm, Bm) # noqa
-        self.buffer_input(self.Bc, Bc) # noqa
+        self.write_buffer(self.tm, tm) # noqa
+        self.write_buffer(self.i_step, i_step) # noqa
+        self.write_buffer(self.Im, Im) # noqa
+        self.write_buffer(self.Bm, Bm) # noqa
+        self.write_buffer(self.Bc, Bc) # noqa
 
         E_new = [0.0, 0.0, 0.0]
         for i in range(3):
             E_new[i] = Bc[i] - Bm[i]
-        self.buffer_input(self.E, E_new) # noqa
-
+        self.write_buffer(self.E, E_new) # noqa
 
 
     def input_tpacket(self, tpacket):
@@ -507,8 +507,8 @@ class Aqs:
         self.input(tm, i_step, Im, Bm, Bc)
 
 
-    def buffer_input(self, buffer, item):
+    def write_buffer(self, buffer, value):
         # Light first-in-last-out pop-and-append function
-        del buffer[-1]
-        buffer.insert(0, item)
+        buffer.insert(0, value)
+        buffer.pop()
         return buffer

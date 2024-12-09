@@ -35,6 +35,8 @@ config = {
 
     "use_legacy_command_window": False,  # TODO DEPRECATED
 
+    "r_load": [6.5, 6.9, 7.1],      # Expected coil load resistance, used for displayed power estimations
+
     # ==== Local ====
     # In the GUI application, you can choose to automatically reject (negate)
     # the local Earth magnetic field vector (B_EMF). There are two ways to
