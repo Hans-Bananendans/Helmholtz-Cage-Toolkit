@@ -1,0 +1,15 @@
+!BSCH
+test_ha
+generator=orbital
+{'orbit_eccentricity': 0.25, 'orbit_inclination': 50, 'orbit_pericentre_altitude': 350000.0, 'orbit_RAAN': 24, 'orbit_argp': 0.0, 'orbit_ma0': 0.0, 'angle_body_x_0': 0.0, 'angle_body_y_0': 0.0, 'angle_body_z_0': 0.0, 'rate_body_x': 0.1, 'rate_body_y': 0.0, 'rate_body_z': -0.1, 'earth_zero_datum': 0, 'date0': 2024.0, 'n_orbit_subs': 100, 'n_step': 5, 'time_speed_factor': 500.0}
+{'function': 'none', 'factor': 1}
+
+
+
+
+################################
+0,5,0.0,19505.404,15868.243,10677.092
+1,5,0.168849,18927.862,19170.343,7470.384
+2,5,0.337698,16338.313,23201.499,4758.999
+3,5,0.506547,12074.172,27059.384,3002.363
+4,5,0.675396,6844.853,29994.741,2216.295

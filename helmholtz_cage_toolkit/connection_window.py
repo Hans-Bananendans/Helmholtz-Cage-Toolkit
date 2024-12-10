@@ -550,7 +550,7 @@ class ConnectionWindow(QWidget):
             if self.hash_verify:
                 self.label_schedule_hash.setStyleSheet("""QLabel {color: #00aa00;}""")
             else:
-                self.label_schedule_hash.setStyleSheet("""QLabel {color: #ffffff;}""")
+                self.label_schedule_hash.setStyleSheet("")
 
         self.hhc_schedule_info = hhc_schedule_info
 
@@ -573,6 +573,20 @@ class ConnectionWindow(QWidget):
 
         t0 = time()
         schedule = list(column_stack(self.datapool.schedule))
+
+        # Simulates the effect of s-packet encoding and decoding, so that the
+        # local schedule and remote schedule can be hashed apples-to-apples.
+        for i, row in enumerate(schedule):
+            schedule[i] = [
+                int(float(str(row[0])[:16])),
+                int(float(str(row[1])[:16])),
+                round(float(str(row[2])[:16]), 6),
+                round(float(str(row[3])[:16]), 3),
+                round(float(str(row[4])[:16]), 3),
+                round(float(str(row[5])[:16]), 3)
+            ]
+
+
         confirm = cf.transfer_schedule(
             self.socket,
             schedule,
@@ -596,15 +610,15 @@ class ConnectionWindow(QWidget):
         # Simulates the effect of s-packet encoding and decoding on a copy of
         # the local schedule, so that the local schedule and remote schedule
         # can be hashed apples-to-apples.
-        for i, row in enumerate(schedule):
-            schedule[i] = [
-                int(float(str(row[0])[:16])),
-                int(float(str(row[1])[:16])),
-                float(str(row[2])[:16]),
-                float(str(row[3])[:16]),
-                float(str(row[4])[:16]),
-                float(str(row[5])[:16])
-            ]
+        # for i, row in enumerate(schedule):
+        #     schedule[i] = [
+        #         int(float(str(row[0])[:16])),
+        #         int(float(str(row[1])[:16])),
+        #         round(float(str(row[2])[:16]), 6),
+        #         round(float(str(row[3])[:16]), 3),
+        #         round(float(str(row[4])[:16]), 3),
+        #         round(float(str(row[5])[:16]), 3)
+        #     ]
 
         # print("[DEBUG] TYPE CHECK: {}|{}, {}|{}, {}|{}, {}|{}, {}|{}, {}|{}".format(
         #     schedule[1][0], type(schedule[1][0]),
@@ -619,7 +633,6 @@ class ConnectionWindow(QWidget):
         # confirm1 = cf.print_schedule(self.socket, datastream=self.ds)
 
         # Verify transfer by comparing BLAKE2b hash of local and remote schedule
-
         verify, local_hash, remote_hash = cf.verify_schedule(
             self.socket, schedule, datastream=self.ds)
         if verify:

@@ -73,18 +73,18 @@ def generator_cyclics(generation_parameters):
     fbase = [g["fbaseX"],               # Generator base function
              g["fbaseY"],
              g["fbaseZ"]]
-    amplitude = [g["amplitudeX"]*1000,  # [uT->nT] Base function amplitude
-                 g["amplitudeY"]*1000,
-                 g["amplitudeZ"]*1000]
+    amplitude = [g["amplitudeX"],  # [uT] Base function amplitude
+                 g["amplitudeY"],
+                 g["amplitudeZ"]]
     frequency = [g["frequencyX"],       # [Hz] Base function frequency
                  g["frequencyY"],
                  g["frequencyZ"]]
     phase = [g["phaseX"]*-pi,           # [pi rad] Base function phase angle
              g["phaseY"]*-pi,
              g["phaseZ"]*-pi]
-    offset = [g["offsetX"]*1000,        # [uT->nT] Vertical offset
-              g["offsetY"]*1000,
-              g["offsetZ"]*1000]
+    offset = [g["offsetX"],        # [uT] Vertical offset
+              g["offsetY"],
+              g["offsetZ"]]
     fbase_noise = [g["fbase_noiseX"],   # Noise base function
                    g["fbase_noiseY"],
                    g["fbase_noiseZ"]]

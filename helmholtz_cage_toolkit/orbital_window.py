@@ -458,7 +458,7 @@ class OrbitalInput(QGroupBox):
         self.datapool.generation_parameters_orbital = generation_parameters
         self.datapool.interpolation_parameters = interpolation_parameters
 
-        print("[DEBUG] orbital.generate() HERE!")
+        # print("[DEBUG] orbital.generate() HERE!")
         self.datapool.refresh(source="orbital")
 
         self.datapool.status_bar.showMessage(

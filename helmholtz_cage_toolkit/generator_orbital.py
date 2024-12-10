@@ -25,7 +25,7 @@ def interpolate(t,
     schedules, regardless of the underlying generator used. The idea is that
     this function is always applied, and when no interpolation needs to occur,
     the variable 'type' is left as 'none'. Variable 'factor' must be a
-    positive integer and represends how many more points will be generated.
+    positive integer and represents how many more points will be generated.
     For example, for a dataset of length 1000, a factor of 4 will result in an
     interpolated dataset of length 4000.
 

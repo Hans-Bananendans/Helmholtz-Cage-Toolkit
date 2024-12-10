@@ -863,7 +863,6 @@ def verify_schedule(
             timeout_ms))
         print("If the verification fails due to timeout, please increase the timeout limit")
 
-
     hash_schedule_server = get_schedule_hash(
         socket,
         timeout_ms=timeout_ms,
