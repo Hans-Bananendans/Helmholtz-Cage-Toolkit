@@ -334,15 +334,15 @@ class CommandWindow(QWidget):
         # Generate local_emf value based on config data
         if self.datapool.config["local_EMF"] is None:
             try:
-                local_emf_nT = IGRF_from_UNIX(
+                self.local_emf = IGRF_from_UNIX(
                     self.datapool.config["local_latitude"],
                     self.datapool.config["local_longitude"],
                     self.datapool.config["local_altitude"]/1000,   # m to km
                     time(),
                     rotation_matrix=self.datapool.config["R_ENU_cageframe"]
                 )
-                self.local_emf = [B/1000 for B in local_emf_nT] # TODO FIGURE THIS OUT
-                print("EMF", self.local_emf)
+                # self.local_emf = local_emf
+                # print("EMF", self.local_emf)
 
             except: # noqa TODO Improve exception handling
                 self.button_br_from_local_emf.setEnabled(False)

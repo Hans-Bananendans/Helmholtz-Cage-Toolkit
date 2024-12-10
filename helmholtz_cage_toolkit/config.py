@@ -192,7 +192,7 @@ config = {
     "c3d_line_alpha": 0.1,
     "c3d_component_alpha": 1.0,
     "c3d_preferred_colour": 2,
-    "c3d_plotscale": 5E4,
+    "c3d_plotscale": 5E1,
     "c3d_draw": {
         "xy_grid": True,
         "tripod_b": True,
@@ -232,7 +232,7 @@ config = {
     "c3dcw_cage_alpha": 0.25,
     "c3dcw_line_alpha": 0.1,
     "c3dcw_component_alpha": 1.0,
-    "c3dcw_plotscale": 2E2,
+    "c3dcw_plotscale": 1E2,
     "c3dcw_draw": {
         "bc": False,
         "br": False,

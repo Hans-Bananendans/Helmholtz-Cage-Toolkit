@@ -155,8 +155,6 @@ class Cage3DPlotCW(GLViewWidget):
         # Update if it is not hidden, not zero, and not equal to the previous
         if self.data.config["c3dcw_draw"]["be"]\
                 and be != self.prev["be"]:
-            # and be != [0.0, 0.0, 0.0]\
-
             self.be_plotitem.setData(pos=[self.zov, self.zov + be])
             self.prev["be"] = be
 
@@ -164,9 +162,6 @@ class Cage3DPlotCW(GLViewWidget):
         # Update if it is not hidden, not zero, and not equal to the previous
         if self.data.config["c3dcw_draw"]["bm"] \
                 and bm != self.prev["bm"]:
-                # and bm != [0.0, 0.0, 0.0] \
-
-
             self.bm_plotitem.setData(pos=[self.zov, self.zov + bm])
             self.prev["bm"] = bm
 
