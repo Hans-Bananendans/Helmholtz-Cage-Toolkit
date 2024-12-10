@@ -745,7 +745,7 @@ class OrbitVisualizer(GLViewWidget):
             180/pi*wrap(self.rlonglat[1]-self.th_E, 2*pi),   # Longitude (ECEF) [deg]
             1E-3*(self.rlonglat[0]-self.data.orbit.body.r),  # Altitude [km]
             self.year)                                       # Date formatted as decimal year
-        B_NED = array([bx, by, bz])
+        B_NED = array([bx/1000, by/1000, bz/1000])   # nT -> uT
         self.B = R_NED_ECI(self.rlonglat[1], self.rlonglat[2]) @ B_NED
 
         base = self.points[self.data.i_satpos]
@@ -789,7 +789,7 @@ class OrbitVisualizer(GLViewWidget):
                     1E-3 * r,                                            # Altitude [km]
                     self.year)                                           # Date formatted as decimal year
 
-                B_p = R_NED_ECI(p_rlonglat[1], p_rlonglat[2]) @ array([bx, by, bz])
+                B_p = R_NED_ECI(p_rlonglat[1], p_rlonglat[2]) @ array([bx/1000, by/1000, bz/1000])  # nT -> uT
 
 
                 b_line = GLLinePlotItem(
@@ -888,7 +888,7 @@ class OrbitVisualizer(GLViewWidget):
             self.year)
 
         # Transform to ECI and update plotitem
-        B_NED = array([bx, by, bz])
+        B_NED = array([bx/1000, by/1000, bz/1000])  # nT -> uT
         self.B = R_NED_ECI(self.rlonglat[1], self.rlonglat[2]) @ B_NED
         if self.data.config["ov_draw"]["B_vector"] and self.data.config["ov_anim"]["B_vector"]:
             self.bv_plotitem.setData(pos=[xyz_sat, xyz_sat+self.B*self.bv_scale])

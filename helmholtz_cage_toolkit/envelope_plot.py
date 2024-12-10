@@ -14,7 +14,7 @@ class EnvelopePlot(pg.GraphicsLayoutWidget):
         self.plot_obj.showAxis('left', True)
         self.plot_obj.getAxis("bottom").setLabel(text="Time", units="s")
         self.plot_obj.getAxis("left").setLabel(text="B", units="T")
-        self.plot_obj.getAxis("left").setScale(scale=1E-9)
+        self.plot_obj.getAxis("left").setScale(scale=1E-6)
 
         self.vline = pg.InfiniteLine(angle=90, movable=False,
                                      pen=pg.mkPen("c", width=2),)

@@ -6,7 +6,7 @@ config = {
     # ==== General settings ====
     "verbosity": 1,
     "use_dummies": True,
-    "default_windowsize": (1280, 900),
+    "default_windowsize": (1280, 840),
 
     # ==== TCP connection settings ====
     "server_address": "127.0.0.1",
@@ -15,9 +15,9 @@ config = {
 
 
     "connect_on_startup": False,
-    "connect_on_startup_delay": 3000,
-    "label_update_period": 2000,
-    "time_correction_period": 60000,
+    "connect_on_startup_delay": 3000,   # ms
+    "label_update_period": 2000,        # ms
+    "time_correction_period": 60000,    # ms
     "pings_per_test": 16,
 
 
@@ -219,6 +219,50 @@ config = {
         "z": 0.0,
     },
 
+
+    # ==== Cage3DCW Plot ====
+    "c3dcw_cage_dimensions": {
+        "x": 1.85,
+        "y": 1.95,
+        "z": 2.05,
+        "t": 0.08,
+        "z_offset": 2.05 / 2,
+        "spacing": 0.5445,
+    },
+    "c3dcw_cage_alpha": 0.25,
+    "c3dcw_line_alpha": 0.1,
+    "c3dcw_component_alpha": 1.0,
+    "c3dcw_plotscale": 2E2,
+    "c3dcw_draw": {
+        "bc": False,
+        "br": False,
+        "bt": False,
+        "bm": True,
+        "ec": False,
+        "be": True,
+        "xy_grid": True,
+        "tripod": True,
+        "cage_structure": True,
+        "cage_illumination": False,
+        "satellite_model": False,
+        "lineplot": False,
+        "linespokes": False,
+        "dots": False,
+        "tails": False,
+        "b_components": False,
+        "autorotate": False,
+    },
+    "c3dcw_autorotate_angle": -0.15,
+    "c3dcw_tail_length": [3, 6, 9, 12, 15, 18, 21, 24],
+    "c3dcw_satellite_model": {
+        "x_dim": 0.1,
+        "y_dim": 0.1,
+        "z_dim": 0.2,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+    },
+
     # ==== Orbital generator options ====
     "eotc_order": 12,                       # Default order to use for the Equation of the Centre approximation
     "orbit_spacing": "isochronal",          # Default orbit point spacing
@@ -382,7 +426,7 @@ config = {
         },
     },
 
-    "default_tab": 2,
+    "default_tab": 1,
 
     # ==== Stylesheets for individual widgets ====
     "stylesheet_groupbox_smallmargins_notitle":

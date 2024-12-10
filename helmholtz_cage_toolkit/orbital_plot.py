@@ -727,7 +727,7 @@ class OrbitalPlot(GLViewWidget):
                     1E-3 * r,                                            # Altitude [km]
                     self.data.config["orbital_default_generation_parameters"]["date0"])  # Date formatted as decimal year
 
-                B_p = R_NED_ECI(p_rlonglat[1], p_rlonglat[2]) @ array([bx, by, bz])
+                B_p = R_NED_ECI(p_rlonglat[1], p_rlonglat[2]) @ array([bx/1000, by/1000, bz/1000])  # nT -> uT
 
 
                 b_line = GLLinePlotItem(

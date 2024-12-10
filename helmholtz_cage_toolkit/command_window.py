@@ -35,10 +35,19 @@ import os
 from copy import deepcopy
 from time import time, sleep
 
+from pyqtgraph.opengl import (
+    GLGridItem,
+    GLLinePlotItem,
+    GLMeshItem,
+    GLScatterPlotItem,
+    GLViewWidget,
+    MeshData,
+)
+
 from helmholtz_cage_toolkit import *
 from helmholtz_cage_toolkit.datapool import DataPool
 from helmholtz_cage_toolkit.hhcplot import HHCPlot, HHCPlotArrow
-from helmholtz_cage_toolkit.cage3d_plot import Cage3DPlot
+from helmholtz_cage_toolkit.cage3dplotcw import Cage3DPlotCW, Cage3DPlotButtonsCW
 from helmholtz_cage_toolkit.utilities import IGRF_from_UNIX
 from helmholtz_cage_toolkit.envelope_plot import EnvelopePlot
 import helmholtz_cage_toolkit.client_functions as cf
@@ -51,21 +60,6 @@ class CommandWindow(QWidget):
 
         self.datapool.command_window = self
 
-
-        # ==== TIMERS
-        # self.timer_HHCPlot_refresh = QTimer()
-        # self.timer_HHCPlot_refresh.timeout.connect(self.do_refresh_HHCPlots)
-
-        self.timer_Cage3DPlot_refresh = QTimer()
-        self.timer_Cage3DPlot_refresh.timeout.connect(self.do_refresh_Cage3DPlot)
-
-        self.timer_values_refresh = QTimer()
-        self.timer_values_refresh.timeout.connect(self.do_refresh_values)
-
-        self.timer_playback_tracker = QTimer()
-        self.timer_playback_tracker.timeout.connect(self.do_playback_tracking)
-
-        self.t_playstart = 0.
 
         # ==== LEFT LAYOUT
         layout_left = QVBoxLayout()
@@ -130,10 +124,7 @@ class CommandWindow(QWidget):
 
         self.widget_cage3d = Cage3DPlotCW(datapool)
         self.widget_cage3d.draw_statics()
-        self.widget_cage3d.draw_schedule()
-
-        # dummy_vectors = [array([0, 0, 0])]*4
-        self.widget_cage3d.draw_vectors()
+        self.widget_cage3d.draw_data()
 
         self.widget_cage3d_buttons = Cage3DPlotButtonsCW(self.widget_cage3d, datapool)
 
@@ -244,6 +235,25 @@ class CommandWindow(QWidget):
             self.group_manual_input
         )
 
+
+
+        # ==== TIMERS
+        # self.timer_HHCPlot_refresh = QTimer()
+        # self.timer_HHCPlot_refresh.timeout.connect(self.do_refresh_HHCPlots)
+
+        self.timer_Cage3DPlot_refresh = QTimer()
+        self.timer_Cage3DPlot_refresh.timeout.connect(self.widget_cage3d.draw_update)
+
+        self.timer_values_refresh = QTimer()
+        self.timer_values_refresh.timeout.connect(self.do_refresh_values)
+
+        self.timer_playback_tracker = QTimer()
+        self.timer_playback_tracker.timeout.connect(self.do_playback_tracking)
+
+        self.t_playstart = 0.
+
+
+
         # Set disabled until connected
         self.do_on_disconnected()
 
@@ -324,13 +334,16 @@ class CommandWindow(QWidget):
         # Generate local_emf value based on config data
         if self.datapool.config["local_EMF"] is None:
             try:
-                self.local_emf = IGRF_from_UNIX(
+                local_emf_nT = IGRF_from_UNIX(
                     self.datapool.config["local_latitude"],
                     self.datapool.config["local_longitude"],
                     self.datapool.config["local_altitude"]/1000,   # m to km
                     time(),
                     rotation_matrix=self.datapool.config["R_ENU_cageframe"]
                 )
+                self.local_emf = [B/1000 for B in local_emf_nT] # TODO FIGURE THIS OUT
+                print("EMF", self.local_emf)
+
             except: # noqa TODO Improve exception handling
                 self.button_br_from_local_emf.setEnabled(False)
                 self.button_br_from_local_emf.setText("UNAVAILABLE")
@@ -342,6 +355,8 @@ class CommandWindow(QWidget):
                 print("[WARNING] Local EMF could not be calculated. Button 'Br from local EMF' disabled")
             else:
                 self.local_emf(self.datapool.config["local_EMF"])
+
+        self.datapool.Be = self.local_emf
 
         self.button_br_from_bm = QPushButton(QIcon(
             "./assets/icons/feather/corner-left-up.svg"), "Current B_M")
@@ -586,14 +601,14 @@ class CommandWindow(QWidget):
     #     self.hhcplot_xy.update_arrows([Bm, Bc, Br, Bo])
     #     self.hhcplot_yz.update_arrows([Bm, Bc, Br, Bo])
 
-    def do_refresh_Cage3DPlot(self):
-        Bm = self.datapool.Bm
-        Bc = self.datapool.Bc
-        Br = self.datapool.Br
-        Bo = [Bc[0]-Br[0], Bc[1]-Br[1], Bc[2]-Br[2]]
-
-        # self.hhcplot_xy.update_arrows([Bm, Bc, Br, Bo])
-        # self.hhcplot_yz.update_arrows([Bm, Bc, Br, Bo])
+    # def do_refresh_Cage3DPlot(self):
+    #     Bm = self.datapool.Bm
+    #     Bc = self.datapool.Bc
+    #     Br = self.datapool.Br
+    #     Bt = [Bc[0]-Br[0], Bc[1]-Br[1], Bc[2]-Br[2]]
+    #
+    #     # self.hhcplot_xy.update_arrows([Bm, Bc, Br, Bo])
+    #     # self.hhcplot_yz.update_arrows([Bm, Bc, Br, Bo])
 
     def do_refresh_values(self):
         self.do_update_bm_display()
@@ -1676,404 +1691,231 @@ class CommandWindow(QWidget):
 #         return arrows
 
 
-class Cage3DPlotCW(Cage3DPlot):
-    def __init(self, datapool):
-        super().__init__()
-
-    # Override draw_statics():
-    def draw_statics(self):
-        print("[DEBUG] Cage3DPlotCW.draw_statics() called")
-
-        # Generate grid
-        self.make_xy_grid()
-
-        # # Generate ECI-frame tripod_components
-        # self.make_tripod_ECI()
-        #
-        # # Draw Earth meshitem
-        # self.make_earth_model()
-
-    def draw_vectors(self):
-        pass
-
-    def draw_schedule(self):
-        # Draw a ghostly outline of the schedule
-        pass
-
-
-class Cage3DPlotButtonsCW(QGroupBox):
-    """Description"""
-    def __init__(self, cage3dplot, datapool) -> None:
-        super().__init__()
-
-        self.cage3dplot = cage3dplot
-        self.data = datapool
-
-        self.layout0 = QGridLayout()
-        self.buttons = []
-
-        # Generate buttons
-        self.button_xy_grid = QPushButton(QIcon("./assets/icons/grid2.svg"), "")
-        self.setup(self.button_xy_grid, "xy_grid", label="XY")
-        self.button_xy_grid.toggled.connect(self.toggle_xy_grid)
-
-        self.button_tripod_b = QPushButton(QIcon("./assets/icons/tripod.svg"), "")
-        self.setup(self.button_tripod_b, "tripod_b", label="B")
-        self.button_tripod_b.toggled.connect(self.toggle_tripod_b)
-
-        self.button_cage_structure = QPushButton(QIcon("./assets/icons/cage.svg"), "")
-        self.setup(self.button_cage_structure, "tripod_b")
-        self.button_cage_structure.toggled.connect(self.toggle_cage_structure)
-
-        self.button_cage_illumination = QPushButton(QIcon("./assets/icons/cage_i2.svg"), "")
-        self.setup(self.button_cage_illumination, "cage_illumination")
-        self.button_cage_illumination.toggled.connect(self.toggle_cage_illumination)
-
-        self.button_satellite_model = QPushButton(QIcon("./assets/icons/satellite.svg"), "")
-        self.setup(self.button_satellite_model, "satellite_model")
-        self.button_satellite_model.toggled.connect(self.toggle_satellite_model)
-
-        self.button_b_dot = QPushButton(QIcon("./assets/icons/dot.svg"), "")
-        self.setup(self.button_b_dot, "b_dot")
-        self.button_b_dot.toggled.connect(self.toggle_b_dot)
-
-        self.button_b_vector = QPushButton(QIcon("./assets/icons/vector_b.svg"), "")
-        self.setup(self.button_b_vector, "b_vector")
-        self.button_b_vector.toggled.connect(self.toggle_b_vector)
-
-        self.button_b_tail = QPushButton(QIcon("./assets/icons/tail2.svg"), "")
-        self.setup(self.button_b_tail, "b_tail")
-        self.button_b_tail.toggled.connect(self.toggle_b_tail)
-
-        self.button_b_components = QPushButton(QIcon("./assets/icons/components.svg"), "")
-        self.setup(self.button_b_components, "b_components")
-        self.button_b_components.toggled.connect(self.toggle_b_components)
-
-        self.button_lineplot = QPushButton(QIcon("./assets/icons/lineplot.svg"), "")
-        self.setup(self.button_lineplot, "lineplot")
-        self.button_lineplot.toggled.connect(self.toggle_lineplot)
-
-        self.button_linespokes = QPushButton(QIcon("./assets/icons/lineplot_spokes.svg"), "")
-        self.setup(self.button_linespokes, "linespokes")
-        self.button_linespokes.toggled.connect(self.toggle_linespokes)
-
-        self.button_autorotate = QPushButton(QIcon("./assets/icons/autorotate.svg"), "")
-        self.setup(self.button_autorotate, "autorotate")
-        self.button_autorotate.toggled.connect(self.toggle_autorotate)
-
-        # self.setStyleSheet(self.data.config["stylesheet_groupbox_smallmargins_notitle"])
-        self.setLayout(self.layout0)
-        self.layout0.setSizeConstraint(QLayout.SetMinimumSize)
-        self.setMaximumSize(32, 320)
-        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        self.layout0.setVerticalSpacing(1)
-        self.layout0.setColumnStretch(0, 0)
-        self.layout0.setColumnStretch(1, 0)
-
-
-    def setup(self, button, reference: str, label=""):
-        """A shorthand function to inherit the 'checked' properties based on
-        the visibility of various plot items as defined in the config file.
-        This must be done before the toggled() action is connected, in order
-        to prevent the toggled () action being triggered and causing plot
-        elements to be redrawn unnecessarily.
-        """
-        button.setCheckable(True)
-        if self.data.config["c3d_draw"][reference] is True:
-            button.setChecked(True)
-        button.setFixedSize(QSize(32, 32))
-        button.setIconSize(QSize(24, 24))
-        self.layout0.addWidget(button, len(self.buttons), 0)
-        self.layout0.addWidget(QLabel(label), len(self.buttons), 1)
-        self.buttons.append(button)
-
-
-    def toggle_xy_grid(self):
-        if self.button_xy_grid.isChecked():
-            self.data.config["c3d_draw"]["xy_grid"] = True
-            self.cage3dplot.make_xy_grid()
-        else:
-            self.data.config["c3d_draw"]["xy_grid"] = False
-            self.cage3dplot.removeItem(self.cage3dplot.xy_grid)
-
-    def toggle_tripod_b(self):
-        if self.button_tripod_b.isChecked():
-            self.data.config["c3d_draw"]["tripod_b"] = True
-            self.cage3dplot.make_tripod_b()
-        else:
-            self.data.config["c3d_draw"]["tripod_b"] = False
-            for item in self.cage3dplot.tripod_b:
-                self.cage3dplot.removeItem(item)
-
-    def toggle_cage_structure(self):
-        if self.button_cage_structure.isChecked():
-            self.data.config["c3d_draw"]["cage_structure"] = True
-            self.cage3dplot.make_cage_structure()
-        else:
-            self.data.config["c3d_draw"]["cage_structure"] = False
-            for item in self.cage3dplot.cage_structure:
-                self.cage3dplot.removeItem(item)
-
-    def toggle_satellite_model(self):
-        if self.button_satellite_model.isChecked():
-            self.data.config["c3d_draw"]["satellite_model"] = True
-            self.cage3dplot.make_satellite_model()
-        else:
-            self.data.config["c3d_draw"]["satellite_model"] = False
-            self.cage3dplot.removeItem(self.cage3dplot.satellite_model)
-
-    def toggle_b_dot(self):
-        if self.button_b_dot.isChecked():
-            self.data.config["c3d_draw"]["b_dot"] = True
-            self.cage3dplot.make_b_dot()
-        else:
-            self.data.config["c3d_draw"]["b_dot"] = False
-            self.cage3dplot.removeItem(self.cage3dplot.b_dot_plotitem)
-
-    def toggle_lineplot(self):
-        if self.button_lineplot.isChecked():
-            self.data.config["c3d_draw"]["lineplot"] = True
-            self.cage3dplot.make_lineplot()
-        else:
-            self.data.config["c3d_draw"]["lineplot"] = False
-            self.cage3dplot.removeItem(self.cage3dplot.lineplot)
-
-    def toggle_linespokes(self):
-        if self.button_linespokes.isChecked():
-            self.data.config["c3d_draw"]["linespokes"] = True
-            self.cage3dplot.make_linespokes()
-        else:
-            self.data.config["c3d_draw"]["linespokes"] = False
-            self.cage3dplot.removeItem(self.cage3dplot.linespokes)
-
-    def toggle_b_vector(self):
-        if self.button_b_vector.isChecked():
-            self.data.config["c3d_draw"]["b_vector"] = True
-            self.cage3dplot.make_b_vector()
-        else:
-            self.data.config["c3d_draw"]["b_vector"] = False
-            self.cage3dplot.removeItem(self.cage3dplot.b_vector_plotitem)
-
-    def toggle_b_tail(self):
-        if self.button_b_tail.isChecked():
-            self.data.config["c3d_draw"]["b_tail"] = True
-            self.cage3dplot.make_b_tail()
-        else:
-            self.data.config["c3d_draw"]["b_tail"] = False
-            for item in self.cage3dplot.b_tail_plotitems:
-                self.cage3dplot.removeItem(item)
-
-    def toggle_b_components(self):
-        if self.button_b_components.isChecked():
-            self.data.config["c3d_draw"]["b_components"] = True
-            self.cage3dplot.make_b_components()
-        else:
-            self.data.config["c3d_draw"]["b_components"] = False
-            for item in self.cage3dplot.b_components:
-                self.cage3dplot.removeItem(item)
-
-    def toggle_autorotate(self):
-        if self.button_autorotate.isChecked():
-            self.data.config["c3d_draw"]["autorotate"] = True
-        else:
-            self.data.config["c3d_draw"]["autorotate"] = False
-
-    def toggle_cage_illumination(self):
-        if self.button_cage_illumination.isChecked():
-            self.data.config["c3d_draw"]["cage_illumination"] = True
-        else:
-            self.data.config["c3d_draw"]["cage_illumination"] = False
-            if self.data.config["c3d_draw"]["cage_structure"] is True:
-                for item in self.cage3dplot.cage_structure:
-                    self.cage3dplot.removeItem(item)
-                self.cage3dplot.make_cage_structure()
-
-class Cage3DPlotButtonsCW(QGroupBox):
-    """Description"""
-    def __init__(self, cage3dplot, datapool) -> None:
-        super().__init__()
-
-        self.cage3dplot = cage3dplot
-        self.data = datapool
-
-        self.layout0 = QGridLayout()
-        self.buttons = []
-
-        # Generate buttons
-        self.button_xy_grid = QPushButton(QIcon("./assets/icons/grid2.svg"), "")
-        self.setup(self.button_xy_grid, "xy_grid", label="XY")
-        self.button_xy_grid.toggled.connect(self.toggle_xy_grid)
-
-        self.button_tripod_b = QPushButton(QIcon("./assets/icons/tripod.svg"), "")
-        self.setup(self.button_tripod_b, "tripod_b", label="B")
-        self.button_tripod_b.toggled.connect(self.toggle_tripod_b)
-
-        self.button_cage_structure = QPushButton(QIcon("./assets/icons/cage.svg"), "")
-        self.setup(self.button_cage_structure, "tripod_b")
-        self.button_cage_structure.toggled.connect(self.toggle_cage_structure)
-
-        self.button_cage_illumination = QPushButton(QIcon("./assets/icons/cage_i2.svg"), "")
-        self.setup(self.button_cage_illumination, "cage_illumination")
-        self.button_cage_illumination.toggled.connect(self.toggle_cage_illumination)
-
-        self.button_satellite_model = QPushButton(QIcon("./assets/icons/satellite.svg"), "")
-        self.setup(self.button_satellite_model, "satellite_model")
-        self.button_satellite_model.toggled.connect(self.toggle_satellite_model)
-
-        self.button_b_dot = QPushButton(QIcon("./assets/icons/dot.svg"), "")
-        self.setup(self.button_b_dot, "b_dot")
-        self.button_b_dot.toggled.connect(self.toggle_b_dot)
-
-        self.button_b_vector = QPushButton(QIcon("./assets/icons/vector_b.svg"), "")
-        self.setup(self.button_b_vector, "b_vector")
-        self.button_b_vector.toggled.connect(self.toggle_b_vector)
-
-        self.button_b_tail = QPushButton(QIcon("./assets/icons/tail2.svg"), "")
-        self.setup(self.button_b_tail, "b_tail")
-        self.button_b_tail.toggled.connect(self.toggle_b_tail)
-
-        self.button_b_components = QPushButton(QIcon("./assets/icons/components.svg"), "")
-        self.setup(self.button_b_components, "b_components")
-        self.button_b_components.toggled.connect(self.toggle_b_components)
-
-        self.button_lineplot = QPushButton(QIcon("./assets/icons/lineplot.svg"), "")
-        self.setup(self.button_lineplot, "lineplot")
-        self.button_lineplot.toggled.connect(self.toggle_lineplot)
-
-        self.button_linespokes = QPushButton(QIcon("./assets/icons/lineplot_spokes.svg"), "")
-        self.setup(self.button_linespokes, "linespokes")
-        self.button_linespokes.toggled.connect(self.toggle_linespokes)
-
-        self.button_autorotate = QPushButton(QIcon("./assets/icons/autorotate.svg"), "")
-        self.setup(self.button_autorotate, "autorotate")
-        self.button_autorotate.toggled.connect(self.toggle_autorotate)
-
-        # self.setStyleSheet(self.data.config["stylesheet_groupbox_smallmargins_notitle"])
-        self.setLayout(self.layout0)
-        self.layout0.setSizeConstraint(QLayout.SetMinimumSize)
-        self.setMaximumSize(32, 320)
-        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        self.layout0.setVerticalSpacing(1)
-        self.layout0.setColumnStretch(0, 0)
-        self.layout0.setColumnStretch(1, 0)
-
-
-    def setup(self, button, reference: str, label=""):
-        """A shorthand function to inherit the 'checked' properties based on
-        the visibility of various plot items as defined in the config file.
-        This must be done before the toggled() action is connected, in order
-        to prevent the toggled () action being triggered and causing plot
-        elements to be redrawn unnecessarily.
-        """
-        button.setCheckable(True)
-        if self.data.config["c3d_draw"][reference] is True:
-            button.setChecked(True)
-        button.setFixedSize(QSize(32, 32))
-        button.setIconSize(QSize(24, 24))
-        self.layout0.addWidget(button, len(self.buttons), 0)
-        self.layout0.addWidget(QLabel(label), len(self.buttons), 1)
-        self.buttons.append(button)
-
-
-    def toggle_xy_grid(self):
-        if self.button_xy_grid.isChecked():
-            self.data.config["c3d_draw"]["xy_grid"] = True
-            self.cage3dplot.make_xy_grid()
-        else:
-            self.data.config["c3d_draw"]["xy_grid"] = False
-            self.cage3dplot.removeItem(self.cage3dplot.xy_grid)
-
-    def toggle_tripod_b(self):
-        if self.button_tripod_b.isChecked():
-            self.data.config["c3d_draw"]["tripod_b"] = True
-            self.cage3dplot.make_tripod_b()
-        else:
-            self.data.config["c3d_draw"]["tripod_b"] = False
-            for item in self.cage3dplot.tripod_b:
-                self.cage3dplot.removeItem(item)
-
-    def toggle_cage_structure(self):
-        if self.button_cage_structure.isChecked():
-            self.data.config["c3d_draw"]["cage_structure"] = True
-            self.cage3dplot.make_cage_structure()
-        else:
-            self.data.config["c3d_draw"]["cage_structure"] = False
-            for item in self.cage3dplot.cage_structure:
-                self.cage3dplot.removeItem(item)
-
-    def toggle_satellite_model(self):
-        if self.button_satellite_model.isChecked():
-            self.data.config["c3d_draw"]["satellite_model"] = True
-            self.cage3dplot.make_satellite_model()
-        else:
-            self.data.config["c3d_draw"]["satellite_model"] = False
-            self.cage3dplot.removeItem(self.cage3dplot.satellite_model)
-
-    def toggle_b_dot(self):
-        if self.button_b_dot.isChecked():
-            self.data.config["c3d_draw"]["b_dot"] = True
-            self.cage3dplot.make_b_dot()
-        else:
-            self.data.config["c3d_draw"]["b_dot"] = False
-            self.cage3dplot.removeItem(self.cage3dplot.b_dot_plotitem)
-
-    def toggle_lineplot(self):
-        if self.button_lineplot.isChecked():
-            self.data.config["c3d_draw"]["lineplot"] = True
-            self.cage3dplot.make_lineplot()
-        else:
-            self.data.config["c3d_draw"]["lineplot"] = False
-            self.cage3dplot.removeItem(self.cage3dplot.lineplot)
-
-    def toggle_linespokes(self):
-        if self.button_linespokes.isChecked():
-            self.data.config["c3d_draw"]["linespokes"] = True
-            self.cage3dplot.make_linespokes()
-        else:
-            self.data.config["c3d_draw"]["linespokes"] = False
-            self.cage3dplot.removeItem(self.cage3dplot.linespokes)
-
-    def toggle_b_vector(self):
-        if self.button_b_vector.isChecked():
-            self.data.config["c3d_draw"]["b_vector"] = True
-            self.cage3dplot.make_b_vector()
-        else:
-            self.data.config["c3d_draw"]["b_vector"] = False
-            self.cage3dplot.removeItem(self.cage3dplot.b_vector_plotitem)
-
-    def toggle_b_tail(self):
-        if self.button_b_tail.isChecked():
-            self.data.config["c3d_draw"]["b_tail"] = True
-            self.cage3dplot.make_b_tail()
-        else:
-            self.data.config["c3d_draw"]["b_tail"] = False
-            for item in self.cage3dplot.b_tail_plotitems:
-                self.cage3dplot.removeItem(item)
-
-    def toggle_b_components(self):
-        if self.button_b_components.isChecked():
-            self.data.config["c3d_draw"]["b_components"] = True
-            self.cage3dplot.make_b_components()
-        else:
-            self.data.config["c3d_draw"]["b_components"] = False
-            for item in self.cage3dplot.b_components:
-                self.cage3dplot.removeItem(item)
-
-    def toggle_autorotate(self):
-        if self.button_autorotate.isChecked():
-            self.data.config["c3d_draw"]["autorotate"] = True
-        else:
-            self.data.config["c3d_draw"]["autorotate"] = False
-
-    def toggle_cage_illumination(self):
-        if self.button_cage_illumination.isChecked():
-            self.data.config["c3d_draw"]["cage_illumination"] = True
-        else:
-            self.data.config["c3d_draw"]["cage_illumination"] = False
-            if self.data.config["c3d_draw"]["cage_structure"] is True:
-                for item in self.cage3dplot.cage_structure:
-                    self.cage3dplot.removeItem(item)
-                self.cage3dplot.make_cage_structure()
+# class Cage3DPlotCW(Cage3DPlot):
+#     def __init__(self, datapool):
+#         super().__init__(datapool)
+#
+#
+#
+#     # Override draw_statics():
+#     def draw_statics(self):
+#         print("[DEBUG] Cage3DPlotCW.draw_statics() called")
+#
+#
+#
+#     def draw_vectors(self):
+#         self.make_be()
+#
+#
+#     def make_be(self):
+#         base = self.zov/1000
+#         tip = self.data.Be + self.zov/1000
+#
+#         print("TIP:", tip)
+#
+#         self.be_plotitem = GLLinePlotItem(
+#             pos=[base, tip],
+#             color=(0., 0.0, 0.85, 0.0),
+#             antialias=self.data.config["ov_use_antialiasing"],
+#             width=4)
+#         self.be_plotitem.setDepthValue(0)
+#
+#         if self.data.config["c3dcw_draw"]["be"]:
+#             self.addItem(self.be_plotitem)
+#
+#     def draw_schedule(self):
+#         # Draw a ghostly outline of the schedule
+#         pass
+
+
+
+
+# class Cage3DPlotButtonsCW(QGroupBox):
+#     """Description"""
+#     def __init__(self, cage3dplot, datapool) -> None:
+#         super().__init__()
+#
+#         self.cage3dplot = cage3dplot
+#         self.data = datapool
+#
+#         self.layout0 = QGridLayout()
+#         self.buttons = []
+#
+#         # Generate buttons
+#         self.button_xy_grid = QPushButton(QIcon("./assets/icons/grid2.svg"), "")
+#         self.setup(self.button_xy_grid, "xy_grid", label="XY")
+#         self.button_xy_grid.toggled.connect(self.toggle_xy_grid)
+#
+#         self.button_tripod_b = QPushButton(QIcon("./assets/icons/tripod.svg"), "")
+#         self.setup(self.button_tripod_b, "tripod_b", label="B")
+#         self.button_tripod_b.toggled.connect(self.toggle_tripod_b)
+#
+#         self.button_cage_structure = QPushButton(QIcon("./assets/icons/cage.svg"), "")
+#         self.setup(self.button_cage_structure, "tripod_b")
+#         self.button_cage_structure.toggled.connect(self.toggle_cage_structure)
+#
+#         self.button_cage_illumination = QPushButton(QIcon("./assets/icons/cage_i2.svg"), "")
+#         self.setup(self.button_cage_illumination, "cage_illumination")
+#         self.button_cage_illumination.toggled.connect(self.toggle_cage_illumination)
+#
+#         self.button_satellite_model = QPushButton(QIcon("./assets/icons/satellite.svg"), "")
+#         self.setup(self.button_satellite_model, "satellite_model")
+#         self.button_satellite_model.toggled.connect(self.toggle_satellite_model)
+#
+#         self.button_b_dot = QPushButton(QIcon("./assets/icons/dot.svg"), "")
+#         self.setup(self.button_b_dot, "b_dot")
+#         self.button_b_dot.toggled.connect(self.toggle_b_dot)
+#
+#         self.button_b_vector = QPushButton(QIcon("./assets/icons/vector_b.svg"), "")
+#         self.setup(self.button_b_vector, "b_vector")
+#         self.button_b_vector.toggled.connect(self.toggle_b_vector)
+#
+#         self.button_b_tail = QPushButton(QIcon("./assets/icons/tail2.svg"), "")
+#         self.setup(self.button_b_tail, "b_tail")
+#         self.button_b_tail.toggled.connect(self.toggle_b_tail)
+#
+#         self.button_b_components = QPushButton(QIcon("./assets/icons/components.svg"), "")
+#         self.setup(self.button_b_components, "b_components")
+#         self.button_b_components.toggled.connect(self.toggle_b_components)
+#
+#         self.button_lineplot = QPushButton(QIcon("./assets/icons/lineplot.svg"), "")
+#         self.setup(self.button_lineplot, "lineplot")
+#         self.button_lineplot.toggled.connect(self.toggle_lineplot)
+#
+#         self.button_linespokes = QPushButton(QIcon("./assets/icons/lineplot_spokes.svg"), "")
+#         self.setup(self.button_linespokes, "linespokes")
+#         self.button_linespokes.toggled.connect(self.toggle_linespokes)
+#
+#         self.button_autorotate = QPushButton(QIcon("./assets/icons/autorotate.svg"), "")
+#         self.setup(self.button_autorotate, "autorotate")
+#         self.button_autorotate.toggled.connect(self.toggle_autorotate)
+#
+#         # self.setStyleSheet(self.data.config["stylesheet_groupbox_smallmargins_notitle"])
+#         self.setLayout(self.layout0)
+#         self.layout0.setSizeConstraint(QLayout.SetMinimumSize)
+#         self.setMaximumSize(32, 320)
+#         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+#         self.layout0.setVerticalSpacing(1)
+#         self.layout0.setColumnStretch(0, 0)
+#         self.layout0.setColumnStretch(1, 0)
+#
+#
+#     def setup(self, button, reference: str, label=""):
+#         """A shorthand function to inherit the 'checked' properties based on
+#         the visibility of various plot items as defined in the config file.
+#         This must be done before the toggled() action is connected, in order
+#         to prevent the toggled () action being triggered and causing plot
+#         elements to be redrawn unnecessarily.
+#         """
+#         button.setCheckable(True)
+#         if self.data.config["c3d_draw"][reference] is True:
+#             button.setChecked(True)
+#         button.setFixedSize(QSize(32, 32))
+#         button.setIconSize(QSize(24, 24))
+#         self.layout0.addWidget(button, len(self.buttons), 0)
+#         self.layout0.addWidget(QLabel(label), len(self.buttons), 1)
+#         self.buttons.append(button)
+#
+#
+#     def toggle_xy_grid(self):
+#         if self.button_xy_grid.isChecked():
+#             self.data.config["c3d_draw"]["xy_grid"] = True
+#             self.cage3dplot.make_xy_grid()
+#         else:
+#             self.data.config["c3d_draw"]["xy_grid"] = False
+#             self.cage3dplot.removeItem(self.cage3dplot.xy_grid)
+#
+#     def toggle_tripod_b(self):
+#         if self.button_tripod_b.isChecked():
+#             self.data.config["c3d_draw"]["tripod_b"] = True
+#             self.cage3dplot.make_tripod_b()
+#         else:
+#             self.data.config["c3d_draw"]["tripod_b"] = False
+#             for item in self.cage3dplot.tripod_b:
+#                 self.cage3dplot.removeItem(item)
+#
+#     def toggle_cage_structure(self):
+#         if self.button_cage_structure.isChecked():
+#             self.data.config["c3d_draw"]["cage_structure"] = True
+#             self.cage3dplot.make_cage_structure()
+#         else:
+#             self.data.config["c3d_draw"]["cage_structure"] = False
+#             for item in self.cage3dplot.cage_structure:
+#                 self.cage3dplot.removeItem(item)
+#
+#     def toggle_satellite_model(self):
+#         if self.button_satellite_model.isChecked():
+#             self.data.config["c3d_draw"]["satellite_model"] = True
+#             self.cage3dplot.make_satellite_model()
+#         else:
+#             self.data.config["c3d_draw"]["satellite_model"] = False
+#             self.cage3dplot.removeItem(self.cage3dplot.satellite_model)
+#
+#     def toggle_b_dot(self):
+#         if self.button_b_dot.isChecked():
+#             self.data.config["c3d_draw"]["b_dot"] = True
+#             self.cage3dplot.make_b_dot()
+#         else:
+#             self.data.config["c3d_draw"]["b_dot"] = False
+#             self.cage3dplot.removeItem(self.cage3dplot.b_dot_plotitem)
+#
+#     def toggle_lineplot(self):
+#         if self.button_lineplot.isChecked():
+#             self.data.config["c3d_draw"]["lineplot"] = True
+#             self.cage3dplot.make_lineplot()
+#         else:
+#             self.data.config["c3d_draw"]["lineplot"] = False
+#             self.cage3dplot.removeItem(self.cage3dplot.lineplot)
+#
+#     def toggle_linespokes(self):
+#         if self.button_linespokes.isChecked():
+#             self.data.config["c3d_draw"]["linespokes"] = True
+#             self.cage3dplot.make_linespokes()
+#         else:
+#             self.data.config["c3d_draw"]["linespokes"] = False
+#             self.cage3dplot.removeItem(self.cage3dplot.linespokes)
+#
+#     def toggle_b_vector(self):
+#         if self.button_b_vector.isChecked():
+#             self.data.config["c3d_draw"]["b_vector"] = True
+#             self.cage3dplot.make_b_vector()
+#         else:
+#             self.data.config["c3d_draw"]["b_vector"] = False
+#             self.cage3dplot.removeItem(self.cage3dplot.b_vector_plotitem)
+#
+#     def toggle_b_tail(self):
+#         if self.button_b_tail.isChecked():
+#             self.data.config["c3d_draw"]["b_tail"] = True
+#             self.cage3dplot.make_b_tail()
+#         else:
+#             self.data.config["c3d_draw"]["b_tail"] = False
+#             for item in self.cage3dplot.b_tail_plotitems:
+#                 self.cage3dplot.removeItem(item)
+#
+#     def toggle_b_components(self):
+#         if self.button_b_components.isChecked():
+#             self.data.config["c3d_draw"]["b_components"] = True
+#             self.cage3dplot.make_b_components()
+#         else:
+#             self.data.config["c3d_draw"]["b_components"] = False
+#             for item in self.cage3dplot.b_components:
+#                 self.cage3dplot.removeItem(item)
+#
+#     def toggle_autorotate(self):
+#         if self.button_autorotate.isChecked():
+#             self.data.config["c3d_draw"]["autorotate"] = True
+#         else:
+#             self.data.config["c3d_draw"]["autorotate"] = False
+#
+#     def toggle_cage_illumination(self):
+#         if self.button_cage_illumination.isChecked():
+#             self.data.config["c3d_draw"]["cage_illumination"] = True
+#         else:
+#             self.data.config["c3d_draw"]["cage_illumination"] = False
+#             if self.data.config["c3d_draw"]["cage_structure"] is True:
+#                 for item in self.cage3dplot.cage_structure:
+#                     self.cage3dplot.removeItem(item)
+#                 self.cage3dplot.make_cage_structure()
 
 
 
@@ -2091,14 +1933,14 @@ class GroupManualInput(QGroupBox):
         layout0.setHorizontalSpacing(8)
         layout0.setSizeConstraint(QLayout.SetMinimumSize)
 
-        # self.biv_labels = []  # Bc, Br, Bo, Bm, Bd, Vc, Ic, Im, Id
-        self.biv_labels = []  # Bc, Br, Bo, Bm, Bd, Im, P
+        # self.biv_labels = []  # Bc, Br, Bt, Bm, Bd, Vc, Ic, Im, Id
+        self.biv_labels = []  # Bc, Br, Bt, Bm, Bd, Im, P
 
         styles = ["QLabel {color: #ffaaaa;}", "QLabel {color: #aaffaa;}",
                   "QLabel {color: #aaaaff;}", "QLabel {}"]
 
         for i, var in enumerate(
-                ["Bc", "Br", "Bo", "Bm", "Bd", "Im", "P"]):
+                ["Bc", "Br", "Bt", "Bm", "Ec", "Im", "P"]):
             varlist = []
             for j in range(4):
                 if i == 5 and j == 3:
@@ -2111,7 +1953,7 @@ class GroupManualInput(QGroupBox):
                 varlist.append(label)
             self.biv_labels.append(varlist)
 
-        header_text = ["Bc", "Br", "Bo", "Bm", "Bd", "Im", "P"]
+        header_text = ["Bc", "Br", "Bt", "Bm", "Ec", "Im", "P"]
         header_units = ["\u03bcT"]*5 + ["mA"] + ["W"]
         header_labels = []
         for i in range(len(header_text)):
@@ -2174,9 +2016,9 @@ class GroupManualInput(QGroupBox):
 
     def do_update_biv_labels(self):
         # print("[DEBUG] GroupManualInput.do_update_biv_labels()")
-        # Mapping biv_labels: Bc, Br, Bo, Bm, Bd, Vc, Ic, Im, Id
-        # Bo = Bc-Br
-        # Bd = Bo-Bm
+        # Mapping biv_labels: Bc, Br, Bt, Bm, E, Vc, Ic, Im, Id
+        # Bt = Bc+Br
+        # E = Bt-Bm
         # Id = Ic-Im
 
         # # DUMMIES
@@ -2219,10 +2061,13 @@ class GroupManualInput(QGroupBox):
         Br = [br[0], br[1], br[2], (br[0]**2 + br[1]**2 + br[2]**2)**(1/2)]
         Bm = [bm[0], bm[1], bm[2], (bm[0]**2 + bm[1]**2 + bm[2]**2)**(1/2)]
 
-        Bo = [Bc[0]-Br[0], Bc[1]-Br[1], Bc[2]-Br[2],
-              ((Bc[0]-Br[0])**2 + (Bc[1]-Br[1])**2 + (Bc[2]-Br[2])**2)**(1/2)]
-        Bd = [Bo[0]-Bm[0], Bo[1]-Bm[1], Bo[2]-Bm[2],
-              ((Bo[0]-Bm[0])**2 + (Bo[1]-Bm[1])**2 + (Bo[2]-Bm[2])**2)**(1/2)]
+        Bt = [Bc[0]+Br[0], Bc[1]+Br[1], Bc[2]+Br[2],
+              ((Bc[0]+Br[0])**2 + (Bc[1]+Br[1])**2 + (Bc[2]+Br[2])**2)**(1/2)]
+        Ec = [Bt[0]-Bm[0], Bt[1]-Bm[1], Bt[2]-Bm[2],
+              ((Bt[0]-Bm[0])**2 + (Bt[1]-Bm[1])**2 + (Bt[2]-Bm[2])**2)**(1/2)]
+
+        self.datapool.Bt = Bt
+        self.datapool.Ec = Ec
 
         # Vc = [vc[0], vc[1], vc[2], 0]
         # Ic = [ic[0], ic[1], ic[2], 0]
@@ -2240,8 +2085,8 @@ class GroupManualInput(QGroupBox):
         # t1 = time()  # [TIMING]
 
         # Mapping values to labels:
-        # for i, p in enumerate((Bc, Br, Bo, Bm, Bd, Vc, Ic, Im, Id)):
-        for i, p in enumerate((Bc, Br, Bo, Bm, Bd, Im, P)):
+        # for i, p in enumerate((Bc, Br, Bt, Bm, Bd, Vc, Ic, Im, Id)):
+        for i, p in enumerate((Bc, Br, Bt, Bm, Ec, Im, P)):
             for j in range(4):
                 if i == 5 and j == 3:
                     # skip summed entries for voltage and current

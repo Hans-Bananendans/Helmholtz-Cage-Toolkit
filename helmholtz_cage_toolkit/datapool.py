@@ -56,9 +56,14 @@ class DataPool:
         aqs = Aqs(self.config["buffer_size"])
 
         self.tm = 0.                    # UNIX time of most recent Bm, Im measurement
-        self.Bm = [0., 0., 0.]          # B vector measured by hardware
+        self.Bm = [100., 100., 0.]          # B vector measured by hardware
         self.Bc = [0., 0., 0.]          # B vector as commanded by user
-        self.Br = [0., 0., 0.]          # B vector to reject
+        self.Br = [0., 0., 0.]          # Rejected B vector
+        self.Bt = [0., 0., 0.]          # Total actuated B vector
+        self.Ec = [0., 0., 0.]          # Command error (Br + Bc - Bm)
+
+        self.Be = [0., 0., 0.]          # Local EMF vector
+
         #
         # self.Ic = [0., 0., 0.]          # Coil current commanded by user (calculated by server)
         self.Im = [0., 0., 0.]          # Coil current as measured by hardware

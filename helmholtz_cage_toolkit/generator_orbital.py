@@ -376,7 +376,7 @@ def generator_orbital2(generation_parameters, datapool, timing=False):
             t7f += time()-t7
             t7 = time()
 
-        Bi_NED = array([bx, by, bz])                                    # B|NED
+        Bi_NED = array([bx/1000, by/1000, bz/1000])                     # B|NED and nT->uT
         simdata["B_ECI"][i, :] = R_NED_ECI(rlli[1], rlli[2]) @ Bi_NED   # B|ECI
         Bi_SI = simdata["Rt_ECI_SI"][divmod(i, n_orbit_subs)[1]] \
                 @ simdata["B_ECI"][i, :]                                # B|SI

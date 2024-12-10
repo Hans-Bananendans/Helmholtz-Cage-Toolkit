@@ -36,7 +36,7 @@ from helmholtz_cage_toolkit.generator_orbital import (
     orbital_generation_parameters,
 )
 from helmholtz_cage_toolkit.orbital_plot import OrbitalPlot, OrbitalPlotButtons
-from helmholtz_cage_toolkit.cage3d_plot import Cage3DPlot, Cage3DPlotButtons
+from helmholtz_cage_toolkit.cage3dplot import Cage3DPlot, Cage3DPlotButtons
 
 
 class OrbitalWindow(QWidget):

@@ -223,7 +223,7 @@ class MainWindow(QMainWindow):
         menu_tools.addSection("Bm_sim") # Doesn't display text in qt_material
         actgroup_bm_manipulation = QActionGroup(menu_tools)
 
-        act_bm_manip_none = QAction("Bm manip. - None", self)
+        act_bm_manip_none = QAction("Bm manipulation - None", self)
         act_bm_manip_none.setActionGroup(actgroup_bm_manipulation)
         act_bm_manip_none.setStatusTip("Disable Bm manipulation serveropts.")
         act_bm_manip_none.triggered.connect(
@@ -232,7 +232,7 @@ class MainWindow(QMainWindow):
         act_bm_manip_none.setCheckable(True)
         menu_tools.addAction(act_bm_manip_none)
 
-        act_bm_manip_mutate = QAction("Bm manip. - Mutate", self)
+        act_bm_manip_mutate = QAction("Bm manipulation - Mutate", self)
         act_bm_manip_mutate.setActionGroup(actgroup_bm_manipulation)
         act_bm_manip_mutate.setStatusTip("Set serveropts to 'mutate' Bm.")
         act_bm_manip_mutate.triggered.connect(
@@ -241,7 +241,7 @@ class MainWindow(QMainWindow):
         act_bm_manip_mutate.setCheckable(True)
         menu_tools.addAction(act_bm_manip_mutate)
 
-        act_bm_manip_inject = QAction("Bm manip. - Inject", self)
+        act_bm_manip_inject = QAction("Bm manipulation - Inject", self)
         act_bm_manip_inject.setActionGroup(actgroup_bm_manipulation)
         act_bm_manip_inject.setStatusTip("Set serveropts to 'inject' Bm.")
         act_bm_manip_inject.triggered.connect(

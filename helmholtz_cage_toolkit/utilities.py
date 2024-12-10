@@ -35,7 +35,7 @@ def IGRF_from_UNIX(lat, long, alt_km, t_unix, rotation_matrix=None):
     # Calculate magnetic field vector
     _, _, _, bx, by, bz, _ = igrf_value(lat, long, alt_km, year_decimal)
 
-    B_NED = [bx, by, bz]
+    B_NED = [bx/1000, by/1000, bz/1000]   # nT -> uT
 
     # Rotate to ENU
     B_ENU = array([B_NED[1], B_NED[0], -B_NED[2]])
