@@ -26,7 +26,7 @@ Echo packet         e_packet    This packet type is identical to the message
 Control packet      c_packet    Packet meant to control the power supplies to
                                 be set to a certain current output
                                 proportional to a magnetic field strength.
-                                Packet contains 3 signed <float> values in nT
+                                Packet contains 3 signed <float> values in uT
 
 Telemetry packet    t_packet    Packet containing telemetry in the form of many
                                 measured parameters. Mainly used to get as much
@@ -37,7 +37,7 @@ Telemetry packet    t_packet    Packet containing telemetry in the form of many
 
 B-sample packet     b_packet    Packet containing a single measurement of the
                                 triaxial magnetometer. Contains a 20 B UNIX
-                                timestamp and 16 B signed float value in nT for
+                                timestamp and 16 B signed float value in uT for
                                 each axis. Preferred over t_packet if only Bm
                                 data is needed and speed is critical:
                                 Encoding + decoding b_packet:   5.55 us
