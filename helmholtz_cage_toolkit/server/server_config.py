@@ -40,6 +40,8 @@ server_config = {
     "vlevel_pol": 5.0,      # V
     "v_psu_enable": 5.0,    # V
 
+    "I_slew_max": [1000, 1000, 1000],    # [A/s] Maximum allowed current slew rate
+
     # ==== Playback settings ====
     "default_play_looping": True,
 

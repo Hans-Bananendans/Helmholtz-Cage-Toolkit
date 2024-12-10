@@ -16,9 +16,9 @@ config = {
 
     "connect_on_startup": False,
     "connect_on_startup_delay": 3000,
-    "label_update_period": 5000,
+    "label_update_period": 2000,
     "time_correction_period": 60000,
-    "pings_per_test": 8,
+    "pings_per_test": 16,
 
 
     # ==== Data acquisition ====
@@ -33,7 +33,7 @@ config = {
 
     "enable_arrow_tips": True,  # Whether to plot vectors with tips (substantial overhead)
 
-    "use_legacy_command_window": False,  # TODO DEPRECATED
+    # "use_legacy_command_window": False,  # TODO DEPRECATED
 
     "r_load": [6.5, 6.9, 7.1],      # Expected coil load resistance, used for displayed power estimations
 

@@ -97,7 +97,8 @@ def threaded_control(datapool):
         # Bm routing based on certain serveropts:
         if datapool.serveropt_inject_Bm and \
             (2*(time() - t_prev_inject) > datapool.threaded_read_ADC_period):
-            datapool.write_Bm(datapool.read_Bc())
+            Bc = datapool.read_Bc()
+            datapool.write_Bm(Bc)
             t_prev_inject = time()
 
         if datapool.serveropt_mutate_Bm \
@@ -168,6 +169,7 @@ def threaded_control(datapool):
 
 
 def threaded_write_DAC(datapool):
+    # TODO UPDATE DOCSTRING
     """The thread running this function will periodically read the value of
     DAC inputs from the datapool, and apply it to the DAC hardware. It can do
     so in manual mode, where it applies the value every time a DAC input is
@@ -216,6 +218,11 @@ def threaded_write_DAC(datapool):
 
     Bc_prev = [0., 0., 0.]
 
+    # TODO Implement software slew rate limiting for dI/dt
+    # TODO Basically for all three values compute abs(dI/dt) and do not change
+    # TODO Bc more than the limit allows within the DAC writing speed.
+    # TODO Useful for ensuring no hardware is damaged.
+
     while not datapool.kill_threaded_write_DAC:  # Kills loop when set to True
         if not datapool.pause_threaded_write_DAC:  # Pause loop when set to True
             # print("threaded_write_DAC() loop")
@@ -235,6 +242,7 @@ def threaded_write_DAC(datapool):
 
 
 def threaded_read_ADC(datapool):
+    # TODO UPDATE DOCSTRING
     """The thread running this function will periodically read the value of
     ADC inputs from the hardware, and write them to the datapool.
 
@@ -304,9 +312,9 @@ class DataPool:
 
         self.tm = self.init_buffer(ibs, 1)      # Time at which Bm, Im were taken
         self.Im = self.init_buffer(ibs, 3)      # Measured current Im in [A]
-        self.Bm = self.init_buffer(ibs, 3)      # Measured field Bm in [nT]
+        self.Bm = self.init_buffer(ibs, 3)      # Measured field Bm in [uT]
 
-        self.Bc = self.init_buffer(ibs, 3)      # Control vector Bc to be applied [nT]
+        self.Bc = self.init_buffer(ibs, 3)      # Control vector Bc to be applied [uT]
         self.Vvc = self.init_buffer(ibs, 3)  # Currently unused
         self.Vcc = self.init_buffer(ibs, 3)  # Currently unused
 
@@ -787,13 +795,12 @@ class DataPool:
         """Activates or deactivates play_mode."""
         # print("[DEBUG] set_play_mode():", play_mode_on, type(play_mode_on))
         if play_mode_on is True:
-            """
-            Activates play mode, which primes the server to start playing back the
-            current schedule. The idea is that everything is set up such that the
-            moment self.play is set to True, playback can commence immediately.
-            This includes priming hardware such as power supplies to the first step
-            of the schedule, such that no slew transients need to happen the moment
-            that playback begins.
+            """Activates play mode, which primes the server to start playing 
+            back the current schedule. The idea is that everything is set up 
+            such that the moment self.play is set to True, playback can 
+            commence immediately. This includes priming hardware such as power 
+            supplies to the first step of the schedule, such that no slew 
+            transients need to happen the moment that playback is started.
     
             To this end, this function does the following:
                 1. self.play_mode will be set to True, resulting in adjusted

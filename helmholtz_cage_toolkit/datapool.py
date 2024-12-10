@@ -48,13 +48,9 @@ class DataPool:
 
         self.t_playstart = 0.
 
-        # Server options
-        self.serveropt_loopback = False
-        self.serveropt_use_Bdummy = True
-        self.serveropt_Bdummy_mode = "constant" # "disabled", "constant", "feedback", "mutate"
 
         # Command
-        self.command_mode = "manual"
+        self.play_mode = "manual"
 
         # Data buffers
         aqs = Aqs(self.config["buffer_size"])
@@ -66,6 +62,12 @@ class DataPool:
         #
         # self.Ic = [0., 0., 0.]          # Coil current commanded by user (calculated by server)
         self.Im = [0., 0., 0.]          # Coil current as measured by hardware
+
+        self.V_board = 0.               #
+        self.V_adc_aux = 0.             #
+
+
+        self.i_step = 0                 #
         #
         # self.Vc = [0., 0., 0.]          # Power supply voltage as commanded by user
         #
@@ -73,22 +75,22 @@ class DataPool:
         # self.Vvc = [0., 0., 0.]         # Supply Voltage Control Voltage [0, 2] VDC
 
 
-        # Devices TODO DEPRECATED
-        self.interface_board = None
-        self.supplies = [None, None, None]
-        self.magnetometer = None
-
-        # Measurement TODO DEPRECATED
-        # self.adc_pollrate = self.config["adc_pollrate"]
-        # TODO: Revert to 0. 0. 0.
-        self.B_m = array([0., 1., 0.])   # B measured by magnetometer
-        self.tBm = 0.0                   # Unix acquisition time of latest measurement
-
-        # Command TODO DEPRECATED
-        self.B_c = array([0., 0., 0.])   # Commanded (=desired) magnetic field
-        self.I_c = array([0., 0., 0.])   # Voltage for voltage control
-        self.V_cc = array([0., 0., 0.])  # Voltage for voltage control
-        self.V_vc = array([0., 0., 0.])  # Voltage for voltage control
+        # # Devices TODO DEPRECATED
+        # self.interface_board = None
+        # self.supplies = [None, None, None]
+        # self.magnetometer = None
+        #
+        # # Measurement TODO DEPRECATED
+        # # self.adc_pollrate = self.config["adc_pollrate"]
+        # # TODO: Revert to 0. 0. 0.
+        # self.B_m = array([0., 1., 0.])   # B measured by magnetometer
+        # self.tBm = 0.0                   # Unix acquisition time of latest measurement
+        #
+        # # Command TODO DEPRECATED
+        # self.B_c = array([0., 0., 0.])   # Commanded (=desired) magnetic field
+        # self.I_c = array([0., 0., 0.])   # Voltage for voltage control
+        # self.V_cc = array([0., 0., 0.])  # Voltage for voltage control
+        # self.V_vc = array([0., 0., 0.])  # Voltage for voltage control
 
         # Schedule
         self.init_schedule()
@@ -210,54 +212,54 @@ class DataPool:
         t0 = time()  # [TIMING]
         if self.socket_connected:
             t1 = time()
-            self.tm, *self.Bm = cf.get_Bm(self.socket, self.ds)
+            self.tm, self.Bm = cf.get_Bm(self.socket, self.ds)
 
         else:
             t1 = time()
-            self.tm, *self.Bm = [0.]*4
+            self.tm, self.Bm = 0., [0.]*3
 
         t2 = time()  # [TIMING]
 
 
-        def randomwalkB():
-            Btest = []
-            m = 0.2
-            f = 10_000
-            Bm_mutated = self.Bm
-            for i in range(3):
-                b = self.Bm[i]
-                # print(b, b/f, 1/2-b/f, -1/2-b/f)
-                Bm_mutated[i] += (m*(random()-0.5) - 1/(1/2-b/f+0.1) - 1/(-1/2-b/f-0.1))*f
-            Btest.append(Bm_mutated)
-            for i in range(3):
-                Btest.append([0.]*3)
-            return Btest
-
-        def randomBtest():
-            Btest = []
-            for i in range(2):
-                Btest.append(list((random(3) * 100_000 - 50_000).round(1)))
-            for i in range(2):
-                Btest.append([0.]*3)
-            return Btest
-
-        # Btest = [
-        #     [ 40_000,  50_000,       0],
-        #     [ 80_000,  20_000,  10_000],
-        #     [-40_000, -50_000,       0],
-        #     [-80_000, -20_000, -10_000],
-        # ]
-        Btest = randomwalkB()
-
-        t3 = time()  # [TIMING]
-        self.command_window.do_update_bm_display()
-
-        self.command_window.hhcplot_xy.update_arrows(Btest)
-        self.command_window.hhcplot_yz.update_arrows(Btest)
-
-        t4 = time()  # [TIMING]
-        # print("[TIMING] do_get_Bm():",
-        #       int(1E6*(t1-t0)), int(1E6*(t2-t1)), int(1E6*(t3-t2)), int(1E6*(t4-t3)), "\u03bcs")
+        # def randomwalkB():
+        #     Btest = []
+        #     m = 0.2
+        #     f = 10_000
+        #     Bm_mutated = self.Bm
+        #     for i in range(3):
+        #         b = self.Bm[i]
+        #         # print(b, b/f, 1/2-b/f, -1/2-b/f)
+        #         Bm_mutated[i] += (m*(random()-0.5) - 1/(1/2-b/f+0.1) - 1/(-1/2-b/f-0.1))*f
+        #     Btest.append(Bm_mutated)
+        #     for i in range(3):
+        #         Btest.append([0.]*3)
+        #     return Btest
+        #
+        # def randomBtest():
+        #     Btest = []
+        #     for i in range(2):
+        #         Btest.append(list((random(3) * 100_000 - 50_000).round(1)))
+        #     for i in range(2):
+        #         Btest.append([0.]*3)
+        #     return Btest
+        #
+        # # Btest = [
+        # #     [ 40_000,  50_000,       0],
+        # #     [ 80_000,  20_000,  10_000],
+        # #     [-40_000, -50_000,       0],
+        # #     [-80_000, -20_000, -10_000],
+        # # ]
+        # Btest = randomwalkB()
+        #
+        # t3 = time()  # [TIMING]
+        # self.command_window.do_update_bm_display()
+        #
+        # self.command_window.hhcplot_xy.update_arrows(Btest)
+        # self.command_window.hhcplot_yz.update_arrows(Btest)
+        #
+        # t4 = time()  # [TIMING]
+        # # print("[TIMING] do_get_Bm():",
+        # #       int(1E6*(t1-t0)), int(1E6*(t2-t1)), int(1E6*(t3-t2)), int(1E6*(t4-t3)), "\u03bcs")
 
 
     def do_get_telemetry(self):
@@ -286,13 +288,12 @@ class DataPool:
         # t0 = time()  # [TIMING]
         if self.socket_connected:
             # t1 = time()  # [TIMING]
-            self.tm, self.Bm, self.Im, self.Ic, self.Vc, self.Vvc, self.Vcc = \
-                cf.get_telemetry(self.socket, self.ds)
-
+            self.tm, self.i_step, self.Im, self.Bm, self.Bc = cf.get_telemetry(
+                self.socket, self.ds)
         else:
             # t1 = time()  # [TIMING]
             self.tm = -1.
-            [self.Bm, self.Im, self.Ic, self.Vc, self.Vvc, self.Vcc] = [[-1.]*3]*6
+            [self.Im, self.Bm, self.Bc] = [[-1.]*3]*3
 
         # t2 = time()  # [TIMING]
 
@@ -342,12 +343,12 @@ class DataPool:
 
     def do_start_playback(self):
         t_before = time()
-        cf.play_start(self.socket, self.ds)
+        cf.set_play(self.socket, True, self.ds)
         t_after = time()
         self.t_playstart = t_before-(t_after-t_before)
 
     def do_stop_playback(self):
-        cf.play_stop(self.socket, self.ds)
+        cf.set_play(self.socket, False, self.ds)
 
     def refresh(self, source):
         """Refreshes certain key UI elements when the internal schedule and
@@ -379,27 +380,27 @@ class DataPool:
 
         # TODO: Add UI elements from Orbital Generator
 
-    def set_serveropts_Bm_sim(self, mode: str):
+    def set_serveropts_Bm_manipulation(self, mode: str):
         if self.socket_connected:
-            cf.set_serveropt_Bm_sim(self.socket, mode, self.ds)
-            self.status_bar.showMessage(f"Set serveropt 'Bm_sim' to '{mode}'")
+            if mode == "none":
+                cf.set_serveropt_mutate_Bm(self.socket, False, self.ds)
+                cf.set_serveropt_inject_Bm(self.socket, False, self.ds)
+            elif mode == "mutate":
+                cf.set_serveropt_mutate_Bm(self.socket, True, self.ds)
+                cf.set_serveropt_inject_Bm(self.socket, False, self.ds)
+            elif mode == "inject":
+                cf.set_serveropt_mutate_Bm(self.socket, False, self.ds)
+                cf.set_serveropt_inject_Bm(self.socket, True, self.ds)
+            else:
+                raise ValueError(f"set_serveropts_Bm_manipulation(): Invalid mode '{mode}'!")
+
+            self.status_bar.showMessage(
+                f"Setting serveropt 'Bm manip.' to '{mode}'")
+
         else:
             self.status_bar.showMessage(
-                "Could not set serveropt 'Bm_sim': Not connected to server!"
+                "Could not set serveropts: Not connected to server!"
             )
-
-    # def serveropts_toggle_loopback(self):
-    #     print("[DEBUG] serveropts_toggle_loopback():", end=" ")
-    #     if not self.serveropt_loopback:
-    #         cf.set_serveropt_loopback(self.socket, True, datastream=self.ds)
-    #         self.serveropt_loopback = True
-    #         print("LOOPBACK ON")
-    #         self.status_bar.showMessage("Toggled loopback ON")
-    #     else:
-    #         cf.set_serveropt_loopback(self.socket, False, datastream=self.ds)
-    #         self.serveropt_loopback = False
-    #         print("LOOPBACK OFF")
-    #         self.status_bar.showMessage("Toggled loopback OFF")
 
     def set_adc_channels(self, adc_channels):
         self.adc_channels = adc_channels
@@ -413,29 +414,57 @@ class DataPool:
     def get_schedule_steps(self):
         return len(self.schedule[0])
 
-    # @Slot()
-    def dump_datapool(self):
-        print("\n ==== DATAPOOL DUMP ==== ")
-        members = vars(self)
-        for key in members.keys():
-            if key not in ("config",):
-                print(key, "=", members[key])
+    def dump(self, data: str):
+        if data == "datapool":
+            print("\n ==== DATAPOOL DUMP ==== ")
+            members = vars(self)
+            for key in members.keys():
+                if key not in ("config",):
+                    print(key, "=", members[key])
+        elif data == "config":
+            print("\n ==== CONFIG DUMP ==== ")
+            for key, val in self.config.items():
+                print(key, "=", val)
+        elif data == "telemetry":
+            print("\n ==== TELEMETRY DUMP ==== ")
+            items = (self.tm, self.i_step, self.Im, self.Bm, self.Bc)
+            items_str = ("tm", "i_step", "Im", "Bm", "Bc")
+            for i, item in enumerate(items):
+                print(items_str[i], "=", item)
+        elif data == "cyclics_genparams":
+            print("\n ==== CYCLICS GENPARAMS DUMP ==== ")
+            for key, val in self.generation_parameters_cyclics.items():
+                print(key, "=", val)
+        elif data == "orbital_genparams":
+            print("\n ==== ORBITAL GENPARAMS DUMP ==== ")
+            for key, val in self.generation_parameters_orbital.items():
+                print(key, "=", val)
+        else:
+            raise ValueError(f"dump(): Invalid dumping data '{data}'!")
 
-    # @Slot()
-    def dump_config(self):
-        print("\n ==== CONFIG DUMP ==== ")
-        for key, val in self.config.items():
-            print(key, "=", val)
+    # # @Slot()
+    # def dump_datapool(self):
+    #     print("\n ==== DATAPOOL DUMP ==== ")
+    #     members = vars(self)
+    #     for key in members.keys():
+    #         if key not in ("config",):
+    #             print(key, "=", members[key])
 
-    def dump_generation_parameters_orbital(self):
-        print("\n ==== ORBITAL GENPARAMS DUMP ==== ")
-        for key, val in self.generation_parameters_orbital.items():
-            print(key, "=", val)
-
-    def dump_generation_parameters_cyclics(self):
-        print("\n ==== CYCLICS GENPARAMS DUMP ==== ")
-        for key, val in self.generation_parameters_cyclics.items():
-            print(key, "=", val)
+    # # @Slot()
+    # def dump_config(self):
+    #     print("\n ==== CONFIG DUMP ==== ")
+    #     for key, val in self.config.items():
+    #         print(key, "=", val)
+    #
+    # def dump_generation_parameters_orbital(self):
+    #     print("\n ==== ORBITAL GENPARAMS DUMP ==== ")
+    #     for key, val in self.generation_parameters_orbital.items():
+    #         print(key, "=", val)
+    #
+    # def dump_generation_parameters_cyclics(self):
+    #     print("\n ==== CYCLICS GENPARAMS DUMP ==== ")
+    #     for key, val in self.generation_parameters_cyclics.items():
+    #         print(key, "=", val)
 
     def toggle_plot_visibility_tabs(self):
         if self.orbital_visualizer is None:

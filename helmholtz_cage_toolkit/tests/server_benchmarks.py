@@ -801,16 +801,6 @@ if __name__ == "__main__":
         cf.set_play_looping(s, False, ds)
 
         check_looping = (len(set([a[0] for a in bs[-6:-1]])) != 1)
-        # bc10 = cf.get_Bc(s, ds)
-        # sleep(0.3)
-        # bc11 = cf.get_Bc(s, ds)
-        # sleep(0.2)
-        # bc12 = cf.get_Bc(s, ds)
-        # sleep(0.2)
-        # bc13 = cf.get_Bc(s, ds)
-        # info1 = cf.get_play_info(s, ds)         # Info
-        # sleep(0.2)
-        # rf2 = cf.set_play(s, False, ds)
 
         checks = [(rt0 == 1), (rf0 == 0), (rt1 == 1), (rf1 == 0),
                   check_playing0, check_playing1, check_looping]
@@ -882,6 +872,43 @@ if __name__ == "__main__":
             print(cr + f"Checks: {checks}" + ce)
             print(cr + f"First:  {info0}" + ce)
             print(cr + f"Second: {info1}" + ce)
+        i += 1
+
+
+
+        # ==== Request t-packet ====
+        cf.set_play_mode(s, False, ds)   # Explicitly disable play mode
+        Bc_test = [987.0, 654.0, 321.0]
+        cf.set_serveropt_inject_Bm(s, True, ds)
+        cf.set_Bc(s, Bc_test, ds)
+        sleep(0.1)
+        cf.set_serveropt_inject_Bm(s, False, ds)
+
+        # sleep(2)
+        t0 = time()
+        r = cf.get_telemetry(s, ds)
+        t1 = time()
+
+        checks = [
+            isinstance(r, tuple),
+            len(r) == 5,
+            isinstance(r[0], float),
+            isinstance(r[1], int),
+            isinstance(r[2], list),
+            isinstance(r[3], list),
+            isinstance(r[4], list),
+            r[3] == r[4]
+        ]
+
+        if all(checks):
+            print(cg + f"{i}/{n} Request t-packet          PASS ({int(1E6*(t1-t0))} \u03bcs)" + ce)
+            if details:
+                print(cr + f"       {r}" + ce)
+        else:
+            print(cr + f"{i}/{n} Request t-packet          FAIL" + ce)
+            print(cr + f"Checks: {checks}" + ce)
+            print(cr + f"{r}" + ce)
+
         i += 1
 
 

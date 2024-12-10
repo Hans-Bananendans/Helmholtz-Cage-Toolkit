@@ -13,7 +13,7 @@ from helmholtz_cage_toolkit.cyclics_window import CyclicsWindow
 from helmholtz_cage_toolkit.orbital_window import OrbitalWindow
 from helmholtz_cage_toolkit.connection_window import ConnectionWindow
 from helmholtz_cage_toolkit.webcam_window import WebcamWindow
-from helmholtz_cage_toolkit.command_window import CommandWindow, CommandWindowOld
+from helmholtz_cage_toolkit.command_window import CommandWindow
 from helmholtz_cage_toolkit.orbit_design_window import OrbitDesignWindow
 from helmholtz_cage_toolkit.file_handling import load_file, save_file, NewFileDialog
 
@@ -176,7 +176,8 @@ class MainWindow(QMainWindow):
             QIcon("./assets/icons/feather/terminal.svg"),
             "Dump &datapool", self)
         act_dump_datapool.setStatusTip("Dump the internal datapool to the terminal.")
-        act_dump_datapool.triggered.connect(self.datapool.dump_datapool)
+        # act_dump_datapool.triggered.connect(self.datapool.dump_datapool)
+        act_dump_datapool.triggered.connect(lambda: self.datapool.dump("datapool"))
         act_dump_datapool.setCheckable(False)
         menu_tools.addAction(act_dump_datapool)
 
@@ -184,15 +185,28 @@ class MainWindow(QMainWindow):
             QIcon("./assets/icons/feather/terminal.svg"),
             "Dump &config", self)
         act_dump_config.setStatusTip("Dump the loaded config file to the terminal.")
-        act_dump_config.triggered.connect(self.datapool.dump_config)
+        # act_dump_config.triggered.connect(self.datapool.dump_config)
+        act_dump_config.triggered.connect(lambda: self.datapool.dump("config"))
         act_dump_config.setCheckable(False)
         menu_tools.addAction(act_dump_config)
+
+        act_dump_telemetry = QAction(
+            QIcon("./assets/icons/feather/terminal.svg"),
+            "Dump &telemetry", self)
+        act_dump_telemetry.setStatusTip("Dump recent telemetry to the terminal.")
+        # act_dump_telemetry.triggered.connect(self.datapool.dump_config)
+        act_dump_telemetry.triggered.connect(
+            lambda: self.datapool.dump("telemetry")
+        )
+        act_dump_telemetry.setCheckable(False)
+        menu_tools.addAction(act_dump_telemetry)
 
         act_dump_generation_parameters_cyclics = QAction(
             QIcon("./assets/icons/feather/terminal.svg"),
             "Dump C&yclics genparameters", self)
         act_dump_generation_parameters_cyclics.setStatusTip("Dump the current Cyclics generation parameters to the terminal.")
-        act_dump_generation_parameters_cyclics.triggered.connect(self.datapool.dump_generation_parameters_cyclics)
+        # act_dump_generation_parameters_cyclics.triggered.connect(self.datapool.dump_generation_parameters_cyclics)
+        act_dump_generation_parameters_cyclics.triggered.connect(lambda: self.datapool.dump("cyclics_genparams"))
         act_dump_generation_parameters_cyclics.setCheckable(False)
         menu_tools.addAction(act_dump_generation_parameters_cyclics)
 
@@ -200,52 +214,43 @@ class MainWindow(QMainWindow):
             QIcon("./assets/icons/feather/terminal.svg"),
             "Dump &Orbital genparameters", self)
         act_dump_generation_parameters_orbital.setStatusTip("Dump the current Orbital generation parameters to the terminal.")
-        act_dump_generation_parameters_orbital.triggered.connect(self.datapool.dump_generation_parameters_orbital)
+        # act_dump_generation_parameters_orbital.triggered.connect(self.datapool.dump_generation_parameters_orbital)
+        act_dump_generation_parameters_orbital.triggered.connect(lambda: self.datapool.dump("orbital_genparams"))
         act_dump_generation_parameters_orbital.setCheckable(False)
         menu_tools.addAction(act_dump_generation_parameters_orbital)
 
         # ==== Bm_sim action group
-        # TODO: DISABLE UNTIL CONNECT
         menu_tools.addSection("Bm_sim") # Doesn't display text in qt_material
-        actgroup_Bm_sim = QActionGroup(menu_tools)
+        actgroup_bm_manipulation = QActionGroup(menu_tools)
 
-        act_bm_sim_disabled = QAction("Bm_sim - disabled", self)
-        act_bm_sim_disabled.setActionGroup(actgroup_Bm_sim)
-        act_bm_sim_disabled.setStatusTip("Set serveropt 'Bm_sim' to 'disabled'.")
-        act_bm_sim_disabled.triggered.connect(
-            lambda: self.datapool.set_serveropts_Bm_sim("disabled")
+        act_bm_manip_none = QAction("Bm manip. - None", self)
+        act_bm_manip_none.setActionGroup(actgroup_bm_manipulation)
+        act_bm_manip_none.setStatusTip("Disable Bm manipulation serveropts.")
+        act_bm_manip_none.triggered.connect(
+            lambda: self.datapool.set_serveropts_Bm_manipulation("none")
         )
-        act_bm_sim_disabled.setCheckable(True)
-        menu_tools.addAction(act_bm_sim_disabled)
+        act_bm_manip_none.setCheckable(True)
+        menu_tools.addAction(act_bm_manip_none)
 
-        act_bm_sim_constant = QAction("Bm_sim - constant", self)
-        act_bm_sim_constant.setActionGroup(actgroup_Bm_sim)
-        act_bm_sim_constant.setStatusTip("Set serveropt 'Bm_sim' to 'constant'.")
-        act_bm_sim_constant.triggered.connect(
-            lambda: self.datapool.set_serveropts_Bm_sim("constant")
+        act_bm_manip_mutate = QAction("Bm manip. - Mutate", self)
+        act_bm_manip_mutate.setActionGroup(actgroup_bm_manipulation)
+        act_bm_manip_mutate.setStatusTip("Set serveropts to 'mutate' Bm.")
+        act_bm_manip_mutate.triggered.connect(
+            lambda: self.datapool.set_serveropts_Bm_manipulation("mutate")
         )
-        act_bm_sim_constant.setCheckable(True)
-        menu_tools.addAction(act_bm_sim_constant)
+        act_bm_manip_mutate.setCheckable(True)
+        menu_tools.addAction(act_bm_manip_mutate)
 
-        act_bm_sim_mutate = QAction("Bm_sim - mutate", self)
-        act_bm_sim_mutate.setActionGroup(actgroup_Bm_sim)
-        act_bm_sim_mutate.setStatusTip("Set serveropt 'Bm_sim' to 'mutate'.")
-        act_bm_sim_mutate.triggered.connect(
-            lambda: self.datapool.set_serveropts_Bm_sim("mutate")
+        act_bm_manip_inject = QAction("Bm manip. - Inject", self)
+        act_bm_manip_inject.setActionGroup(actgroup_bm_manipulation)
+        act_bm_manip_inject.setStatusTip("Set serveropts to 'inject' Bm.")
+        act_bm_manip_inject.triggered.connect(
+            lambda: self.datapool.set_serveropts_Bm_manipulation("inject")
         )
-        act_bm_sim_mutate.setCheckable(True)
-        menu_tools.addAction(act_bm_sim_mutate)
+        act_bm_manip_inject.setCheckable(True)
+        menu_tools.addAction(act_bm_manip_inject)
 
-        act_bm_sim_feedback = QAction("Bm_sim - feedback", self)
-        act_bm_sim_feedback.setActionGroup(actgroup_Bm_sim)
-        act_bm_sim_feedback.setStatusTip("Set serveropt 'Bm_sim' to 'feedback'.")
-        act_bm_sim_feedback.triggered.connect(
-            lambda: self.datapool.set_serveropts_Bm_sim("feedback")
-        )
-        act_bm_sim_feedback.setCheckable(True)
-        menu_tools.addAction(act_bm_sim_feedback)
-
-        act_bm_sim_disabled.setChecked(True)
+        act_bm_manip_none.setChecked(True)
 
         menu_tools.addSeparator()
 
@@ -305,10 +310,11 @@ class MainWindow(QMainWindow):
             if i == 0:
                 self.tabcontainer.addWidget(ConnectionWindow(self.config, self.datapool))
             elif i == 1:
-                if self.datapool.config["use_legacy_command_window"]:
-                    self.tabcontainer.addWidget(CommandWindowOld(self.config, self.datapool))
-                else:
-                    self.tabcontainer.addWidget(CommandWindow(self.config, self.datapool))
+                self.tabcontainer.addWidget(CommandWindow(self.config, self.datapool))
+                # if self.datapool.config["use_legacy_command_window"]:
+                #     self.tabcontainer.addWidget(CommandWindowOld(self.config, self.datapool))
+                # else:
+                #     self.tabcontainer.addWidget(CommandWindow(self.config, self.datapool))
             elif i == 2:
                 self.tabcontainer.addWidget(OrbitalWindow(self.config, self.datapool))
             # elif i == 3:

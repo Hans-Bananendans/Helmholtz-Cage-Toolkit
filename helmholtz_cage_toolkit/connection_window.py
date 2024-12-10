@@ -155,13 +155,13 @@ class ConnectionWindow(QWidget):
         layout_hhcbox = QGridLayout()
 
 
-        layout_hhcbox.addWidget(QLabel("HHC mode:"), 0, 0)
-        self.label_hhcmode = QLabel("")
-        layout_hhcbox.addWidget(self.label_hhcmode, 0, 1)
+        layout_hhcbox.addWidget(QLabel("Play mode:"), 0, 0)
+        self.label_play_mode = QLabel("")
+        layout_hhcbox.addWidget(self.label_play_mode, 0, 1)
 
-        layout_hhcbox.addWidget(QLabel("HHC status:"), 1, 0)
-        self.label_hhcstatus = QLabel("")
-        layout_hhcbox.addWidget(self.label_hhcstatus, 1, 1)
+        layout_hhcbox.addWidget(QLabel("Playback status:"), 1, 0)
+        self.label_play = QLabel("")
+        layout_hhcbox.addWidget(self.label_play, 1, 1)
 
         layout_hhcbox.addWidget(QLabel("Schedule name:"), 2, 0)
         self.label_schedule_name = QLabel("")
@@ -175,6 +175,9 @@ class ConnectionWindow(QWidget):
         self.label_schedule_duration = QLabel("")
         layout_hhcbox.addWidget(self.label_schedule_duration, 4, 1)
 
+        layout_hhcbox.addWidget(QLabel("Hash:"), 5, 0)
+        self.label_schedule_hash = QLabel("")
+        layout_hhcbox.addWidget(self.label_schedule_hash, 5, 1)
 
         group_hhcbox = QGroupBox()
         group_hhcbox.setStyleSheet(
@@ -265,6 +268,8 @@ class ConnectionWindow(QWidget):
         )
         self.timers_intervals = [0]*len(self.timers)
 
+        self.hash_verify = False
+
         self.widgets_online_only = (
             self.button_disconnect,
 
@@ -276,11 +281,12 @@ class ConnectionWindow(QWidget):
             self.label_ping_avg,
             self.button_ping_avg,
 
-            self.label_hhcmode,
-            self.label_hhcstatus,
+            self.label_play_mode,
+            self.label_play,
             self.label_schedule_name,
             self.label_schedule_length,
             self.label_schedule_duration,
+            self.label_schedule_hash,
 
             self.button_transfer_schedule,
             self.button_clear_schedule,
@@ -299,16 +305,15 @@ class ConnectionWindow(QWidget):
         self.datapool.status_bar.showMessage("Disconnected")
 
 
-        self.hhc_play_mode = "-"
-        self.hhc_play_status = "-"
+        self.hhc_play_info = ["-", "-"]
         self.hhc_schedule_info = ("-", "-", "-")
 
-        self.label_hhcmode.setText("-")
-        self.label_hhcstatus.setText("-")
+        self.label_play_mode.setText("-")
+        self.label_play.setText("-")
         self.label_schedule_name.setText("-")
         self.label_schedule_length.setText("-")
         self.label_schedule_duration.setText("-")
-
+        self.label_schedule_hash.setText("-")
 
     def connect_on_startup(self):
         """Slot for the one-off `timer_connect_on_startup`.
@@ -339,6 +344,8 @@ class ConnectionWindow(QWidget):
 
     # @Slot()
     def disconnect_socket(self, timeout=3000):
+        self.before_disconnect()
+
         self.socket.disconnectFromHost()
 
         # Try to connect for `timeout` ms before giving up
@@ -405,13 +412,25 @@ class ConnectionWindow(QWidget):
         self.datapool.command_window.do_on_connected()
 
     # @Slot()
+
+
+    def before_disconnect(self):
+        print("[DEBUG] before_disconnect()")
+
+        # Disable Bm_manipulation:
+        self.datapool.set_serveropts_Bm_manipulation("none")
+
+
+
+
     def on_disconnected(self):
-        # print("[DEBUG] SIGNAL: socket.disconnected")
+        print("[DEBUG] SIGNAL: socket.disconnected")
         self.datapool.socket_connected = False
 
         # self.datapool.disable_Bm_acquisition()
         self.datapool.disable_timer_get_telemetry()
 
+        # Update UI elements
         self.label_status.setText("OFFLINE")
         self.label_status.setStyleSheet("""QLabel {color: #ff0000;}""")
 
@@ -505,25 +524,34 @@ class ConnectionWindow(QWidget):
         self.label_socket_uptime.setText(f"{int(self.socket_uptime)} s")
 
     def update_general_labels(self):
-        hhc_play_mode = cf.get_play_mode(self.socket, self.ds)
-        if hhc_play_mode != self.hhc_play_mode:
-            if hhc_play_mode:
-                self.label_hhcmode.setText("play mode")
+        hhc_play_info = cf.get_play_info(self.socket, self.ds)
+        if hhc_play_info[0] != self.hhc_play_info[0]:
+            if hhc_play_info[0] is True:
+                self.label_play_mode.setText("play mode")
             else:
-                self.label_hhcmode.setText("manual mode")
-        self.hhc_play_mode = hhc_play_mode
+                self.label_play_mode.setText("manual mode")
+        if hhc_play_info[1] != self.hhc_play_info[1]:
+            if hhc_play_info[1] is True:
+                self.label_play.setText("playing")
+            else:
+                self.label_play.setText("stopped")
+        self.hhc_play_info = hhc_play_info
 
-        hhc_play_status = cf.get_play_status(self.socket, self.ds)
-        if hhc_play_status != self.hhc_play_status:
-            self.label_hhcstatus.setText(hhc_play_status)
-        self.hhc_play_status = hhc_play_status
 
-        hhc_schedule_info = cf.get_schedule_info(self.socket, self.ds)
+        hhc_schedule_info = cf.get_schedule_info(
+            self.socket, datastream=self.ds)
         if hhc_schedule_info != self.hhc_schedule_info:
             self.label_schedule_name.setText(hhc_schedule_info[0])
             self.label_schedule_length.setText(str(hhc_schedule_info[1]))
             self.label_schedule_duration.setText("{:.3f} s".format(
                 hhc_schedule_info[2]))
+
+            self.label_schedule_hash.setText(hhc_schedule_info[3])
+            if self.hash_verify:
+                self.label_schedule_hash.setStyleSheet("""QLabel {color: #00aa00;}""")
+            else:
+                self.label_schedule_hash.setStyleSheet("""QLabel {color: #ffffff;}""")
+
         self.hhc_schedule_info = hhc_schedule_info
 
 
@@ -541,6 +569,7 @@ class ConnectionWindow(QWidget):
 
     def do_transfer_schedule(self):
         # self.suspend_timers()  # TODO: Remove after tests
+        self.hash_verify = False
 
         t0 = time()
         schedule = list(column_stack(self.datapool.schedule))
@@ -591,20 +620,22 @@ class ConnectionWindow(QWidget):
 
         # Verify transfer by comparing BLAKE2b hash of local and remote schedule
 
-        verify = cf.verify_schedule(self.socket, schedule, datastream=self.ds)
+        verify, local_hash, remote_hash = cf.verify_schedule(
+            self.socket, schedule, datastream=self.ds)
         if verify:
             print("Transfer verification: PASS")
+            self.hash_verify = True
         else:
             print("Transfer verification: FAIL")
-            local_hash = cf.schedule_hash(schedule)
             print("Local hash:", local_hash)
-            remote_hash = cf.get_schedule_hash(self.socket, datastream=self.ds)
             print("Remote hash:", remote_hash)
+            self.hash_verify = False
 
         # self.resume_timers()  # TODO: Remove after tests
 
     def do_clear_schedule(self):
-        ack = cf.initialize_schedule(self.socket, datastream=self.ds)
+        confirm = cf.initialize_schedule(self.socket, datastream=self.ds)
+        self.hash_verify = False
 
 
 
