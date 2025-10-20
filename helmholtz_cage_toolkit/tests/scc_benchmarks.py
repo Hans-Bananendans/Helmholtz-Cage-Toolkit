@@ -3,6 +3,10 @@ to be run on different hardware."""
 
 from timeit import timeit
 
+cc = "\033[96m" # cyan
+cg = "\033[92m" # green
+cr = "\033[91m" # red
+ce = "\033[0m"  # endc
 
 tmult = int(1E6)    # 1 / 1E3 / 1E6 / 1E9 for s / ms / us / ns respectively
 N = int(1E5)        # Generic number of tests
@@ -85,133 +89,140 @@ length_checks = {
     "tpacket": len(codec.encode_tpacket(*input_t.values())),
     "xpacket": len(codec.encode_xpacket(*input_int_float)),
 }
+
+correct_length = 256
+
 for key in length_checks.keys():
-    print(key, ":", length_checks[key], "B")
+    if length_checks[key] == correct_length:
+        print(cg + key, ":", length_checks[key], "B" + ce)
+    else:
+        print(cr + key, ":", length_checks[key], "B" + ce)
 
 if all(l == codec.packet_size for l in length_checks.values()):
-    print("   PASS")
+    print(cg + "   PASS" + ce)
 else:
-    print("   FAIL")
+    print(cr + "   FAIL" + ce)
 
 
 
 print("\n ==== COMMUTATION CHECKS ====")
 b_packet_decoded = codec.decode_bpacket(codec.encode_bpacket(*Bm_test))
+b_packet_decoded = [b_packet_decoded[0], [b_packet_decoded[1], b_packet_decoded[2], b_packet_decoded[3]]] # Fix formatting
 if Bm_test == b_packet_decoded:
-    print("bpacket : PASS")
+    print(cg + "bpacket : PASS" + ce)
 else:
-    print("bpacket : FAIL")
-    print("PRE  :", Bm_test)
-    print("POST :", b_packet_decoded)
+    print(cr + "bpacket : FAIL" + ce)
+    print(cr + "PRE  :", Bm_test, ce)
+    print(cr + "POST :", b_packet_decoded, ce)
 
 c_packet_decoded = codec.decode_cpacket(codec.encode_cpacket(Bc_test))
 if Bc_test == c_packet_decoded:
-    print("cpacket : PASS")
+    print(cg + "cpacket : PASS" + ce)
 else:
-    print("cpacket : FAIL")
-    print("PRE  :", Bc_test)
-    print("POST :", c_packet_decoded)
+    print(cr + "cpacket : FAIL" + ce)
+    print(cr + "PRE  :", Bc_test, ce)
+    print(cr + "POST :", c_packet_decoded, ce)
 
 e_packet_decoded = codec.decode_epacket(codec.encode_epacket(echo_test))
 if echo_test == e_packet_decoded:
-    print("epacket : PASS")
+    print(cg + "epacket : PASS" + ce)
 else:
-    print("epacket : FAIL")
-    print("PRE  :", echo_test)
-    print("POST :", e_packet_decoded)
+    print(cr + "epacket : FAIL" + ce)
+    print(cr + "PRE  :", echo_test, ce)
+    print(cr + "POST :", e_packet_decoded, ce)
 
 m_packet_decoded = codec.decode_mpacket(codec.encode_mpacket(msg_test))
 if msg_test == m_packet_decoded:
-    print("mpacket : PASS")
+    print(cg + "mpacket : PASS" + ce)
 else:
-    print("mpacket : FAIL")
-    print("PRE  :", msg_test)
-    print("POST :", m_packet_decoded)
+    print(cr + "mpacket : FAIL" + ce)
+    print(cr + "PRE  :", msg_test, ce)
+    print(cr + "POST :", m_packet_decoded, ce)
 
 s_packet_decoded = codec.decode_spacket(codec.encode_spacket(*seg_test))
 if seg_test == s_packet_decoded:
-    print("spacket : PASS")
+    print(cg + "spacket : PASS" + ce)
 else:
-    print("spacket : FAIL")
-    print("PRE  :", seg_test)
-    print("POST :", s_packet_decoded)
+    print(cr + "spacket : FAIL" + ce)
+    print(cr + "PRE  :", seg_test, ce)
+    print(cr + "POST :", s_packet_decoded, ce)
 
 t_packet = codec.encode_tpacket(*input_t.values())
 t_packet_decoded = list(codec.decode_tpacket(t_packet))
 if list(input_t.values()) == t_packet_decoded:
-    print("tpacket : PASS")
+    print(cg + "tpacket : PASS" + ce)
 else:
-    print("tpacket : FAIL")
-    print("PRE  :", list(input_t.values()))
-    print("POST :", list(t_packet_decoded))
+    print(cr + "tpacket : FAIL" + ce)
+    print(cr + "PRE  :", list(input_t.values()), ce)
+    print(cr + "POST :", list(t_packet_decoded), ce)
 
 
 
 n = N
 print("\n ==== TIMING BENCHMARKS ====")
-print(f"codec.encode_bpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+print(cc, f"codec.encode_bpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
       round(timeit('codec.encode_bpacket(*Bm_test)',
-                   globals=globals(), number=n)*tmult/n, 3), t_unit)
+                   globals=globals(), number=n)*tmult/n, 3), t_unit, ce)
 
-print(f"codec.decode_bpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+print(cc, f"codec.decode_bpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
       round(timeit('codec.decode_bpacket(bpacket_test)',
-                   globals=globals(), number=n)*tmult/n, 3), t_unit)
+                   globals=globals(), number=n)*tmult/n, 3), t_unit, ce)
 
 
-print(f"codec.encode_cpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+print(cc, f"codec.encode_cpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
       round(timeit('codec.encode_cpacket(Bc_test)',
-                   globals=globals(), number=n)*tmult/n, 3), t_unit)
+                   globals=globals(), number=n)*tmult/n, 3), t_unit, ce)
 
-print(f"codec.decode_cpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+print(cc, f"codec.decode_cpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
       round(timeit('codec.decode_cpacket(cpacket_test)',
-                   globals=globals(), number=n)*tmult/n, 3), t_unit)
+                   globals=globals(), number=n)*tmult/n, 3), t_unit, ce)
 
 
-print(f"codec.encode_epacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+print(cc, f"codec.encode_epacket() - t_avg (n={'{:1.0E}'.format(n)}):",
       round(timeit('codec.encode_epacket(echo_test)',
-                   globals=globals(), number=n)*tmult/n, 3), t_unit)
+                   globals=globals(), number=n)*tmult/n, 3), t_unit, ce)
 
-print(f"codec.decode_epacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+print(cc, f"codec.decode_epacket() - t_avg (n={'{:1.0E}'.format(n)}):",
       round(timeit('codec.decode_epacket(epacket_test)',
-                   globals=globals(), number=n)*tmult/n, 3), t_unit)
+                   globals=globals(), number=n)*tmult/n, 3), t_unit, ce)
 
 
-print(f"codec.encode_mpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+print(cc, f"codec.encode_mpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
       round(timeit('codec.encode_mpacket(msg_test)',
-                   globals=globals(), number=n)*tmult/n, 3), t_unit)
+                   globals=globals(), number=n)*tmult/n, 3), t_unit, ce)
 
-print(f"codec.decode_mpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+print(cc, f"codec.decode_mpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
       round(timeit('codec.decode_mpacket(mpacket_test)',
-                   globals=globals(), number=n)*tmult/n, 3), t_unit)
+                   globals=globals(), number=n)*tmult/n, 3), t_unit, ce)
 
 
-print(f"codec.encode_spacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+print(cc, f"codec.encode_spacket() - t_avg (n={'{:1.0E}'.format(n)}):",
       round(timeit('codec.encode_spacket(*seg_test)',
-                   globals=globals(), number=n)*tmult/n, 3), t_unit)
+                   globals=globals(), number=n)*tmult/n, 3), t_unit, ce)
 
-print(f"codec.decode_spacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+print(cc, f"codec.decode_spacket() - t_avg (n={'{:1.0E}'.format(n)}):",
       round(timeit('codec.decode_spacket(spacket_test)',
-                   globals=globals(), number=n)*tmult/n, 3), t_unit)
+                   globals=globals(), number=n)*tmult/n, 3), t_unit, ce)
 
 
-print(f"codec.encode_tpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+print(cc, f"codec.encode_tpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
       round(timeit('codec.encode_tpacket(*input_t.values())',
-                   globals=globals(), number=n)*tmult/n, 3), t_unit)
+                   globals=globals(), number=n)*tmult/n, 3), t_unit, ce)
 
-print(f"codec.decode_tpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+print(cc, f"codec.decode_tpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
       round(timeit('codec.decode_tpacket(tpacket_test)',
-                   globals=globals(), number=n)*tmult/n, 3), t_unit)
+                   globals=globals(), number=n)*tmult/n, 3), t_unit, ce)
 
 
-print(f"codec.encode_xpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+print(cc, f"codec.encode_xpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
       round((
                 timeit('codec.encode_xpacket(*input_int_float)', globals=globals(), number=int(n/2))
                 + timeit('codec.encode_xpacket(*input_bool_str)', globals=globals(), number=int(n/2))
-            )*tmult/n, 3), t_unit)
+            )*tmult/n, 3), t_unit, ce)
 
-print(f"codec.decode_xpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
+print(cc, f"codec.decode_xpacket() - t_avg (n={'{:1.0E}'.format(n)}):",
       round((
                 timeit('codec.decode_xpacket(xpacket_int_float)', globals=globals(), number=int(n/2))
                 + timeit('codec.decode_xpacket(xpacket_bool_str)', globals=globals(), number=int(n/2))
-            )*tmult/n, 3), t_unit)
+            )*tmult/n, 3), t_unit, ce)
 
