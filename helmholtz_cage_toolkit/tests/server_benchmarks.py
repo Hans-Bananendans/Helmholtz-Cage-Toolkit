@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
 
         print("\n ============== STARTING TESTS ==============")
-        n = 99
+        n = 41
         i = 1
 
 
