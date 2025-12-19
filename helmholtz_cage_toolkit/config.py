@@ -1,6 +1,6 @@
 config = {
     "APPNAME": "Helmholtz Cage Toolkit",
-    "VERSION": "0.3.0",
+    "VERSION": "0.9.0",
 
 
     # ==== General settings ====
