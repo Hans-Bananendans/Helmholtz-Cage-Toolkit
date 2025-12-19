@@ -1,0 +1,60 @@
+Goal: 90-120 seconds of video impressions with music
+
+Progression:
+ 1. HQ satellite in space
+ 2. Dark circuit boards and machines
+ 3. Software writing + simulation of magnetic field
+ 4. Assembling
+ 5. Crescendo of satellite starting to move in space + in cage
+ 6. Fade to thesis cover
+
+Motifs:
+ - Compass starting to twitch more and more
+ - Light starting to get brighter and brighter, as design "dawns"
+ - Moody
+
+
+Story board:
+DARK LIGHT
+ - CGI satellite in space
+ o Dark board with LEDs, sweeping back light
+ o Dark PSUs (off), sweeping top lights
+ o Dark HHC elements, sweeping side lights
+ o Dark compass, no movement, sweeping light
+ o B-roll: copper coil
+ o B-roll: Paper design drawings, sweeping light across
+ 
+MEDIUM LIGHT
+ o Medium dark compass, slight twitch of needle
+ o Medium light compass, slow circle
+ o Fully lit compass, full circle, and dance
+ o BIG POWER SWITCH BOOM
+ o Plug in RPi cable ribbons into board
+ o Plug in Power supply ribbons + light turn on
+ o Turn on power supply units
+ o Watch PSU light come on in succession (alt shot)
+ o Plug in 12 VDC barrel jack
+ o Hanging satellite model from ceiling
+ o Plugging in satellite model power cable
+ o Turning on magnetometer and seeing screens
+ o B-roll: Some RPi terminal
+ o B-roll: Turn on COILS LIVE LED
+
+HIGH LIGHT
+ - CGI satellite starting to rotate
+ o Satellite starting to rotate (various angles)
+ o Close-up of XYZ LEDs
+ o Closeup of PSU currents
+ o Operator inspecting satellite rotating
+ o Helmholtz cage setup with pretty screen (+operator)
+ o Overview shot of setup
+ o Top view of satellite moving maybe
+ o Satellite as it rotates, using wire suspension
+ - PC graphs sliding during test
+ - PC satellite motion in virtuo
+ - PC cage plot in virtuo
+ 
+Others:
+ o B-roll: Paper design drawings
+ o B-roll: soldering microscope, board panning and zooming
+ o Elevator light as it ascends
