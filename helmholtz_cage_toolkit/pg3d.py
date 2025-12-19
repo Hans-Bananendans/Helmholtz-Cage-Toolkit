@@ -467,6 +467,11 @@ def sign(number):
     else:
         return number/abs(number)
 
+def norm3d(vector: ndarray):
+    """Efficiently finds the norm of a 3D ndarray vector.
+    """
+    return (vector[0]**2+vector[1]**2+vector[2]**2)**(1/2)
+
 def uv3d(vector: ndarray):
     """Efficiently transforms a 3D ndarray vector into its unit vector.
     Seems more than twice as efficient as vector/np.linalg.norm()

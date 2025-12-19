@@ -170,7 +170,7 @@ config = {
         "b_vector": True,
         "b_lineplot": False,
         "b_linespokes": False,
-        "b_fieldgrid": False,
+        "b_fieldgrid": True,
         "autorotate": False,
     },
 

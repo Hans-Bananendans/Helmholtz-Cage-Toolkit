@@ -20,7 +20,7 @@ from helmholtz_cage_toolkit.pg3d import (
     plotgrid, plotpoint, plotpoints, plotvector, plotframe, plotframe2,
     updatepoint, updatepoints, updatevector, updateframe,
     hex2rgb, hex2rgba,
-    sign, wrap, uv3d,
+    sign, wrap, norm3d, uv3d,
     conv_ECI_geoc,
     R_NED_ECI, R_ECI_NED,
     R_SI_B, R_B_SI,
@@ -148,7 +148,7 @@ class OrbitalPlot(GLViewWidget):
         # ==== MAGNETIC FIELD ================================================
 
         # Draw B vector
-        self.bv_scale = 1.5E-5 * self.ps
+        self.bv_scale = 1.5E-2 * self.ps
         self.make_b_vector()
 
         self.make_b_lineplot()
@@ -702,66 +702,255 @@ class OrbitalPlot(GLViewWidget):
 
     def make_b_fieldgrid(self, layers=3, h_min=5E5, h_spacing=15E5, brows=16, bcols=8):
 
-        def make_b_fieldgrid_set(h=5E5, rows=16, cols=16, alpha=0.5):
-            t0 = time()
+        # def make_b_fieldgrid_set(h=5E5, rows=16, cols=16, alpha=0.5):
+        #     t0 = time()
+        #
+        #     r = Earth().r + h
+        #
+        #     xyz = MeshData.sphere(rows=rows, cols=cols, radius=r).vertexes()
+        #     print("Number of fieldgrid points:", len(xyz))
+        #
+        #     scatterplot = GLScatterPlotItem(
+        #         pos=xyz,
+        #         color=(0.0, 1.0, 1.0, alpha),
+        #         size=3,
+        #         pxMode=True)
+        #     scatterplot.setDepthValue(0)
+        #
+        #     lineplots = []
+        #     for p in xyz:
+        #         p_rlonglat = conv_ECI_geoc(p)
+        #
+        #         _, _, _, bx, by, bz, _ = igrf_value(
+        #             180 / pi * p_rlonglat[2],                            # Latitude [deg]
+        #             180 / pi * wrap(p_rlonglat[1] - self.th_Ei, 2 * pi),  # Longitude (ECEF) [deg]
+        #             1E-3 * r,                                            # Altitude [km]
+        #             self.data.config["orbital_default_generation_parameters"]["date0"])  # Date formatted as decimal year
+        #
+        #         B_p = R_NED_ECI(p_rlonglat[1], p_rlonglat[2]) @ array([bx/1000, by/1000, bz/1000])  # nT -> uT
+        #
+        #
+        #         b_line = GLLinePlotItem(
+        #             pos=[p, p+B_p*self.bfg_lp_scale],
+        #             color=(0.0, 1.0, 1.0, alpha),
+        #             antialias=self.data.config["ov_use_antialiasing"],
+        #             width=1)
+        #         b_line.setDepthValue(0)
+        #         lineplots.append(b_line)
+        #
+        #
+        #     t1 = time()
+        #     print(f"[DEBUG] make_B_fieldgrid() time: {round((t1-t0)*1E6,1)} us")
+        #
+        #     return scatterplot, lineplots
+        #
+        # self.b_fieldgrid = []
+        #
+        # self.bfg_lp_scale = 1E-2 * self.ps
+        #
+        # # Sequentially call make_B_fieldgrid() to make the plotitems
+        # for i in range(layers):
+        #     b_fieldgrid_sp, b_fieldgrid_lp = \
+        #         make_b_fieldgrid_set(
+        #             h=h_min + i * h_spacing, rows=brows, cols=bcols, alpha=0.4
+        #         )
+        #
+        #     self.b_fieldgrid.append(b_fieldgrid_sp)
+        #     self.b_fieldgrid += b_fieldgrid_lp
+        #
+        # # Sequentially add the plotitems, but only when configured to do so
+        # if self.data.config["ov_draw"]["b_fieldgrid"]:
+        #     for item in self.b_fieldgrid:
+        #         self.addItem(item)
 
-            r = Earth().r + h
+        tb0 = time()
 
-            xyz = MeshData.sphere(rows=rows, cols=cols, radius=r).vertexes()
-            print("Number of fieldgrid points:", len(xyz))
+        self.b_fieldlines = []
+        self.b_fieldlines_points = []
 
-            scatterplot = GLScatterPlotItem(
-                pos=xyz,
-                color=(0.0, 1.0, 1.0, alpha),
-                size=3,
-                pxMode=True)
-            scatterplot.setDepthValue(0)
+        def make_fieldline(xyz_start, step_size=1E6):
+            xyz_points = [xyz_start,]
+            iters = 0
 
-            lineplots = []
-            for p in xyz:
-                p_rlonglat = conv_ECI_geoc(p)
+            while not (norm3d(xyz_points[-1]) < 1.1*Earth().r
+                and xyz_points[-1][2] > 0) and (iters < 5000):
+                iters += 1
+                rlonglat = conv_ECI_geoc(xyz_points[-1])
+
+                # r = max((xyz_start[0]**2 + xyz_start[1]**2 + xyz_start[2]**2)**0.5 - Earth().r, 0)
+                r = norm3d(xyz_points[-1]) - Earth().r
 
                 _, _, _, bx, by, bz, _ = igrf_value(
-                    180 / pi * p_rlonglat[2],                            # Latitude [deg]
-                    180 / pi * wrap(p_rlonglat[1] - self.th_Ei, 2 * pi),  # Longitude (ECEF) [deg]
-                    1E-3 * r,                                            # Altitude [km]
+                    180 / pi * rlonglat[2],  # Latitude [deg]
+                    180 / pi * wrap(rlonglat[1] - self.th_Ei, 2 * pi),  # Longitude (ECEF) [deg]
+                    1E-3 * r,  # Altitude [km]
                     self.data.config["orbital_default_generation_parameters"]["date0"])  # Date formatted as decimal year
 
-                B_p = R_NED_ECI(p_rlonglat[1], p_rlonglat[2]) @ array([bx/1000, by/1000, bz/1000])  # nT -> uT
+                B_xyz = R_NED_ECI(rlonglat[1], rlonglat[2]) @ array([bx / 1000, by / 1000, bz / 1000])  # nT -> uT
+                xyz_points.append(xyz_points[-1] + uv3d(B_xyz)*step_size)
+
+            fieldline_lp = GLLinePlotItem(
+                pos=xyz_points,
+                color=(0.0, 1.0, 1.0, 0.25),
+                antialias=self.data.config["ov_use_antialiasing"],
+                width=1)
+            fieldline_lp.setDepthValue(0)
+            self.b_fieldlines.append(fieldline_lp)
+            print(f"[DEBUG] make_fieldline iters: {iters}  ,  len(fieldline) = {len(xyz_points)}")
+
+        def make_fieldlines(start_points, step_size=7.5E5):
+            Bmags = []
+            iters = []
+            all_points = empty((0, 3))
+            # For each start point, propagate along the field line:
+            for i, start_point in enumerate(start_points):
+                xyz_points = [start_point,]
+                itr = 0
+
+                while not (norm3d(xyz_points[-1]) < 1.1*Earth().r
+                    and xyz_points[-1][2] > 0) and (itr < 2048):
+                    itr += 1
+                    rlonglat = conv_ECI_geoc(xyz_points[-1])
+
+                    # r = max((xyz_start[0]**2 + xyz_start[1]**2 + xyz_start[2]**2)**0.5 - Earth().r, 0)
+                    r = norm3d(xyz_points[-1]) - Earth().r
+
+                    _, _, _, bx, by, bz, _ = igrf_value(
+                        180 / pi * rlonglat[2],  # Latitude [deg]
+                        180 / pi * wrap(rlonglat[1] - self.th_Ei, 2 * pi),  # Longitude (ECEF) [deg]
+                        1E-3 * r,  # Altitude [km]
+                        self.data.config["orbital_default_generation_parameters"]["date0"])  # Date formatted as decimal year
+
+                    B_xyz = R_NED_ECI(rlonglat[1], rlonglat[2]) @ array([bx / 1000, by / 1000, bz / 1000])  # nT -> uT
+
+                    # Record Bmag, to be used later for alpha/intensity
+                    Bmag = norm3d(B_xyz)
+                    if itr == 1:
+                        Bmag = 0    # Set all first points to zero, so we hide cross lines
+                    Bmags.append(Bmag)
+
+                    # Turn magnetic vector to unit vector, and move 'step_size' meters
+                    # in that direction for the next point.
+                    xyz_points.append(xyz_points[-1] + uv3d(B_xyz)*step_size)
+
+                Bmags.append(0.)
+                all_points = concatenate((all_points, array(xyz_points)))
+                iters.append(itr)
+
+            # print(f"all_points: {all_points}")
+
+            # print(f"len(all_points): {len(all_points)}")
+
+            # print(f"len(Bmags): {len(Bmags)}")
+            # print(Bmags)
+
+            # Drawing the concatenated field lines
+            intensities = []
+            for ppoint in all_points:
+                intensities.append(norm3d(ppoint))
+
+            Bmags = array(Bmags)
+            Bmag_max = max(Bmags)
+
+            # intensities = (Bmags/Bmag_max)**0.75  # Use root to compress colour intensities
+            intensities = Bmags/Bmag_max  # Use root to compress colour intensities
+
+            colour_array = array([
+                zeros(len(all_points) - 1),
+                ones(len(all_points) - 1),
+                ones(len(all_points) - 1),
+                intensities[:-1],
+            ]).transpose()
+
+            fieldline_lp = GLLinePlotItem(
+                pos=all_points,
+                color=colour_array,
+                antialias=self.data.config["ov_use_antialiasing"],
+                width=0.5)
+            fieldline_lp.setDepthValue(0)
+            self.b_fieldlines.append(fieldline_lp)
+            print(f"[DEBUG] make_fieldline iters: {iters}  ,  len(fieldline) = {len(all_points)}")
 
 
-                b_line = GLLinePlotItem(
-                    pos=[p, p+B_p*self.bfg_lp_scale],
-                    color=(0.0, 1.0, 1.0, alpha),
-                    antialias=self.data.config["ov_use_antialiasing"],
-                    width=1)
-                b_line.setDepthValue(0)
-                lineplots.append(b_line)
+
+        start_points = []
+
+        def create_start_points(start_points, points_per_circle = 12, side_mag = 0.5, z_mag = 1.0):
+            for i in range(points_per_circle):
+                temp = 2*pi/points_per_circle
+                start_points.append(array([
+                    side_mag * sin(i * temp),
+                    side_mag * cos(i * temp),
+                    -z_mag
+                ]))
+                # print(f"[DEBUG] appended {sin(i * temp)}, {cos(i * temp)}, {-side_mag}")
+            return start_points
+
+        points_per_circle = 12
+
+        start_points = create_start_points(start_points, 12, 0.6, 1)
+        start_points = create_start_points(start_points, 12, 0.9, 1)
+        start_points = create_start_points(start_points, 12, 1, 0.5)
+
+        # start_points = [
+        #     array([   0,    1, -0.95]),
+        #     array([ 0.5*s2,  0.5*s2, -0.95]),
+        #     array([   1,  0.0, -0.95]),
+        #     array([ 0.5*s2, -0.5*s2, -0.95]),
+        #     array([   0,   -1, -0.95]),
+        #     array([-0.5*s2, -0.5*s2, -0.95]),
+        #     array([  -1,    0, -0.95]),
+        #     array([-0.5*s2,  0.5*s2, -0.95]),
+        # ]
+        for i in range(len(start_points)):
+            start_points[i] = 0.9*Earth().r * uv3d(start_points[i])
+
+        # start_points_scatterplot = GLScatterPlotItem(
+        #         pos=start_points,
+        #         color=(0.0, 1.0, 1.0, 0.5),
+        #         size=5,
+        #         pxMode=True)
+        # start_points_scatterplot.setDepthValue(0)
+
+        # print(f"start_points: {start_points}")
+
+        # self.b_fieldlines_points.append(
+        #     start_points_scatterplot
+        # )
+
+        # for start_point in start_points:
+        #     make_fieldline(start_point)
+
+        make_fieldlines(start_points)
 
 
-            t1 = time()
-            print(f"[DEBUG] make_B_fieldgrid() time: {round((t1-t0)*1E6,1)} us")
+        # self.addItem(start_points_scatterplot)
+        for item in self.b_fieldlines:
+            self.addItem(item)
+        print(f"[DEBUG] b_fieldline draw duration: {round(1E6*(time() - tb0),1)} us")
 
-            return scatterplot, lineplots
 
-        self.b_fieldgrid = []
-
-        self.bfg_lp_scale = 1E-5 * self.ps
-
-        # Sequentially call make_B_fieldgrid() to make the plotitems
-        for i in range(layers):
-            b_fieldgrid_sp, b_fieldgrid_lp = \
-                make_b_fieldgrid_set(
-                    h=h_min + i * h_spacing, rows=brows, cols=bcols, alpha=0.4
-                )
-
-            self.b_fieldgrid.append(b_fieldgrid_sp)
-            self.b_fieldgrid += b_fieldgrid_lp
-
-        # Sequentially add the plotitems, but only when configured to do so
-        if self.data.config["ov_draw"]["b_fieldgrid"]:
-            for item in self.b_fieldgrid:
-                self.addItem(item)
+        # ## Geomagnetic axis
+        # ## South pole as of 2020 by IGRF-13 fit:
+        # # North: 80.7 N,  72.7 W
+        # # South: 80.7 S, 107.3 E
+        # _, _, _, bx0, by0, bz0, _ = igrf_value(
+        #     107.3,  # Latitude [deg]
+        #     80.7,  # Longitude (ECEF) [deg]
+        #     0,  # Altitude [km]
+        #     self.data.config["orbital_default_generation_parameters"]["date0"])  # Date formatted as decimal year
+        # geomag_axis_points = [
+        #      3 * Earth().r * uv3d(array([bx0, by0, bz0])),
+        #     -3 * Earth().r * uv3d(array([bx0, by0, bz0])),
+        # ]
+        #
+        # geomag_axis_lp = GLLinePlotItem(
+        #     pos=geomag_axis_points,
+        #     color=(0.0, 1.0, 1.0, 0.5),
+        #     antialias=self.data.config["ov_use_antialiasing"],
+        #     width=4)
+        # geomag_axis_lp.setDepthValue(0)
+        # self.addItem(geomag_axis_lp)
 
 
     def make_vector_pos(self):  # TODO: Remove (after verification complete)
@@ -1066,12 +1255,16 @@ class OrbitalPlotButtons(QGroupBox):
     def toggle_b_fieldgrid(self):
         if self.button_b_fieldgrid.isChecked():
             self.data.config["ov_draw"]["b_fieldgrid"] = True
-            for item in self.orbitalplot.b_fieldgrid:
+            for item in self.orbitalplot.b_fieldlines:
                 self.orbitalplot.addItem(item)
+            # for item in self.orbitalplot.b_fieldgrid:
+                # self.orbitalplot.addItem(item)
         else:
             self.data.config["ov_draw"]["b_fieldgrid"] = False
-            for item in self.orbitalplot.b_fieldgrid:
+            for item in self.orbitalplot.b_fieldlines:
                 self.orbitalplot.removeItem(item)
+            # for item in self.orbitalplot.b_fieldgrid:
+                # self.orbitalplot.removeItem(item)
 
     def toggle_autorotate(self):
         if self.button_autorotate.isChecked():
