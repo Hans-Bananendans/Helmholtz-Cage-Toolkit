@@ -78,7 +78,7 @@ File layout of the most important code files.
 ___
 
 ![alt text](helmholtz_cage_toolkit/extras/scc_packets.png?raw=true)
-Anatomy of the TCP packets for the SCC protocol, included in the ```/scc/``` folder.
+Anatomy of the TCP packets for the SCC codec, included in the ```/scc/``` folder.
 ___
 
 ## Attributions
