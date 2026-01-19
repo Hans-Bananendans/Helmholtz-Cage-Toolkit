@@ -54,10 +54,15 @@ class OrbitalPlot(GLViewWidget):
 
         # Shorthands for common config settings
         self.ps = self.data.config["ov_plotscale"]  # Plot scale
+        self.psm = self.data.config["ov_plotscale_mult"]  # Plot scale multiplier
         self.c = self.data.config["ov_plotcolours"]
         self.aa = self.data.config["ov_use_antialiasing"]
 
-        self.setCameraPosition(distance=3*self.ps)
+        self.setCameraPosition(
+            distance=self.psm*self.ps,
+            azimuth=self.data.config["ov_azimuth"],
+            elevation=self.data.config["ov_elevation"],
+        )
 
     def draw_statics(self):
         """Draws static objects into the GLViewWidget. Static objects are
@@ -413,6 +418,8 @@ class OrbitalPlot(GLViewWidget):
             smooth=self.data.config["ov_earth_model_smoothing"],
             computeNormals=True,
             shader="shaded",
+            # shader="balloon",
+            glOptions="opaque",
         )
         self.earth_model.setDepthValue(-2)
 
@@ -768,35 +775,35 @@ class OrbitalPlot(GLViewWidget):
         self.b_fieldlines = []
         self.b_fieldlines_points = []
 
-        def make_fieldline(xyz_start, step_size=1E6):
-            xyz_points = [xyz_start,]
-            iters = 0
-
-            while not (norm3d(xyz_points[-1]) < 1.1*Earth().r
-                and xyz_points[-1][2] > 0) and (iters < 5000):
-                iters += 1
-                rlonglat = conv_ECI_geoc(xyz_points[-1])
-
-                # r = max((xyz_start[0]**2 + xyz_start[1]**2 + xyz_start[2]**2)**0.5 - Earth().r, 0)
-                r = norm3d(xyz_points[-1]) - Earth().r
-
-                _, _, _, bx, by, bz, _ = igrf_value(
-                    180 / pi * rlonglat[2],  # Latitude [deg]
-                    180 / pi * wrap(rlonglat[1] - self.th_Ei, 2 * pi),  # Longitude (ECEF) [deg]
-                    1E-3 * r,  # Altitude [km]
-                    self.data.config["orbital_default_generation_parameters"]["date0"])  # Date formatted as decimal year
-
-                B_xyz = R_NED_ECI(rlonglat[1], rlonglat[2]) @ array([bx / 1000, by / 1000, bz / 1000])  # nT -> uT
-                xyz_points.append(xyz_points[-1] + uv3d(B_xyz)*step_size)
-
-            fieldline_lp = GLLinePlotItem(
-                pos=xyz_points,
-                color=(0.0, 1.0, 1.0, 0.25),
-                antialias=self.data.config["ov_use_antialiasing"],
-                width=1)
-            fieldline_lp.setDepthValue(0)
-            self.b_fieldlines.append(fieldline_lp)
-            print(f"[DEBUG] make_fieldline iters: {iters}  ,  len(fieldline) = {len(xyz_points)}")
+        # def make_fieldline(xyz_start, step_size=1E6):
+        #     xyz_points = [xyz_start,]
+        #     iters = 0
+        #
+        #     while not (norm3d(xyz_points[-1]) < 1.1*Earth().r
+        #         and xyz_points[-1][2] > 0) and (iters < 5000):
+        #         iters += 1
+        #         rlonglat = conv_ECI_geoc(xyz_points[-1])
+        #
+        #         # r = max((xyz_start[0]**2 + xyz_start[1]**2 + xyz_start[2]**2)**0.5 - Earth().r, 0)
+        #         r = norm3d(xyz_points[-1]) - Earth().r
+        #
+        #         _, _, _, bx, by, bz, _ = igrf_value(
+        #             180 / pi * rlonglat[2],  # Latitude [deg]
+        #             180 / pi * wrap(rlonglat[1] - self.th_Ei, 2 * pi),  # Longitude (ECEF) [deg]
+        #             1E-3 * r,  # Altitude [km]
+        #             self.data.config["orbital_default_generation_parameters"]["date0"])  # Date formatted as decimal year
+        #
+        #         B_xyz = R_NED_ECI(rlonglat[1], rlonglat[2]) @ array([bx / 1000, by / 1000, bz / 1000])  # nT -> uT
+        #         xyz_points.append(xyz_points[-1] + uv3d(B_xyz)*step_size)
+        #
+        #     fieldline_lp = GLLinePlotItem(
+        #         pos=xyz_points,
+        #         color=(0.0, 1.0, 1.0, 0.25),
+        #         antialias=self.data.config["ov_use_antialiasing"],
+        #         width=1)
+        #     fieldline_lp.setDepthValue(0)
+        #     self.b_fieldlines.append(fieldline_lp)
+        #     print(f"[DEBUG] make_fieldline iters: {iters}  ,  len(fieldline) = {len(xyz_points)}")
 
         def make_fieldlines(start_points, step_size=7.5E5):
             Bmags = []
@@ -866,8 +873,9 @@ class OrbitalPlot(GLViewWidget):
                 pos=all_points,
                 color=colour_array,
                 antialias=self.data.config["ov_use_antialiasing"],
-                width=0.5)
-            fieldline_lp.setDepthValue(0)
+                width=0.5,
+                glOptions='additive')
+            fieldline_lp.setDepthValue(-3)
             self.b_fieldlines.append(fieldline_lp)
             print(f"[DEBUG] make_fieldline iters: {iters}  ,  len(fieldline) = {len(all_points)}")
 
@@ -927,7 +935,7 @@ class OrbitalPlot(GLViewWidget):
         # self.addItem(start_points_scatterplot)
         for item in self.b_fieldlines:
             self.addItem(item)
-        print(f"[DEBUG] b_fieldline draw duration: {round(1E6*(time() - tb0),1)} us")
+        print(f"[DEBUG] b_fieldline draw duration: {round(1E3*(time() - tb0),1)} ms")
 
 
         # ## Geomagnetic axis

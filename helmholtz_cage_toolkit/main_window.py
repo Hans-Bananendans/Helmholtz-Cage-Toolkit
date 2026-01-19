@@ -168,6 +168,15 @@ class MainWindow(QMainWindow):
             self.datapool.config["show_plot_visibility_tabs"])
         menu_view.addAction(act_toggle_plot_visibility_tabs)
 
+        act_reset_orbitals_camera = QAction(
+            QIcon("./assets/icons/feather/camera.svg"),
+            "Reset Orbitals &camera", self)
+        act_reset_orbitals_camera.setStatusTip(
+            "Reset the Orbital plots camera to their default position.")
+        act_reset_orbitals_camera.triggered.connect(
+            lambda: self.datapool.orbital_visualizer.resetCamera())
+        act_reset_orbitals_camera.setCheckable(False)
+        menu_view.addAction(act_reset_orbitals_camera)
 
 
         # # Menu bar - Tools menu

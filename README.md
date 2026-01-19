@@ -47,7 +47,10 @@ This software uses the following dependencies:
 
 as well a number of other dependencies, all of which can be found in `setup.py`.
 
-## Early screenshots of client interface
+Note: it may be that your version of pyIGRF cannot load the model parameters. This is a [known bug with the package](https://github.com/zzyztyy/pyIGRF/issues/14), and may be fixed in the future. For the moment, you can fork it and easily patch it yourself.
+
+## Screenshots
+
 ![alt text](helmholtz_cage_toolkit/extras/screenshot_command_manual_0.2.png?raw=true)
 Command interface for controlling the Helmholtz cage in a server-client setup. Currently "manual mode" is selected, which allows the user to manually set input field vectors, and specify a constant field vector to reject.
 ___
@@ -68,6 +71,14 @@ ___
 Early look at user interface of another input generators, which propagates a low Earth orbit (LEO) over time and acquires the local magnetic field data in the body frame of a simulated satellite. The local field is simulated using the IGRF.
 ![alt text](helmholtz_cage_toolkit/extras/screenshot_orbital_cage3d_0.2.png?raw=true)
 The local field data can then be converted to the satellite body frame and then to software instructions for the Helmholtz cage system.
+___
+
+![alt text](helmholtz_cage_toolkit/extras/file_content.png?raw=true)
+File layout of the most important code files.
+___
+
+![alt text](helmholtz_cage_toolkit/extras/scc_packets.png?raw=true)
+Anatomy of the TCP packets for the SCC protocol, included in the ```/scc/``` folder.
 ___
 
 ## Attributions

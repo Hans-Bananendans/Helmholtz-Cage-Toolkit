@@ -1,6 +1,6 @@
 config = {
     "APPNAME": "Helmholtz Cage Toolkit",
-    "VERSION": "0.9.0",
+    "VERSION": "1.0.0",
 
 
     # ==== General settings ====
@@ -95,7 +95,7 @@ config = {
     "hhcplot_windowsize": (560, 220),
     "visualizer_windowsize": (560, 120),
     "visualizer_bscale": 200_000,
-    "visualizer_updaterate": 30,
+    "visualizer_updaterate": 15,
 
     "plotcolor_Bc": "#00ffff",  # cyan
     "plotcolor_Bm": "#ffbf00",  # amber
@@ -136,7 +136,13 @@ config = {
     "ov_plotcolours": ("#ff00ffff", "#ff8000ff", "#00ffffff", "#ffff00ff", "#00ff00ff"),
     "ov_preferred_colour": 1,
     # "ov_draw_B_vector": True,
+
+    # These parameters set the default camera position in spherical coordinates
     "ov_plotscale": 1E7,
+    "ov_plotscale_mult": 3.5,
+    "ov_azimuth": 45,
+    "ov_elevation": 20,
+
     "ov_autorotate_angle": -0.15,
     "ov_earth_model_resolution": (16, 24),
     "ov_earth_model_colours": {
@@ -192,7 +198,13 @@ config = {
     "c3d_line_alpha": 0.1,
     "c3d_component_alpha": 1.0,
     "c3d_preferred_colour": 2,
+
+    # These parameters set the default camera position in spherical coordinates
     "c3d_plotscale": 5E1,
+    "c3d_plotscale_mult": 2.4,
+    "c3d_azimuth": 25,
+    "c3d_elevation": 14,
+
     "c3d_draw": {
         "xy_grid": True,
         "tripod_b": True,
@@ -209,7 +221,7 @@ config = {
         "autorotate": False,
     },
     "c3d_autorotate_angle": -0.15,
-    "c3d_tail_length": [3, 6, 9, 12, 15, 18, 21, 24],
+    "c3d_tail_length": [3, 6, 9, 12, 15, 18, 21, 24, 27, 30],
     "c3d_satellite_model": {
         "x_dim": 0.1,
         "y_dim": 0.1,

@@ -54,6 +54,7 @@ class Cage3DPlot(GLViewWidget):
 
         # Shorthands for common config settings
         self.ps = self.data.config["c3d_plotscale"]  # Plot scale
+        self.psm = self.data.config["c3d_plotscale_mult"]  # Plot scale multiplier
         self.c = self.data.config["ov_plotcolours"]
         self.aa = self.data.config["ov_use_antialiasing"]
         self.zo = self.data.config["c3d_cage_dimensions"]["z_offset"] * self.ps
@@ -62,7 +63,11 @@ class Cage3DPlot(GLViewWidget):
         self.tail_length = self.data.config["c3d_tail_length"]
 
         self.opts["center"] = QVector3D(0, 0, self.zo)
-        self.setCameraPosition(distance=5*self.ps, azimuth=-20, elevation=25)
+        self.setCameraPosition(
+            distance=self.psm*self.ps,
+            azimuth=self.data.config["c3d_azimuth"],
+            elevation=self.data.config["c3d_elevation"],
+        )
         # self.setCameraPosition(distance=5*self.ps, pos=(0, 0, 2.5*self.ps))
 
 
@@ -500,7 +505,7 @@ class Cage3DPlot(GLViewWidget):
 
         self.linespokes = GLLinePlotItem(
             pos=points,
-            color=(0.5, 0.5, 0.5, 0.2),
+            color=(0.5, 0.5, 0.5, 0.1),
             antialias=self.data.config["ov_use_antialiasing"],
             width=1)
         self.linespokes.setDepthValue(0)

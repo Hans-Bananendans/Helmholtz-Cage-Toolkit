@@ -600,7 +600,7 @@ class OrbitalVisualizer(QGroupBox):
         self.i_step = 0
         self.autorotate_timer = QTimer()
         self.autorotate_timer.timeout.connect(self.autorotate)
-        self.autorotate_timer.start(50)
+        self.autorotate_timer.start(100)
 
     # def update_plots(self):
     #     self.update_orbital_plot()
@@ -650,7 +650,16 @@ class OrbitalVisualizer(QGroupBox):
         self.group_playcontrols.refresh()
 
     def autorotate(self):
+        """Rotates the camera on both orbital view plot and cage 3D plot
+        around the azimuth. The rotation angle is fetched from the config,
+        and denotes the number of degrees that is rotated by every time
+        this function is called.
 
+        For example, if you call autorotate() at a rate of 10 times per
+        second, and 'ov_autorotate_angle' = 0.75, then the orbital view
+        plot will rotate around its azimuth at a rate of 7.5 degrees
+        per second.
+        """
         if self.datapool.config["ov_draw"]["autorotate"]:
             angle = self.datapool.config["ov_autorotate_angle"]
             self.widget_orbitalplot.setCameraPosition(
@@ -661,6 +670,34 @@ class OrbitalVisualizer(QGroupBox):
             self.widget_cage3d.setCameraPosition(
                 azimuth=(self.widget_cage3d.opts["azimuth"] + angle) % 360
             )
+
+    def resetCamera(self):
+        """Resets the camera view of both plots in the Orbitals tab to their
+        default position. It also resets the schedule preview position to
+        the start.
+
+        This is mainly intended to be used for recording consistent screen
+        capture footage of these plots.
+        """
+        distance_ov  = self.datapool.config["ov_plotscale"]
+        distance_ov *= self.datapool.config["ov_plotscale_mult"]
+
+        self.widget_orbitalplot.setCameraPosition(
+            distance=distance_ov,
+            azimuth=self.datapool.config["ov_azimuth"],
+            elevation=self.datapool.config["ov_elevation"],
+        )
+
+        distance_c3d  = self.datapool.config["c3d_plotscale"]
+        distance_c3d *= self.datapool.config["c3d_plotscale_mult"]
+
+        self.widget_cage3d.setCameraPosition(
+            distance=distance_c3d,
+            azimuth=self.datapool.config["c3d_azimuth"],
+            elevation=self.datapool.config["c3d_elevation"],
+        )
+
+        self.datapool.orbital_scheduleplayer.reset()
 
 
     # def plot_ghosts(self):

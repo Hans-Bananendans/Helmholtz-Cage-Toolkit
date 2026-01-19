@@ -2,12 +2,12 @@ from setuptools import setup, find_packages
 
 setup(
     name="helmholtz_cage_toolkit",
-    version="0.2.0",
+    version="1.0.0",
     description="A toolkit for large Helmholtz cage test setups, primarily aimed at testing spacecraft.",
     author="Johan Monster",
     author_email="jj.monster@hotmail.com",
-    packages=["helmholtz_cage_toolkit/"],
-    # packages=find_packages(),
+    # packages=["helmholtz_cage_toolkit/"],
+    packages=find_packages(),
     install_requires=[
         "matplotlib",
         "numpy",
