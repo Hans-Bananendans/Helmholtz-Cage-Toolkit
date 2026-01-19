@@ -3,7 +3,7 @@ Toolkit for large Helmholtz cage test setups, primarily aimed at testing spacecr
 
 
 ## What is this?
-This repository contains a set of tools for building, validating, and operating a large Helmholtz cage test setup. It is developed as part of thesis work for a MSc in Space Engineering. 
+This repository contains a set of tools for building, validating, and operating a large Helmholtz cage test setup. It is developed as part of [MSc thesis work](https://repository.tudelft.nl/record/uuid:06836d7a-800f-44f2-8513-cf1c6be283f1) in Space Engineering.
 
 
 ## Why was this developed?
